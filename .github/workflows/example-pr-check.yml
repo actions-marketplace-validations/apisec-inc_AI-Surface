@@ -1,0 +1,28 @@
+# Example workflow showing how downstream consumers wire ai-surface into their CI.
+# Drop this (or a copy) into your own repo's .github/workflows/ to enable PR comments.
+
+name: AI Surface Check
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run ai-surface
+        uses: apisec-inc/ai-surface@v0
+        with:
+          path: '.'
+          comment-on-pr: 'true'
+          fail-on-risk: 'false'
+          write-inventory: 'false'

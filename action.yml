@@ -1,0 +1,46 @@
+name: 'AI Surface Check'
+description: 'Inventory production AI surfaces (LLM SDKs, agent frameworks, MCP servers) in your codebase. Posts a PR comment.'
+author: 'APIsec'
+branding:
+  icon: 'eye'
+  color: 'blue'
+
+inputs:
+  path:
+    description: 'Directory to scan, relative to the repository root.'
+    required: false
+    default: '.'
+  comment-on-pr:
+    description: 'Post (or update) a PR comment with the AI surface report. Set to "false" to disable.'
+    required: false
+    default: 'true'
+  fail-on-risk:
+    description: 'Exit non-zero if any risk indicators are detected (useful for blocking PRs that introduce broad-permission AI surfaces).'
+    required: false
+    default: 'false'
+  write-inventory:
+    description: 'Write .ai-inventory.md back to the workspace.'
+    required: false
+    default: 'false'
+  github-token:
+    description: 'Token used to post PR comments. Defaults to the workflow GITHUB_TOKEN.'
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  surfaces-count:
+    description: 'Number of production AI surfaces detected.'
+  risk-count:
+    description: 'Number of risk indicators detected.'
+  json-report:
+    description: 'Path to the JSON report file (inside the runner workspace).'
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  env:
+    AI_SURFACE_INPUT_PATH: ${{ inputs.path }}
+    AI_SURFACE_COMMENT_ON_PR: ${{ inputs.comment-on-pr }}
+    AI_SURFACE_FAIL_ON_RISK: ${{ inputs.fail-on-risk }}
+    AI_SURFACE_WRITE_INVENTORY: ${{ inputs.write-inventory }}
+    AI_SURFACE_GITHUB_TOKEN: ${{ inputs.github-token }}

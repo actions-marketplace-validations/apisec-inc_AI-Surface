@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "github-mcp": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "capabilities": ["admin", "write", "repo:read"]
+    },
+    "weather-mcp": {
+      "command": "node",
+      "args": ["./weather-server.js"],
+      "capabilities": ["read"]
+    }
+  }
+}

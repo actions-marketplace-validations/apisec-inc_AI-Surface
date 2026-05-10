@@ -1,0 +1,75 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ai-surface"
+version = "0.5.0"
+description = "Inventory the production AI surfaces in your application code. MCP servers, agent frameworks, LLM call sites, model gateways."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.9"
+authors = [
+    { name = "APIsec", email = "security@apisec.ai" }
+]
+keywords = ["ai", "devops", "mcp", "langchain", "openai", "anthropic", "agent", "inventory", "ci"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development",
+    "Topic :: System :: Monitoring",
+]
+
+dependencies = [
+    "typer>=0.9.0,<1.0.0",
+    "rich>=13.0.0,<14.0.0",
+    "pathspec>=0.11.0,<1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
+
+[project.scripts]
+ai-surface = "ai_surface.cli:app"
+
+[project.urls]
+Homepage = "https://github.com/apisec-inc/ai-surface"
+Documentation = "https://github.com/apisec-inc/ai-surface#readme"
+Issues = "https://github.com/apisec-inc/ai-surface/issues"
+Source = "https://github.com/apisec-inc/ai-surface"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ai_surface"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM"]
+
+[tool.mypy]
+python_version = "3.9"
+warn_unused_ignores = true
+warn_redundant_casts = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+pythonpath = ["src"]
+addopts = "-ra"
