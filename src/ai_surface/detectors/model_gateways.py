@@ -50,7 +50,9 @@ _HELICONE_PATTERNS = (
 _CLOUDFLARE_PATTERNS = (
     re.compile(r"gateway\.ai\.cloudflare\.com"),
     # Cloudflare Workers AI binding in wrangler config (TOML/JSON).
-    re.compile(r"""\[ai\][^\[]*?binding\s*=\s*['"][^'"]+['"]""", re.DOTALL),
+    # The body length is bounded to defend against catastrophic backtracking
+    # on adversarial input containing many `[ai]` headers and no `binding=`.
+    re.compile(r"""\[ai\][^\[]{0,4096}?binding\s*=\s*['"][^'"]+['"]""", re.DOTALL),
     re.compile(r"""['"]ai['"]\s*:\s*\{\s*['"]binding['"]"""),
 )
 _OPENROUTER_PATTERNS = (
@@ -84,9 +86,11 @@ _AI_IMAGE_PATTERNS: tuple[tuple[str, str], ...] = (
 )
 
 # Terraform AI resources we care about.
+# Matches only the resource HEADER. The body is extracted separately by a
+# brace-balanced scanner (`_extract_tf_body`) so that nested blocks (lifecycle,
+# dynamic, nested config) don't truncate the body at the first inner `}`.
 _TF_RESOURCE_RE = re.compile(
-    r"""resource\s+"(?P<type>[a-zA-Z0-9_]+)"\s+"(?P<name>[a-zA-Z0-9_-]+)"\s*\{(?P<body>[^}]*)\}""",
-    re.DOTALL,
+    r"""resource\s+"(?P<type>[a-zA-Z0-9_]+)"\s+"(?P<name>[a-zA-Z0-9_-]+)"\s*\{""",
 )
 _TF_AI_RESOURCE_TYPES = {
     "aws_bedrock_provisioned_model_throughput": (
@@ -420,13 +424,109 @@ def _match_ai_image(image: str) -> str | None:
 # ---------------------------------------------------------------------------
 
 
+# HCL heredoc opener: ``<<TAG`` or ``<<-TAG`` (the leading-dash form strips
+# indentation but still terminates on the same marker).
+_HEREDOC_OPENER_RE = re.compile(r"<<-?([A-Za-z_][A-Za-z0-9_]*)")
+
+
+def _extract_tf_body(text: str, open_brace_idx: int) -> str:
+    """Return the body between the matching `{...}` starting at ``open_brace_idx``.
+
+    Counts brace depth while skipping over the constructs that legally
+    contain a stray ``}``:
+
+    * Double / single-quoted string literals (with backslash escapes).
+    * ``# ...`` and ``// ...`` line comments.
+    * ``/* ... */`` block comments.
+    * HCL heredocs: ``<<EOT ... EOT`` and ``<<-EOT ... EOT``. Common inside
+      ``aws_sagemaker_endpoint`` blocks that inline IAM policy JSON, which
+      contains literal ``}`` characters.
+
+    Returns an empty string if no matching closing brace is found, or if
+    a heredoc / block comment is opened but never terminated.
+
+    ``open_brace_idx`` must point at the opening ``{`` itself.
+    """
+    n = len(text)
+    if open_brace_idx >= n or text[open_brace_idx] != "{":
+        return ""
+    depth = 1
+    i = open_brace_idx + 1
+    body_start = i
+    while i < n:
+        ch = text[i]
+        # String literals: skip until matching quote, honouring backslash escapes.
+        if ch == '"' or ch == "'":
+            quote = ch
+            i += 1
+            while i < n:
+                if text[i] == "\\" and i + 1 < n:
+                    i += 2
+                    continue
+                if text[i] == quote:
+                    i += 1
+                    break
+                i += 1
+            continue
+        # Block comment ``/* ... */``.
+        if ch == "/" and i + 1 < n and text[i + 1] == "*":
+            close = text.find("*/", i + 2)
+            if close == -1:
+                return ""
+            i = close + 2
+            continue
+        # Line comments.
+        if ch == "#" or (ch == "/" and i + 1 < n and text[i + 1] == "/"):
+            nl = text.find("\n", i)
+            if nl == -1:
+                return ""
+            i = nl + 1
+            continue
+        # HCL heredoc: ``<<TAG`` or ``<<-TAG``. The terminating tag must
+        # appear on a line by itself (whitespace allowed for the dash form).
+        if ch == "<" and i + 1 < n and text[i + 1] == "<":
+            opener = _HEREDOC_OPENER_RE.match(text, i)
+            if opener:
+                tag = opener.group(1)
+                # Find the end-of-line after the opener, then look for the
+                # tag on its own line.
+                eol = text.find("\n", opener.end())
+                if eol == -1:
+                    return ""
+                search_pos = eol + 1
+                # Closing tag on a line: optional leading whitespace, the
+                # tag, optional trailing whitespace, end of line / file.
+                closer_re = re.compile(
+                    rf"^[ \t]*{re.escape(tag)}[ \t]*$",
+                    re.MULTILINE,
+                )
+                close_m = closer_re.search(text, search_pos)
+                if close_m is None:
+                    return ""
+                i = close_m.end()
+                continue
+        if ch == "{":
+            depth += 1
+            i += 1
+            continue
+        if ch == "}":
+            depth -= 1
+            if depth == 0:
+                return text[body_start:i]
+            i += 1
+            continue
+        i += 1
+    return ""
+
+
 def _detect_terraform_ai(text: str, rel: str) -> list[Finding]:
     """Surface AI-related Terraform resources from a single ``.tf`` file."""
     out: list[Finding] = []
     for m in _TF_RESOURCE_RE.finditer(text):
         rtype = m.group("type")
         rname = m.group("name")
-        body = m.group("body")
+        # m.end() - 1 points at the opening `{` captured by the regex.
+        body = _extract_tf_body(text, m.end() - 1)
         if rtype not in _TF_AI_RESOURCE_TYPES:
             continue
         label, risk = _TF_AI_RESOURCE_TYPES[rtype]

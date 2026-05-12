@@ -50,7 +50,7 @@ Scanned: /path/to/repo
 
 LLM SDK CALL SITES
   • Anthropic SDK
-      Models: claude-sonnet-4-6
+      Models: claude-3-5-sonnet-20241022
       → src/agents/refund.py
       ⚠ non-literal data flows into LLM call
       → validate this surface
@@ -280,7 +280,7 @@ sequenceDiagram
     Dev->>Git: Push PR branch
     Git->>CI: Trigger workflow
     CI->>AS: scan PR head
-    AS->>AS: walk files (gitignore-aware)
+    AS->>AS: walk files (root .gitignore honoured)
     AS->>AS: run 5 detectors
     AS->>AS: aggregate findings
     AS-->>CI: head report JSON
@@ -293,7 +293,7 @@ sequenceDiagram
 
 **What stays local:**
 
-- Reads files from the directory you point it at, gitignore-aware
+- Reads files from the directory you point it at, honouring the **root `.gitignore`** (nested gitignores, `.git/info/exclude`, and your global excludesfile are not consulted)
 - Pattern-matches against known AI surface signatures
 - Writes findings to stdout, a JSON file, a markdown file, or a PR comment
 
@@ -458,7 +458,7 @@ src/ai_surface/
 │   ├── terminal_reporter.py
 │   ├── json_reporter.py
 │   └── markdown_reporter.py
-└── utils/walk.py           # gitignore-aware file walker
+└── utils/walk.py           # file walker (root .gitignore only)
 ```
 
 Adding a detector: implement the `Detector` protocol in `types.py`, register in `default_detectors()`, add fixtures + tests under `tests/`. See [CONTRIBUTING.md](CONTRIBUTING.md) for full details.

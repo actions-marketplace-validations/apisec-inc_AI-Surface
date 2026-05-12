@@ -175,5 +175,5 @@ def test_python_file_without_mcp_token_is_skipped(tmp_path: Path) -> None:
 
 def test_detector_protocol_attributes() -> None:
     d = McpServerDetector()
-    assert d.name == "mcp-servers"
+    assert d.name == "mcp_servers"
     assert d.category == CATEGORY_MCP_SERVER

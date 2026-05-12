@@ -23,8 +23,10 @@ from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
+from . import __version__ as _TOOL_VERSION
 from .cross_promo import build_upgrade_url
 from .types import Finding, Report
+from .utils.markdown_safety import sanitise_inline as _sanitise_inline
 
 
 @dataclass
@@ -166,7 +168,7 @@ def _report_from_dict(data: Mapping[str, Any]) -> Report:
         scan_timestamp=str(data.get("scan_timestamp", "")),
         detectors_run=list(data.get("detectors_run", []) or []),
         schema_version=str(data.get("schema_version", "0.5")),
-        tool_version=str(data.get("tool_version", "0.5.0")),
+        tool_version=str(data.get("tool_version", _TOOL_VERSION)),
         errors=list(data.get("errors", []) or []),
     )
 
@@ -250,19 +252,19 @@ def _render_empty_diff() -> str:
 
 def _render_added_finding(f: Finding) -> str:
     parts: list[str] = []
-    parts.append(f"- **{f.surface}**")
+    parts.append(f"- **{_sanitise_inline(f.surface)}**")
     if f.permissions:
-        perms = ", ".join(f"`{p}`" for p in f.permissions[:6])
+        perms = ", ".join(f"`{_sanitise_inline(p, max_len=80)}`" for p in f.permissions[:6])
         if len(f.permissions) > 6:
             perms += f", … +{len(f.permissions) - 6}"
         parts.append(f"  - Tools/permissions: {perms}")
     if f.evidence.files:
-        files = ", ".join(f"`{x}`" for x in f.evidence.files[:3])
+        files = ", ".join(f"`{_sanitise_inline(x)}`" for x in f.evidence.files[:3])
         if len(f.evidence.files) > 3:
             files += f", … +{len(f.evidence.files) - 3}"
         parts.append(f"  - Files: {files}")
     for risk in f.risk_indicators:
-        parts.append(f"  - ⚠️ {risk}")
+        parts.append(f"  - ⚠️ {_sanitise_inline(risk)}")
     if f.risk_indicators:
         # Per-finding deep link, surface context preserved through PR comment.
         url = build_upgrade_url(f, source="ai-surface", medium="pr-comment")
@@ -272,9 +274,9 @@ def _render_added_finding(f: Finding) -> str:
 
 def _render_removed_finding(f: Finding) -> str:
     parts: list[str] = []
-    parts.append(f"- ~~**{f.surface}**~~")
+    parts.append(f"- ~~**{_sanitise_inline(f.surface)}**~~")
     if f.evidence.files:
-        files = ", ".join(f"`{x}`" for x in f.evidence.files[:3])
+        files = ", ".join(f"`{_sanitise_inline(x)}`" for x in f.evidence.files[:3])
         if len(f.evidence.files) > 3:
             files += f", … +{len(f.evidence.files) - 3}"
         parts.append(f"  - Was in: {files}")
@@ -283,33 +285,35 @@ def _render_removed_finding(f: Finding) -> str:
 
 def _render_modified(c: FindingChange) -> str:
     parts: list[str] = []
-    parts.append(f"- **{c.surface}**")
+    parts.append(f"- **{_sanitise_inline(c.surface)}**")
 
     if c.permissions_added:
-        added = ", ".join(f"`{p}`" for p in c.permissions_added[:6])
+        added = ", ".join(f"`{_sanitise_inline(p, max_len=80)}`" for p in c.permissions_added[:6])
         if len(c.permissions_added) > 6:
             added += f", … +{len(c.permissions_added) - 6}"
         parts.append(f"  - ➕ Permissions added: {added}")
     if c.permissions_removed:
-        removed = ", ".join(f"`{p}`" for p in c.permissions_removed[:6])
+        removed = ", ".join(
+            f"`{_sanitise_inline(p, max_len=80)}`" for p in c.permissions_removed[:6]
+        )
         if len(c.permissions_removed) > 6:
             removed += f", … +{len(c.permissions_removed) - 6}"
         parts.append(f"  - ➖ Permissions removed: {removed}")
 
     if c.risks_added:
         for r in c.risks_added:
-            parts.append(f"  - ⚠️ Risk added: {r}")
+            parts.append(f"  - ⚠️ Risk added: {_sanitise_inline(r)}")
     if c.risks_removed:
         for r in c.risks_removed:
-            parts.append(f"  - ✅ Risk cleared: {r}")
+            parts.append(f"  - ✅ Risk cleared: {_sanitise_inline(r)}")
 
     if c.files_added:
-        files = ", ".join(f"`{x}`" for x in c.files_added[:3])
+        files = ", ".join(f"`{_sanitise_inline(x)}`" for x in c.files_added[:3])
         if len(c.files_added) > 3:
             files += f", … +{len(c.files_added) - 3}"
         parts.append(f"  - ➕ Now also in: {files}")
     if c.files_removed:
-        files = ", ".join(f"`{x}`" for x in c.files_removed[:3])
+        files = ", ".join(f"`{_sanitise_inline(x)}`" for x in c.files_removed[:3])
         if len(c.files_removed) > 3:
             files += f", … +{len(c.files_removed) - 3}"
         parts.append(f"  - ➖ No longer in: {files}")

@@ -25,7 +25,15 @@ class Orchestrator:
         self.detectors.append(detector)
 
     def run(self, scan_root: str) -> Report:
-        """Run every registered detector against scan_root, aggregate findings."""
+        """Run every registered detector against scan_root, aggregate findings.
+
+        The resolved absolute path is used internally so detectors get a
+        stable working root. The Report exposes a privacy-safe representation
+        instead — the basename of the scan root rather than the full
+        filesystem path. Absolute paths leak the user's home directory,
+        employer name, internal mount points, etc., into reports that often
+        get committed to git or posted as PR comments.
+        """
         root = Path(scan_root).resolve()
         if not root.exists():
             raise FileNotFoundError(f"scan root does not exist: {scan_root}")
@@ -52,9 +60,15 @@ class Orchestrator:
                 errors.append(msg)
                 log.warning(msg)
 
+        # Privacy-safe scan_root: use the basename only (e.g., "demo-app"),
+        # falling back to "." for an empty basename (which happens when the
+        # user scans the filesystem root). This is what gets embedded in
+        # JSON / markdown / terminal output.
+        safe_root = root.name or "."
+
         return Report(
             findings=all_findings,
-            scan_root=str(root),
+            scan_root=safe_root,
             scan_timestamp=Report.now(),
             detectors_run=detector_names,
             errors=errors,

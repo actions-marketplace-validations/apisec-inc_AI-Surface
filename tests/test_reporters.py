@@ -27,7 +27,7 @@ def _sample_report() -> Report:
             evidence=Evidence(
                 files=["src/llm/handler.py", "src/agents/refund.py"],
                 snippet="from anthropic import Anthropic",
-                metadata={"models_used": ["claude-sonnet-4-6"], "call_site_count": 3},
+                metadata={"models_used": ["claude-3-5-sonnet-20241022"], "call_site_count": 3},
             ),
             risk_indicators=["non-literal data flows into LLM call"],
             detector_name="LlmSdkDetector",
@@ -96,7 +96,7 @@ def test_json_reporter_preserves_evidence_metadata() -> None:
     report = _sample_report()
     parsed = json.loads(render_json(report))
     anthropic = next(f for f in parsed["findings"] if f["surface"] == "Anthropic SDK")
-    assert "claude-sonnet-4-6" in anthropic["evidence"]["metadata"]["models_used"]
+    assert "claude-3-5-sonnet-20241022" in anthropic["evidence"]["metadata"]["models_used"]
 
 
 def test_json_reporter_handles_empty_report() -> None:
@@ -126,7 +126,7 @@ def test_markdown_reporter_includes_each_finding() -> None:
     assert "Anthropic SDK" in md
     assert "LangChain Agent: refund_agent" in md
     assert "MCP Server: stripe-mcp" in md
-    assert "claude-sonnet-4-6" in md
+    assert "claude-3-5-sonnet-20241022" in md
 
 
 def test_markdown_reporter_includes_risk_summary() -> None:

@@ -1,9 +1,10 @@
 """Tests for the gitignore-aware file walker."""
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
-from ai_surface.utils.walk import read_text_safe, walk_files
+from ai_surface.utils.walk import read_text_safe, relative_to_root, walk_files
 
 
 def _make(tmp: Path, rel: str, content: str = "x") -> Path:
@@ -64,3 +65,25 @@ def test_read_text_safe_caps_size(tmp_path: Path) -> None:
     big = _make(tmp_path, "big.txt", "x" * 10)
     assert read_text_safe(big, max_bytes=5) == ""
     assert read_text_safe(big, max_bytes=100) == "x" * 10
+
+
+def test_read_text_safe_refuses_symlink(tmp_path: Path) -> None:
+    target = _make(tmp_path, "target.txt", "real")
+    link = tmp_path / "link.txt"
+    try:
+        os.symlink(target, link)
+    except (OSError, NotImplementedError):
+        # Skip on filesystems / platforms that disallow symlink creation.
+        return
+    assert read_text_safe(link) == ""
+
+
+def test_relative_to_root_outside_does_not_leak_absolute_path(tmp_path: Path) -> None:
+    # A path that lives outside the scan root must not surface as an
+    # absolute filesystem path in evidence — that leaks the user's
+    # home directory / employer layout into reports.
+    outside = Path("/etc/hostname")
+    rel = relative_to_root(outside, str(tmp_path))
+    assert not rel.startswith("/")
+    assert "<outside-root>" in rel
+    assert rel.endswith("hostname")

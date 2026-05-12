@@ -1,16 +1,16 @@
 {
   "schema_version": "0.5",
-  "tool_version": "0.5.0",
-  "scan_root": "/Users/rajaramramanathan/ACTIVE/NG/ai-surface/examples/demo-app",
-  "scan_timestamp": "2026-05-12T01:25:23.068424+00:00",
+  "tool_version": "0.5.1",
+  "scan_root": "demo-app",
+  "scan_timestamp": "2026-05-12T17:29:48.876763+00:00",
   "detectors_run": [
-    "mcp-servers",
+    "mcp_servers",
     "llm_sdks",
     "agent_frameworks",
     "env_keys",
     "model_gateways"
   ],
-  "findings_count": 11,
+  "findings_count": 10,
   "findings": [
     {
       "surface": "MCP Server: github-mcp",
@@ -38,7 +38,7 @@
       "risk_indicators": [
         "broad permissions"
       ],
-      "detector_name": "mcp-servers"
+      "detector_name": "mcp_servers"
     },
     {
       "surface": "MCP Server: stripe-mcp",
@@ -67,7 +67,7 @@
       "risk_indicators": [
         "financial action exposed"
       ],
-      "detector_name": "mcp-servers"
+      "detector_name": "mcp_servers"
     },
     {
       "surface": "MCP Server (in-house): src/orders_mcp_server.py",
@@ -102,7 +102,7 @@
         "in-house MCP server (custom code, audit recommended)",
         "financial action exposed"
       ],
-      "detector_name": "mcp-servers"
+      "detector_name": "mcp_servers"
     },
     {
       "surface": "Anthropic SDK",
@@ -115,8 +115,7 @@
         "line_numbers": [],
         "metadata": {
           "models_used": [
-            "claude-sonnet-4-6",
-            "gpt-4-turbo"
+            "claude-3-5-sonnet-20241022"
           ],
           "call_site_count": 1
         }
@@ -138,7 +137,6 @@
         "line_numbers": [],
         "metadata": {
           "models_used": [
-            "claude-sonnet-4-6",
             "gpt-4-turbo"
           ],
           "call_site_count": 1
@@ -209,34 +207,6 @@
         "metadata": {
           "framework": "langchain",
           "agent_name": "support_agent",
-          "tool_count": 3
-        }
-      },
-      "permissions": [
-        "lookup_order",
-        "refund_payment",
-        "cancel_subscription"
-      ],
-      "risk_indicators": [
-        "financial action exposed",
-        "high blast-radius combination"
-      ],
-      "detector_name": "agent_frameworks"
-    },
-    {
-      "surface": "LangChain Agent: agent_executor (in src/chat_agent.py)",
-      "category": "agent-framework",
-      "evidence": {
-        "files": [
-          "src/chat_agent.py"
-        ],
-        "snippet": "agent_executor = AgentExecutor(agent=support_agent, tools=tools)",
-        "line_numbers": [
-          42
-        ],
-        "metadata": {
-          "framework": "langchain",
-          "agent_name": "agent_executor",
           "tool_count": 3
         }
       },

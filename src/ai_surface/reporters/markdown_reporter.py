@@ -3,6 +3,19 @@
 This artifact serves two purposes:
   1. Documentation in the repo — anyone browsing the repo sees the AI surfaces.
   2. Diff baseline for the GitHub Action — PRs compare new scan against this file.
+
+Security notes (the report renders attacker-controlled source code into a
+document that will be posted as a PR comment on GitHub):
+
+* Snippets are wrapped in a length-aware code fence. The fence is sized to be
+  longer than any backtick run inside the snippet so the attacker cannot break
+  out of the fence with a literal ``` ``` ``` line.
+* Strings that flow into markdown headings / bullets (``surface``,
+  ``permissions``, ``risk_indicators``, file paths) are stripped of control
+  characters and have leading markdown structural characters escaped.
+* HTML tags in those strings are inert when rendered through GitHub's comment
+  renderer (which sanitises HTML), but we still strip ``<`` / ``>`` from
+  surface strings as defence in depth.
 """
 from __future__ import annotations
 
@@ -17,6 +30,8 @@ from ..types import (
     Finding,
     Report,
 )
+from ..utils.markdown_safety import safe_fence as _safe_fence
+from ..utils.markdown_safety import sanitise_inline as _sanitise_inline
 
 CATEGORY_HEADING: dict[str, str] = {
     CATEGORY_LLM_SDK: "LLM SDK Call Sites",
@@ -88,26 +103,29 @@ def _append_category(out: list[str], category: str, findings: list[Finding]) -> 
 
 
 def _append_finding(out: list[str], finding: Finding) -> None:
-    out.append(f"### {finding.surface}")
+    out.append(f"### {_sanitise_inline(finding.surface)}")
     out.append("")
 
     if finding.evidence and finding.evidence.files:
         files = finding.evidence.files
         if len(files) <= 5:
-            file_list = ", ".join(f"`{f}`" for f in files)
+            file_list = ", ".join(f"`{_sanitise_inline(f)}`" for f in files)
         else:
-            file_list = ", ".join(f"`{f}`" for f in files[:3]) + f", and {len(files) - 3} more"
+            file_list = (
+                ", ".join(f"`{_sanitise_inline(f)}`" for f in files[:3])
+                + f", and {len(files) - 3} more"
+            )
         out.append(f"**Files:** {file_list}")
         out.append("")
 
     if finding.permissions:
-        perms = ", ".join(f"`{p}`" for p in finding.permissions)
+        perms = ", ".join(f"`{_sanitise_inline(p, max_len=80)}`" for p in finding.permissions)
         out.append(f"**Tools/permissions:** {perms}")
         out.append("")
 
     models = finding.evidence.metadata.get("models_used") if finding.evidence else None
     if models:
-        models_str = ", ".join(f"`{m}`" for m in models)
+        models_str = ", ".join(f"`{_sanitise_inline(m, max_len=80)}`" for m in models)
         out.append(f"**Models:** {models_str}")
         out.append("")
 
@@ -115,7 +133,7 @@ def _append_finding(out: list[str], finding: Finding) -> None:
         out.append("**Risk indicators:**")
         out.append("")
         for risk in finding.risk_indicators:
-            out.append(f"- ⚠️ {risk}")
+            out.append(f"- ⚠️ {_sanitise_inline(risk)}")
         out.append("")
         # Inline per-finding deep link to APIsec validation, with finding context.
         url = build_upgrade_url(finding, source="ai-surface", medium="markdown")
@@ -125,9 +143,13 @@ def _append_finding(out: list[str], finding: Finding) -> None:
     if finding.evidence and finding.evidence.snippet:
         snippet = finding.evidence.snippet.strip()
         if snippet:
-            out.append("```")
-            out.append(snippet)
-            out.append("```")
+            # Length-aware fence: a snippet containing ``` cannot break out
+            # of the code block because we choose a fence longer than the
+            # longest backtick run inside the body.
+            fence, body = _safe_fence(snippet)
+            out.append(fence)
+            out.append(body)
+            out.append(fence)
             out.append("")
 
 
@@ -138,7 +160,7 @@ def _append_risk_summary(out: list[str], report: Report) -> None:
     out.append("## Risk Indicator Summary")
     out.append("")
     for r in risks:
-        out.append(f"- ⚠️ {r}")
+        out.append(f"- ⚠️ {_sanitise_inline(r)}")
     out.append("")
 
 

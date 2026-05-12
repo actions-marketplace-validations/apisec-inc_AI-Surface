@@ -52,7 +52,7 @@ class SpecialistTool(TypedDict):
 # ---------------------------------------------------------------------------
 
 #: Base URL for the APIsec validation upgrade landing page. The page exists
-#: today and reads ?surface= and ?risk= params; UTM params are standard.
+#: today and reads ?category= and ?risk= params; UTM params are standard.
 APISEC_BASE_URL = "https://apisec.ai/ai-validation"
 
 #: Default UTM campaign value for OSS-funnel attribution. APIsec marketing
@@ -177,7 +177,7 @@ def build_upgrade_url(
 
     if finding is not None:
         if finding.category:
-            params.append(("surface", finding.category))
+            params.append(("category", finding.category))
         if finding.risk_indicators:
             # Pick the first risk indicator as the headline. Findings list them
             # in priority order from the detector that produced them.

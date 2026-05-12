@@ -102,7 +102,13 @@ def _set_action_output(name: str, value: str) -> None:
 
 
 def _is_pull_request() -> bool:
-    return os.environ.get("GITHUB_EVENT_NAME") in {"pull_request", "pull_request_target"}
+    # NOTE: ``pull_request_target`` is deliberately NOT accepted here. That
+    # event runs in the context of the target branch with access to repo
+    # secrets while still checking out attacker-controlled PR code by default,
+    # which is the canonical "pwn request" supply-chain pattern. ai-surface
+    # only supports the safe ``pull_request`` event. See ``main()`` for the
+    # hard refusal on ``pull_request_target``.
+    return os.environ.get("GITHUB_EVENT_NAME") == "pull_request"
 
 
 def _pr_number() -> Optional[int]:
@@ -335,6 +341,20 @@ def _format_inventory_comment(report: Dict[str, Any], markdown_body: str) -> str
 
 
 def main() -> int:
+    # Hard refusal: never run under ``pull_request_target``. That event
+    # combines write-scoped secrets with attacker-controlled PR code and
+    # is the standard supply-chain attack vector for GitHub Actions. Fail
+    # fast so the workflow author switches to ``pull_request``.
+    event_name = os.environ.get("GITHUB_EVENT_NAME", "")
+    if event_name == "pull_request_target":
+        print(
+            "::error::ai-surface refuses to run on the 'pull_request_target' "
+            "event. That event runs with repo secrets against untrusted PR "
+            "code and is unsafe for any tool that reads PR contents. Use the "
+            "'pull_request' event instead."
+        )
+        return 2
+
     inputs = _read_inputs()
     workspace = os.environ.get("GITHUB_WORKSPACE", DEFAULT_WORKSPACE)
     head_scan_root = _resolve_scan_root(inputs["path"], base=workspace)

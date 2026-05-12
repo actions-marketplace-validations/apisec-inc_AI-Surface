@@ -75,7 +75,7 @@ def test_build_url_no_finding_returns_default_with_utm() -> None:
     assert params["utm_source"] == ["ai-surface"]
     assert params["utm_medium"] == ["cli"]
     assert params["utm_campaign"] == [DEFAULT_UTM_CAMPAIGN]
-    assert "surface" not in params
+    assert "category" not in params
     assert "risk" not in params
 
 
@@ -86,7 +86,7 @@ def test_build_url_with_finding_embeds_category_and_risk() -> None:
     )
     url = build_upgrade_url(finding)
     params = parse_qs(urlparse(url).query)
-    assert params["surface"] == [CATEGORY_MCP_SERVER]
+    assert params["category"] == [CATEGORY_MCP_SERVER]
     # First risk indicator wins (priority order from detector)
     assert params["risk"] == ["broad-permissions"]
 
@@ -95,7 +95,7 @@ def test_build_url_with_finding_no_risks_omits_risk_param() -> None:
     finding = _f(category=CATEGORY_LLM_SDK, risk_indicators=[])
     url = build_upgrade_url(finding)
     params = parse_qs(urlparse(url).query)
-    assert params["surface"] == [CATEGORY_LLM_SDK]
+    assert params["category"] == [CATEGORY_LLM_SDK]
     assert "risk" not in params
 
 

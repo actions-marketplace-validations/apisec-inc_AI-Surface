@@ -12,6 +12,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Protocol, runtime_checkable
 
+from . import __version__ as _TOOL_VERSION
+
 # Categories that detectors can claim. Keep this list short and stable.
 # New detectors should reuse one of these or propose adding a category.
 CATEGORY_LLM_SDK = "llm-sdk"
@@ -96,7 +98,7 @@ class Report:
     scan_timestamp: str
     detectors_run: list[str]
     schema_version: str = "0.5"
-    tool_version: str = "0.5.0"
+    tool_version: str = _TOOL_VERSION
     errors: list[str] = field(default_factory=list)
     """Non-fatal errors from individual detectors. Surface to user but do not abort."""
 

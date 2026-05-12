@@ -21,7 +21,7 @@ def summarize_ticket(ticket_body: str) -> str:
     # Non-literal data flow: ticket_body is a runtime variable that flows into messages.
     # ai-surface flags this as `non-literal data flows into LLM call`.
     response = anthropic_client.messages.create(
-        model="claude-sonnet-4-6",
+        model="claude-3-5-sonnet-20241022",
         max_tokens=512,
         messages=[
             {"role": "user", "content": ticket_body},

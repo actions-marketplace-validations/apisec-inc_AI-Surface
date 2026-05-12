@@ -189,6 +189,13 @@ _PROMPT_NONLITERAL = re.compile(
     r"""\b(?:prompt|input|user_input|query)\s*=\s*(?!['"`f]|r['"]|b['"])([A-Za-z_][\w\.\[\]]*)""",
 )
 
+# Identifiers that look "non-literal" syntactically but are actually
+# language constants. None/True/False as a kwarg value isn't a data flow.
+_NONFLOW_IDENTIFIERS = frozenset({
+    "None", "True", "False", "Ellipsis", "NotImplemented",  # Python
+    "null", "true", "false", "undefined", "NaN",            # JS/TS
+})
+
 
 # ---------------------------------------------------------------------------
 # Detector
@@ -225,13 +232,20 @@ class LlmSdkDetector:
             file_models = _extract_models(text)
             file_has_nonliteral_flow = _has_nonliteral_flow(text)
 
+            # Per-SDK model attribution. When only one SDK is in the file, all
+            # models go to it. When multiple SDKs share a file, partition models
+            # by their naming family so we don't mis-attribute (e.g., showing
+            # gpt-4 under Anthropic SDK or claude-sonnet under OpenAI SDK).
+            sdks_in_file = list(matched_sdks_in_file.keys())
+            models_per_sdk = _partition_models_by_sdk(file_models, sdks_in_file)
+
             for sdk, snippet in matched_sdks_in_file.items():
                 files_by_sdk.setdefault(sdk, []).append(rel)
                 # First snippet wins; keeps detection deterministic (walk order).
                 snippet_by_sdk.setdefault(sdk, snippet)
-                if file_models:
+                if models_per_sdk.get(sdk):
                     bucket = models_by_sdk.setdefault(sdk, [])
-                    for m in file_models:
+                    for m in models_per_sdk[sdk]:
                         if m not in bucket:
                             bucket.append(m)
                 # Approximate call-site count: one per file the SDK appears in.
@@ -338,12 +352,65 @@ def _extract_models(text: str) -> list[str]:
     return seen
 
 
+# Model name family heuristics. When a file matches multiple SDKs, each model
+# string is attributed to the SDK that best fits its naming family. This avoids
+# misattributing `gpt-4-turbo` to Anthropic SDK or `claude-sonnet-...` to OpenAI
+# SDK simply because both happen to be imported in the same file.
+_MODEL_AFFINITY: list[tuple[str, re.Pattern[str]]] = [
+    # Bedrock-prefixed models (with optional cross-region inference profile)
+    (
+        "AWS Bedrock",
+        re.compile(
+            r"^(?:[a-z]{2,4}\.)?(?:anthropic\.|amazon\.|meta\.|mistral\.|cohere\.)",
+            re.IGNORECASE,
+        ),
+    ),
+    ("Anthropic SDK", re.compile(r"^claude-", re.IGNORECASE)),
+    ("OpenAI SDK", re.compile(r"^(?:gpt-|o[1-9]|text-embedding-)", re.IGNORECASE)),
+    ("Azure OpenAI", re.compile(r"^(?:gpt-|o[1-9]|text-embedding-)", re.IGNORECASE)),
+    ("Google Generative AI", re.compile(r"^gemini-", re.IGNORECASE)),
+    ("Google Vertex AI", re.compile(r"^gemini-", re.IGNORECASE)),
+    ("Mistral", re.compile(r"^(?:mistral-|mixtral-)", re.IGNORECASE)),
+    ("Cohere", re.compile(r"^command-", re.IGNORECASE)),
+    ("Groq", re.compile(r"^(?:llama-|mixtral-)", re.IGNORECASE)),
+]
+
+
+def _partition_models_by_sdk(models: list[str], sdks_in_file: list[str]) -> dict[str, list[str]]:
+    """Attribute each model name to the SDK that best matches its naming family.
+
+    Single-SDK files: all models go to the lone SDK (preserves original behavior).
+    Multi-SDK files: per-model affinity rules. Models that don't match any
+    affinity rule fall back to the first SDK in the file (deterministic).
+    """
+    if len(sdks_in_file) == 1:
+        return {sdks_in_file[0]: models}
+
+    out: dict[str, list[str]] = {sdk: [] for sdk in sdks_in_file}
+    for model in models:
+        attributed = False
+        for sdk_name, pattern in _MODEL_AFFINITY:
+            if sdk_name in sdks_in_file and pattern.match(model):
+                out[sdk_name].append(model)
+                attributed = True
+                break
+        if not attributed:
+            # No clear affinity. Fall back to the first SDK in the file so the
+            # model still shows up somewhere rather than being dropped.
+            out[sdks_in_file[0]].append(model)
+    return out
+
+
 def _has_nonliteral_flow(text: str) -> bool:
     """Return True if a non-literal value appears to flow into an LLM call.
 
     Heuristic-only: scans for `"content": <bareword>` or
     `prompt=<bareword>` (no quote, no f-string). False positives possible.
     """
-    if _CONTENT_NONLITERAL.search(text):
-        return True
-    return bool(_PROMPT_NONLITERAL.search(text))
+    for m in _CONTENT_NONLITERAL.finditer(text):
+        if m.group(1) not in _NONFLOW_IDENTIFIERS:
+            return True
+    for m in _PROMPT_NONLITERAL.finditer(text):
+        if m.group(1) not in _NONFLOW_IDENTIFIERS:
+            return True
+    return False

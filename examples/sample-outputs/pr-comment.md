@@ -19,14 +19,14 @@ The Action automatically updates this comment in place on subsequent pushes.
   - Tools/permissions: `read_charges`, `refund`, `customer:read`
   - Files: `.mcp.json`
   - ⚠️ financial action exposed
-  - [Validate this surface →](https://apisec.ai/ai-validation?surface=mcp-server&risk=financial-action&utm_source=ai-surface&utm_medium=pr-comment&utm_campaign=oss-funnel)
+  - [Validate this surface →](https://apisec.ai/ai-validation?category=mcp-server&risk=financial-action&utm_source=ai-surface&utm_medium=pr-comment&utm_campaign=oss-funnel)
 
 #### Modified AI surfaces
 
 - **LangChain Agent: support_agent (in src/chat_agent.py)**
   - Permissions added: `cancel_subscription`
   - ⚠️ Risk added: `high blast-radius combination`
-  - [Validate this surface →](https://apisec.ai/ai-validation?surface=agent-framework&risk=high-blast-radius&utm_source=ai-surface&utm_medium=pr-comment&utm_campaign=oss-funnel)
+  - [Validate this surface →](https://apisec.ai/ai-validation?category=agent-framework&risk=high-blast-radius&utm_source=ai-surface&utm_medium=pr-comment&utm_campaign=oss-funnel)
 
 ---
 

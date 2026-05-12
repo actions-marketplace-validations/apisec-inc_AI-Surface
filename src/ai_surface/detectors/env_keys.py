@@ -39,11 +39,13 @@ from ..utils.walk import read_text_safe, relative_to_root, walk_files
 
 _KEY_RULES: tuple[tuple[str, str], ...] = (
     # --- Azure OpenAI (must precede plain OpenAI) ---
-    (r"AZURE_OPENAI_[A-Z0-9_]+", "Azure OpenAI"),
+    (r"AZURE_OPENAI_[A-Z0-9_]*(?:KEY|TOKEN|SECRET|CREDENTIAL|PASSWORD|ENDPOINT)", "Azure OpenAI"),
 
     # --- AWS Bedrock ---
-    (r"AWS_BEDROCK_[A-Z0-9_]+", "AWS Bedrock"),
-    (r"BEDROCK_[A-Z0-9_]+", "AWS Bedrock"),
+    # Narrowed from BEDROCK_[A-Z0-9_]+ so that non-credential envvars like
+    # BEDROCK_TIMEOUT_MS or BEDROCK_REGION don't get flagged as keys.
+    (r"AWS_BEDROCK_[A-Z0-9_]*(?:KEY|TOKEN|SECRET|CREDENTIAL|PASSWORD)", "AWS Bedrock"),
+    (r"BEDROCK_[A-Z0-9_]*(?:KEY|TOKEN|SECRET|CREDENTIAL|PASSWORD)", "AWS Bedrock"),
 
     # --- OpenAI ---
     (r"OPENAI_API_KEY", "OpenAI"),
@@ -52,15 +54,17 @@ _KEY_RULES: tuple[tuple[str, str], ...] = (
     (r"OPENAI_[A-Z0-9_]*KEY", "OpenAI"),
 
     # --- Anthropic ---
+    # Narrowed from ANTHROPIC_[A-Z0-9_]+ so ANTHROPIC_BASE_URL / TIMEOUT etc.
+    # are not flagged as credentials.
     (r"ANTHROPIC_API_KEY", "Anthropic"),
     (r"ANTHROPIC_AUTH_TOKEN", "Anthropic"),
-    (r"ANTHROPIC_[A-Z0-9_]+", "Anthropic"),
+    (r"ANTHROPIC_[A-Z0-9_]*(?:KEY|TOKEN|SECRET|CREDENTIAL|PASSWORD)", "Anthropic"),
 
     # --- Google: Gemini / Generative AI / Vertex ---
-    (r"GOOGLE_GENERATIVE_AI_[A-Z0-9_]+", "Google Generative AI"),
+    (r"GOOGLE_GENERATIVE_AI_[A-Z0-9_]*(?:KEY|TOKEN|SECRET|CREDENTIAL|PASSWORD)", "Google Generative AI"),
     (r"GEMINI_API_KEY", "Google Generative AI"),
-    (r"VERTEX_AI_[A-Z0-9_]+", "Google Vertex AI"),
-    (r"GOOGLE_VERTEX_[A-Z0-9_]+", "Google Vertex AI"),
+    (r"VERTEX_AI_[A-Z0-9_]*(?:KEY|TOKEN|SECRET|CREDENTIAL|PASSWORD)", "Google Vertex AI"),
+    (r"GOOGLE_VERTEX_[A-Z0-9_]*(?:KEY|TOKEN|SECRET|CREDENTIAL|PASSWORD)", "Google Vertex AI"),
     # GOOGLE_API_KEY is ambiguous (Maps, YouTube, Generative AI all reuse it).
     # Tagged with a separate provider label so callers can see the caveat.
     (r"GOOGLE_API_KEY", "Google API (ambiguous)"),
@@ -68,7 +72,7 @@ _KEY_RULES: tuple[tuple[str, str], ...] = (
     # --- Other providers ---
     (r"TOGETHER_API_KEY", "Together"),
     (r"MISTRAL_API_KEY", "Mistral"),
-    (r"MISTRAL_[A-Z0-9_]+", "Mistral"),
+    (r"MISTRAL_[A-Z0-9_]*(?:KEY|TOKEN|SECRET|CREDENTIAL|PASSWORD)", "Mistral"),
     (r"COHERE_API_KEY", "Cohere"),
     (r"CO_API_KEY", "Cohere"),
     (r"REPLICATE_API_TOKEN", "Replicate"),
@@ -82,7 +86,7 @@ _KEY_RULES: tuple[tuple[str, str], ...] = (
     (r"DEEPINFRA_API_KEY", "DeepInfra"),
 
     # --- Gateways ---
-    (r"LITELLM_[A-Z0-9_]+", "LiteLLM"),
+    (r"LITELLM_[A-Z0-9_]*(?:KEY|TOKEN|SECRET|MASTER_KEY|PROXY_TOKEN)", "LiteLLM"),
     (r"PORTKEY_API_KEY", "Portkey"),
     (r"HELICONE_API_KEY", "Helicone"),
 

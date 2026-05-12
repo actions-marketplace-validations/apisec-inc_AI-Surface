@@ -177,6 +177,67 @@ def test_terraform_sagemaker_llm_endpoint(tmp_path: Path) -> None:
     assert "SageMaker" in findings[0].surface
 
 
+def test_terraform_nested_braces_in_lifecycle_and_dynamic(tmp_path: Path) -> None:
+    """Real HCL with lifecycle / dynamic blocks must still surface the model.
+
+    Regression test: the pre-fix `[^}]*` body regex truncated at the first
+    inner `}` and silently produced no findings on common HCL shapes.
+    """
+    (tmp_path / "main.tf").write_text(
+        'resource "aws_bedrock_provisioned_model_throughput" "prod" {\n'
+        '  provisioned_model_name = "claude-prod"\n'
+        '  model_id = "anthropic.claude-3-5-sonnet-20240620-v1:0"\n'
+        "  lifecycle { prevent_destroy = true }\n"
+        '  dynamic "timeouts" {\n'
+        "    for_each = var.timeouts\n"
+        '    content { create = "30m" }\n'
+        "  }\n"
+        "}\n",
+        encoding="utf-8",
+    )
+    findings = ModelGatewayDetector().detect(str(tmp_path))
+    assert len(findings) == 1
+    assert "Bedrock provisioned throughput" in findings[0].surface
+    assert findings[0].evidence.metadata["model_id"] == (
+        "anthropic.claude-3-5-sonnet-20240620-v1:0"
+    )
+
+
+def test_terraform_heredoc_with_brace_in_body(tmp_path: Path) -> None:
+    """HCL heredocs that inline a JSON IAM policy must not break the parser.
+
+    The literal `}` characters inside the heredoc body are not braces from
+    HCL's perspective and must not close the resource block prematurely.
+    """
+    (tmp_path / "main.tf").write_text(
+        'resource "aws_sagemaker_endpoint" "llama" {\n'
+        '  name = "llama3-prod"\n'
+        '  endpoint_config_name = "llama-config"\n'
+        "  policy = <<-EOT\n"
+        '    { "Statement": [{ "Effect": "Allow" }] }\n'
+        "  EOT\n"
+        "}\n",
+        encoding="utf-8",
+    )
+    findings = ModelGatewayDetector().detect(str(tmp_path))
+    assert len(findings) == 1
+    assert "SageMaker" in findings[0].surface
+
+
+def test_terraform_block_comment_with_brace(tmp_path: Path) -> None:
+    """`/* ... } ... */` comments must not be treated as closing braces."""
+    (tmp_path / "main.tf").write_text(
+        'resource "aws_bedrock_custom_model" "x" {\n'
+        '  model_id = "anthropic.claude-3-haiku-20240307-v1:0"\n'
+        '  /* example response: { "status": "READY" } */\n'
+        "}\n",
+        encoding="utf-8",
+    )
+    findings = ModelGatewayDetector().detect(str(tmp_path))
+    assert len(findings) == 1
+    assert "Bedrock custom model" in findings[0].surface
+
+
 def test_helm_values_yaml_with_vllm(tmp_path: Path) -> None:
     (tmp_path / "values.yaml").write_text(
         "image:\n  repository: vllm/vllm-openai\n  tag: latest\nreplicaCount: 1\n",

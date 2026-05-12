@@ -26,7 +26,7 @@ def test_detects_anthropic_python_with_dataflow_risk() -> None:
     finding = by_surface["Anthropic SDK"]
     assert finding.category == CATEGORY_LLM_SDK
     assert finding.evidence.files == ["agent.py"]
-    assert "claude-sonnet-4-6" in finding.evidence.metadata["models_used"]
+    assert "claude-3-5-sonnet-20241022" in finding.evidence.metadata["models_used"]
     assert finding.evidence.metadata["call_site_count"] == 1
     assert "non-literal data flows into LLM call" in finding.risk_indicators
     # Snippet should be the import line, capped at 200 chars.
@@ -53,7 +53,7 @@ def test_detects_anthropic_typescript() -> None:
     assert "Anthropic SDK" in by_surface
     finding = by_surface["Anthropic SDK"]
     assert finding.evidence.files == ["client.ts"]
-    assert "claude-haiku-4-5" in finding.evidence.metadata["models_used"]
+    assert "claude-3-5-haiku-20241022" in finding.evidence.metadata["models_used"]
     # `content: prompt` (no quotes around prompt) is a non-literal flow.
     assert "non-literal data flows into LLM call" in finding.risk_indicators
 

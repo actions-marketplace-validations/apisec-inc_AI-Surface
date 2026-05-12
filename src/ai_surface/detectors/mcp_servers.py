@@ -71,7 +71,18 @@ _TOOL_CALL_RE = re.compile(
 )
 
 _FINANCIAL_TOKENS = ("refund", "payment", "charge", "payout", "invoice", "billing")
-_BROAD_PERMISSION_TOKENS = ("admin", "write", "delete", "*", "all", "owner", "root")
+_BROAD_PERMISSION_TOKENS = frozenset({"admin", "write", "delete", "*", "all", "owner", "root"})
+
+# Word-boundary split for permission strings. Permissions in real MCP configs
+# look like `repo:read`, `issues:write`, `admin`, `read:all`, `*`, `wallet_balance`.
+# Splitting on these separators avoids substring false positives such as
+# `install_app` (contains "all") or `co-administrator` (contains "admin").
+_PERM_WORD_SPLIT_RE = re.compile(r"[_\-\s./:]+|(?<=[a-z])(?=[A-Z])")
+
+
+def _perm_words(s: str) -> frozenset[str]:
+    """Tokenize a permission string into atomic words, lowercased."""
+    return frozenset(w for w in _PERM_WORD_SPLIT_RE.split(s.lower()) if w)
 _SNIPPET_MAX = 200
 
 
@@ -83,7 +94,7 @@ class McpServerDetector:
     directory tree.
     """
 
-    name = "mcp-servers"
+    name = "mcp_servers"
     category = CATEGORY_MCP_SERVER
 
     def detect(self, root_path: str) -> list[Finding]:
@@ -359,17 +370,29 @@ def _permissions_from_cfg(cfg: dict[str, Any]) -> list[str]:
 
 
 def _has_broad_permissions(permissions: list[str], cfg: dict[str, Any]) -> bool:
-    haystack = [p.lower() for p in permissions]
+    """True if any permission string contains a broad-permission token as a
+    whole word. Uses word-boundary tokenization to avoid substring false
+    positives (e.g., `install_app` containing "all").
+    """
+    haystack: list[str] = list(permissions)
     if isinstance(cfg, dict):
         for key in ("scope", "role", "access"):
             v = cfg.get(key)
             if isinstance(v, str):
-                haystack.append(v.lower())
-    return any(tok in p for p in haystack for tok in _BROAD_PERMISSION_TOKENS)
+                haystack.append(v)
+    for p in haystack:
+        if _perm_words(p) & _BROAD_PERMISSION_TOKENS:
+            return True
+    return False
 
 
 def _has_financial_action(names: Iterable[str]) -> bool:
-    return any(tok in str(n).lower() for n in names for tok in _FINANCIAL_TOKENS)
+    """True if any tool name contains a financial token as a whole word."""
+    for n in names:
+        words = _perm_words(str(n))
+        if any(tok in words for tok in _FINANCIAL_TOKENS):
+            return True
+    return False
 
 
 def _snippet_around(text: str, pos: int, width: int = _SNIPPET_MAX) -> str:

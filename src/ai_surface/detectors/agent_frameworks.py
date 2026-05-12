@@ -11,6 +11,7 @@ common patterns; v0.6 should move to AST + cross-file dataflow.
 """
 from __future__ import annotations
 
+import logging
 import re
 from collections import OrderedDict
 from dataclasses import dataclass
@@ -18,6 +19,8 @@ from typing import TypedDict
 
 from ..types import CATEGORY_AGENT_FRAMEWORK, Evidence, Finding
 from ..utils.walk import read_text_safe, relative_to_root, walk_files
+
+log = logging.getLogger(__name__)
 
 
 class _FrameworkInfo(TypedDict):
@@ -66,40 +69,57 @@ FRAMEWORK_PATTERNS: OrderedDict[str, _FrameworkInfo] = OrderedDict(
 
 
 # Risk indicator vocabulary.
-FINANCIAL_TOKENS = ("refund", "payment", "charge", "transfer", "withdraw", "payout", "invoice")
-DESTRUCTIVE_TOKENS = ("delete", "drop", "truncate", "remove", "purge", "destroy")
-MESSAGING_TOOL_NAMES = {"send_email", "send_message", "send_slack", "send_sms", "post_to"}
-DATABASE_WRITE_TOOL_NAMES = {"write_db", "update_record", "insert", "modify"}
-DATABASE_WRITE_PREFIXES = ("set_", "save_")
-READ_TOKENS = ("query", "get", "fetch", "search", "lookup", "read", "list_", "find")
-WRITE_TOKENS = (
-    DESTRUCTIVE_TOKENS
-    + FINANCIAL_TOKENS
-    + ("write", "update", "insert", "modify", "create", "send", "post", "set_", "save_")
+# Risk-vocabulary tokens, scored against whole *words* in a tool name (not
+# substrings). Substring matching produced false positives like "asset_lookup"
+# triggering on `set_` and "reset_password" triggering on `set_`.
+FINANCIAL_WORDS = frozenset({
+    "refund", "refunds", "payment", "payments", "charge", "charges",
+    "transfer", "transfers", "withdraw", "withdrawal", "payout",
+    "payouts", "invoice", "invoices",
+})
+DESTRUCTIVE_WORDS = frozenset({
+    "delete", "drop", "truncate", "remove", "purge", "destroy",
+})
+MESSAGING_TOOL_NAMES = frozenset({"send_email", "send_message", "send_slack", "send_sms", "post_to"})
+DATABASE_WRITE_TOOL_NAMES = frozenset({"write_db", "update_record", "insert", "modify"})
+READ_WORDS = frozenset({
+    "query", "get", "fetch", "search", "lookup", "read", "list", "find",
+})
+WRITE_WORDS = (
+    DESTRUCTIVE_WORDS
+    | FINANCIAL_WORDS
+    | frozenset({"write", "update", "insert", "modify", "create", "send", "post", "set", "save"})
 )
+
+# Word boundaries for tool names: snake_case (`refund_payment`), kebab-case
+# (`refund-payment`), camelCase (`refundPayment`), dotted (`tools.refund`).
+_NAME_WORD_SPLIT_RE = re.compile(r"[_\-\s./:]+|(?<=[a-z])(?=[A-Z])")
+
+
+def _name_words(name: str) -> frozenset[str]:
+    """Tokenize a tool name into its atomic word set, lowercased."""
+    return frozenset(w.lower() for w in _NAME_WORD_SPLIT_RE.split(name) if w)
 
 
 def _classify_tools(tool_names: list[str]) -> list[str]:
     """Map a list of tool names to risk indicator phrases."""
     if not tool_names:
         return []
+    name_words = [_name_words(n) for n in tool_names]
     lowered = [t.lower() for t in tool_names]
     indicators: list[str] = []
 
-    if any(any(tok in name for tok in FINANCIAL_TOKENS) for name in lowered):
+    if any(words & FINANCIAL_WORDS for words in name_words):
         indicators.append("financial action exposed")
-    if any(any(tok in name for tok in DESTRUCTIVE_TOKENS) for name in lowered):
+    if any(words & DESTRUCTIVE_WORDS for words in name_words):
         indicators.append("destructive action exposed")
     if any(name in MESSAGING_TOOL_NAMES for name in lowered):
         indicators.append("messaging action exposed")
-    if any(
-        name in DATABASE_WRITE_TOOL_NAMES or name.startswith(DATABASE_WRITE_PREFIXES)
-        for name in lowered
-    ):
+    if any(name in DATABASE_WRITE_TOOL_NAMES for name in lowered):
         indicators.append("database write exposed")
 
-    has_read = any(any(name.startswith(t) or t in name for t in READ_TOKENS) for name in lowered)
-    has_write = any(any(t in name for t in WRITE_TOKENS) for name in lowered)
+    has_read = any(words & READ_WORDS for words in name_words)
+    has_write = any(words & WRITE_WORDS for words in name_words)
     if has_read and has_write:
         indicators.append("high blast-radius combination")
 
@@ -126,20 +146,45 @@ _LC_CTORS = (
     "AgentExecutor|initialize_agent|create_react_agent"
     "|create_openai_tools_agent|create_tool_calling_agent"
 )
+# Match `agent=identifier` kwarg in a constructor's argument list. Used to
+# detect that an AgentExecutor is wrapping an already-captured agent so we
+# don't double-count the same logical agent twice.
+_AGENT_KWARG_RE = re.compile(r"\bagent\s*=\s*([A-Za-z_]\w*)")
+
+# Agent-constructor anchor patterns. For frameworks where the agent's "name"
+# comes from a kwarg inside the constructor body (crewai, autogen), we match
+# ONLY the opening `Ctor(` here; the body is then extracted with the
+# bracket-balanced ``_match_bracket`` helper, after which a simple non-DOTALL
+# regex pulls out ``role=`` / ``name=``. That two-step design is deliberate:
+# the previous single-regex form with ``[^)]*?`` inside ``re.DOTALL`` exhibited
+# catastrophic backtracking on adversarial input (~5s per 5K unmatched
+# ``Agent(`` tokens, ~unbounded at 100K). See ``tests/test_redos.py``.
+#
+# The capture group convention is:
+#   * langchain / pydantic_ai / strands: group(1) = LHS variable name
+#   * crewai / autogen: group(1) = empty (filled in later from ctor body)
+
 AGENT_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ("langchain", re.compile(rf"^([A-Za-z_]\w*)\s*=\s*(?:{_LC_CTORS})\s*\(", re.MULTILINE)),
-    ("crewai", re.compile(r"\bAgent\s*\(\s*[^)]*?\brole\s*=\s*['\"]([^'\"]+)['\"]", re.DOTALL)),
-    ("crewai", re.compile(r"\bAgent\s*\(\s*[^)]*?\bname\s*=\s*['\"]([^'\"]+)['\"]", re.DOTALL)),
-    (
-        "autogen",
-        re.compile(r"\bAssistantAgent\s*\(\s*[^)]*?\bname\s*=\s*['\"]([^'\"]+)['\"]", re.DOTALL),
-    ),
+    ("crewai", re.compile(r"\bAgent\s*(\()")),
+    ("autogen", re.compile(r"\bAssistantAgent\s*(\()")),
     ("pydantic_ai", re.compile(r"^\s*([A-Za-z_]\w*)\s*=\s*Agent\s*\(", re.MULTILINE)),
     ("strands", re.compile(r"^\s*([A-Za-z_]\w*)\s*=\s*Agent\s*\(", re.MULTILINE)),
 ]
 
+# Within a (bracket-bounded) ctor body, pull a ``role=`` or ``name=`` kwarg.
+# Operates on the body string only, which is already capped at the
+# matching ``)`` distance — no DOTALL-with-lazy-quantifier hazard.
+_CTOR_ROLE_KW_RE = re.compile(r"""\brole\s*=\s*['"]([^'"\n]{1,200})['"]""")
+_CTOR_NAME_KW_RE = re.compile(r"""\bname\s*=\s*['"]([^'"\n]{1,200})['"]""")
+
 
 _BRACKET_PAIRS = {"[": "]", "(": ")", "{": "}"}
+
+# Safety cap for ``_match_bracket`` so a hostile input full of unmatched
+# openers (e.g. 100k ``Agent(`` tokens with no closing paren) can't make the
+# detector quadratic. Real constructors fit in a few KB; the cap is generous.
+_MATCH_BRACKET_MAX_SCAN = 16 * 1024
 
 
 def _match_bracket(text: str, open_idx: int) -> int | None:
@@ -147,6 +192,11 @@ def _match_bracket(text: str, open_idx: int) -> int | None:
 
     Skips over Python string literals (single/double quoted) so brackets inside
     strings don't break the count. Handles `[`, `(`, `{`.
+
+    Bounded scan: refuses to look further than ``_MATCH_BRACKET_MAX_SCAN``
+    bytes past ``open_idx``. Constructors larger than this are treated as
+    unmatched, which prevents an attacker from driving traversal cost to
+    O(N * file_size) by sprinkling many unclosed openers.
     """
     if open_idx >= len(text):
         return None
@@ -157,7 +207,8 @@ def _match_bracket(text: str, open_idx: int) -> int | None:
     depth = 0
     in_str: str | None = None
     i = open_idx
-    while i < len(text):
+    scan_limit = min(len(text), open_idx + _MATCH_BRACKET_MAX_SCAN)
+    while i < scan_limit:
         ch = text[i]
         if in_str:
             if ch == "\\":
@@ -395,6 +446,26 @@ class AgentFrameworkDetector:
         """
         defs: list[_AgentDef] = []
         decorator_tool_names = [name for name, _ in decorator_tools]
+        # Track agent names already captured so we can detect when an
+        # AgentExecutor merely wraps one of them (langchain's common pattern:
+        # `agent = create_react_agent(...); executor = AgentExecutor(agent=agent)`).
+        # In that case the executor is the same logical agent and should not
+        # produce a separate finding.
+        captured_names: set[str] = set()
+        wrapped_names: set[str] = set()
+
+        # Per-file cap on bracket-match attempts. A real source file has at
+        # most a few dozen agent constructors; a file with thousands of
+        # unmatched ``Agent(`` openers is adversarial input designed to drive
+        # quadratic traversal cost. Stop after the cap and rely on the rest
+        # of the analysis for a partial inventory.
+        BRACKET_ATTEMPTS_PER_FILE = 256
+        bracket_attempts = 0
+        # Track the end index of the last successfully matched constructor.
+        # Subsequent regex hits whose ``(`` falls inside that already-scanned
+        # window are skipped so a single deeply-nested call doesn't get
+        # re-bracket-matched repeatedly.
+        last_match_end = -1
 
         for fw, pat in AGENT_PATTERNS:
             if fw not in frameworks:
@@ -403,11 +474,41 @@ class AgentFrameworkDetector:
                 paren_idx = text.find("(", m.end() - 1)
                 if paren_idx < 0:
                     continue
+                if paren_idx <= last_match_end:
+                    continue
+                if bracket_attempts >= BRACKET_ATTEMPTS_PER_FILE:
+                    log.debug(
+                        "agent_frameworks: bracket-match budget exhausted for %s",
+                        rel_file,
+                    )
+                    break
+                bracket_attempts += 1
                 end_idx = _match_bracket(text, paren_idx)
                 if end_idx is None:
+                    # No matching close paren within the scan cap — treat the
+                    # whole capped region as consumed so we don't re-scan it
+                    # for subsequent regex hits inside the same window.
+                    last_match_end = paren_idx + _MATCH_BRACKET_MAX_SCAN
                     continue
+                last_match_end = end_idx
                 ctor_text = text[paren_idx : end_idx + 1]
                 line_no = text.count("\n", 0, m.start()) + 1
+                # For crewai/autogen the regex match anchors only the
+                # constructor opening; the actual agent identifier lives
+                # inside the (now bracket-bounded) ctor body. For other
+                # frameworks group(1) holds the LHS variable name.
+                if fw == "crewai":
+                    rm = _CTOR_ROLE_KW_RE.search(ctor_text) or _CTOR_NAME_KW_RE.search(ctor_text)
+                    if rm is None:
+                        continue
+                    this_name = rm.group(1)
+                elif fw == "autogen":
+                    rm = _CTOR_NAME_KW_RE.search(ctor_text)
+                    if rm is None:
+                        continue
+                    this_name = rm.group(1)
+                else:
+                    this_name = m.group(1)
 
                 tools = self._extract_tools_from_constructor(ctor_text)
                 if not tools:
@@ -415,10 +516,24 @@ class AgentFrameworkDetector:
                 if not tools and decorator_tool_names:
                     tools = list(decorator_tool_names)
 
+                # If this is an AgentExecutor that wraps an already-captured
+                # agent (e.g., `AgentExecutor(agent=support_agent, ...)`),
+                # mark it as a wrapper rather than emitting a duplicate finding.
+                wrapped_ref = _AGENT_KWARG_RE.search(ctor_text)
+                if (
+                    fw == "langchain"
+                    and "AgentExecutor" in text[m.start() : m.end()]
+                    and wrapped_ref is not None
+                    and wrapped_ref.group(1) in captured_names
+                ):
+                    wrapped_names.add(wrapped_ref.group(1))
+                    continue
+
+                captured_names.add(this_name)
                 defs.append(
                     _AgentDef(
                         framework=fw,
-                        agent_name=m.group(1),
+                        agent_name=this_name,
                         file=rel_file,
                         line_no=line_no,
                         snippet=_line_snippet(text, line_no),

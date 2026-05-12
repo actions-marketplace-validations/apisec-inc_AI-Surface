@@ -267,7 +267,7 @@ The CLI exit codes:
 1. Confirm the workflow has `pull-requests: write` permission.
 2. Confirm `comment-on-pr: 'true'` is set (default is `true`, but check).
 3. Look at the Action's run log. does it report posting the comment?
-4. For fork PRs, GitHub restricts the workflow token's permissions. The comment may fail silently. Use `pull_request_target` carefully if you need to support forks.
+4. For fork PRs, GitHub restricts the workflow token's permissions so the comment may fail silently. **Do not** switch the trigger to `pull_request_target` to work around this. ai-surface refuses to run under `pull_request_target` because that event exposes repo secrets to attacker-controlled PR code. If you must surface results on fork PRs, use a separate `workflow_run` workflow that downloads the artifact produced by the safe `pull_request` run and posts the comment from the privileged context.
 
 ### The diff shows the full inventory instead of changes
 

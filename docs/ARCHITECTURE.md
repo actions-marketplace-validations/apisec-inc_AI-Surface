@@ -37,7 +37,7 @@ flowchart TB
     Det[detectors/ - one module per category]
     Rep[reporters/ - terminal, JSON, markdown]
     Diff[diff.py - base vs head comparison]
-    Walk[utils/walk.py - gitignore-aware file walker]
+    Walk[utils/walk.py - file walker, root .gitignore only]
     Xpromo[cross_promo.py - UTM links to specialists + platform]
 
     CLI --> Orch
@@ -99,7 +99,7 @@ class Detector(Protocol):
 
 That's it. The orchestrator calls `detect(root_path)`, captures exceptions, and aggregates results. A detector decides for itself how to walk files, what to read, and what shape its findings take.
 
-Most detectors share infrastructure via `utils/walk.py` (a gitignore-aware file walker) and `utils/io.py` (safe text reading with encoding fallback), but neither is required by the protocol.
+Most detectors share infrastructure via `utils/walk.py` (a file walker that prunes a fixed set of build/vendor directories and honours the **scan-root** `.gitignore` only — nested `.gitignore` files, `.git/info/exclude`, and the global git excludesfile are NOT consulted) and `utils/io.py` (safe text reading with encoding fallback), but neither is required by the protocol.
 
 ## Scan lifecycle
 
@@ -118,7 +118,7 @@ sequenceDiagram
     loop For each detector
         Orch->>Det: detector.detect(/path)
         Det->>Walk: walk_files(/path, extensions=[...])
-        Walk-->>Det: file paths (gitignore-aware)
+        Walk-->>Det: file paths (root .gitignore honoured)
         Det->>Det: pattern match per file
         Det-->>Orch: list[Finding]
     end
