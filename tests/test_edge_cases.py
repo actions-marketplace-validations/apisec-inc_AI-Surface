@@ -9,7 +9,6 @@ from __future__ import annotations
 import os
 import sys
 from pathlib import Path
-from typing import List
 
 import pytest
 from rich.console import Console
@@ -25,7 +24,6 @@ from ai_surface.types import (
     Report,
 )
 
-
 # ---------------------------------------------------------------------------
 # Empty / minimal inputs
 # ---------------------------------------------------------------------------
@@ -33,7 +31,7 @@ from ai_surface.types import (
 
 def test_orchestrator_on_empty_directory(tmp_path: Path) -> None:
     """A truly empty dir (no files) should produce zero findings and no errors."""
-    detectors: List[Detector] = [McpServerDetector()]
+    detectors: list[Detector] = [McpServerDetector()]
     orch = Orchestrator(detectors=detectors)
     report = orch.run(str(tmp_path))
     assert report.findings == []
@@ -103,7 +101,7 @@ class _CatastrophicDetector:
     name = "catastrophic"
     category = CATEGORY_LLM_SDK
 
-    def detect(self, root_path: str) -> List[Finding]:
+    def detect(self, root_path: str) -> list[Finding]:
         raise RuntimeError("simulated catastrophic failure with details")
 
 
@@ -114,7 +112,7 @@ def test_detector_exceptions_captured_in_report_errors(tmp_path: Path) -> None:
         name = "good"
         category = CATEGORY_LLM_SDK
 
-        def detect(self, root_path: str) -> List[Finding]:
+        def detect(self, root_path: str) -> list[Finding]:
             return [
                 Finding(
                     surface="OK SDK",

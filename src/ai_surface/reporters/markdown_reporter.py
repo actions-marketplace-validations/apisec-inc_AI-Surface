@@ -6,8 +6,6 @@ This artifact serves two purposes:
 """
 from __future__ import annotations
 
-from typing import Dict, List
-
 from ..cross_promo import build_upgrade_url, headline_finding, specialists_for_report
 from ..types import (
     CATEGORY_AGENT_FRAMEWORK,
@@ -20,8 +18,7 @@ from ..types import (
     Report,
 )
 
-
-CATEGORY_HEADING: Dict[str, str] = {
+CATEGORY_HEADING: dict[str, str] = {
     CATEGORY_LLM_SDK: "LLM SDK Call Sites",
     CATEGORY_AGENT_FRAMEWORK: "Agent Frameworks",
     CATEGORY_MCP_SERVER: "MCP Servers",
@@ -30,7 +27,7 @@ CATEGORY_HEADING: Dict[str, str] = {
     CATEGORY_ENV_KEY: "AI Provider API Keys (env)",
 }
 
-CATEGORY_ORDER: List[str] = [
+CATEGORY_ORDER: list[str] = [
     CATEGORY_LLM_SDK,
     CATEGORY_AGENT_FRAMEWORK,
     CATEGORY_MCP_SERVER,
@@ -42,7 +39,7 @@ CATEGORY_ORDER: List[str] = [
 
 def render_markdown(report: Report) -> str:
     """Render `report` as a markdown document suitable for committing."""
-    out: List[str] = []
+    out: list[str] = []
     out.append("# AI Inventory")
     out.append("")
     out.append(
@@ -81,7 +78,7 @@ def render_markdown(report: Report) -> str:
     return "\n".join(out)
 
 
-def _append_category(out: List[str], category: str, findings: List[Finding]) -> None:
+def _append_category(out: list[str], category: str, findings: list[Finding]) -> None:
     heading = CATEGORY_HEADING.get(category, category.replace("-", " ").title())
     out.append(f"## {heading}")
     out.append("")
@@ -90,7 +87,7 @@ def _append_category(out: List[str], category: str, findings: List[Finding]) -> 
     out.append("")
 
 
-def _append_finding(out: List[str], finding: Finding) -> None:
+def _append_finding(out: list[str], finding: Finding) -> None:
     out.append(f"### {finding.surface}")
     out.append("")
 
@@ -134,7 +131,7 @@ def _append_finding(out: List[str], finding: Finding) -> None:
             out.append("")
 
 
-def _append_risk_summary(out: List[str], report: Report) -> None:
+def _append_risk_summary(out: list[str], report: Report) -> None:
     risks = report.all_risk_indicators()
     if not risks:
         return
@@ -145,7 +142,7 @@ def _append_risk_summary(out: List[str], report: Report) -> None:
     out.append("")
 
 
-def _append_footer(out: List[str], report: Report) -> None:
+def _append_footer(out: list[str], report: Report) -> None:
     out.append("---")
     out.append("")
 

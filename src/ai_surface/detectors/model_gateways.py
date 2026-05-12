@@ -22,7 +22,7 @@ from __future__ import annotations
 import logging
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any
 
 from ..types import CATEGORY_AI_INFRA, CATEGORY_MODEL_GATEWAY, Evidence, Finding
 from ..utils.walk import read_text_safe, relative_to_root, walk_files
@@ -73,7 +73,7 @@ _SOURCE_EXTENSIONS = (
 
 # Image substrings that signify a self-hosted AI runtime.
 # Each tuple: (substring, short_name).
-_AI_IMAGE_PATTERNS: Tuple[Tuple[str, str], ...] = (
+_AI_IMAGE_PATTERNS: tuple[tuple[str, str], ...] = (
     ("ollama/ollama", "ollama"),
     ("vllm/vllm-openai", "vllm-openai"),
     ("huggingface/text-generation-inference", "text-generation-inference"),
@@ -130,12 +130,12 @@ class ModelGatewayDetector:
     # Reported category varies per finding; class-level attr is informational.
     category = CATEGORY_MODEL_GATEWAY
 
-    def detect(self, root_path: str) -> List[Finding]:
-        findings: List[Finding] = []
+    def detect(self, root_path: str) -> list[Finding]:
+        findings: list[Finding] = []
 
         # Per-gateway accumulators so each gateway is one Finding even if it
         # appears in multiple files.
-        gateway_acc: Dict[str, Dict[str, Any]] = {}
+        gateway_acc: dict[str, dict[str, Any]] = {}
 
         # Pass 1: YAML / JSON config (litellm, portkey, helm values, k8s manifests)
         for path in walk_files(
@@ -242,12 +242,12 @@ class ModelGatewayDetector:
 
 
 def _accumulate_gateway(
-    acc: Dict[str, Dict[str, Any]],
+    acc: dict[str, dict[str, Any]],
     *,
     key: str,
     rel: str,
     snippet: str,
-    extra_models: Optional[List[str]] = None,
+    extra_models: list[str] | None = None,
 ) -> None:
     bucket = acc.setdefault(
         key, {"files": [], "snippet": "", "models": []}
@@ -262,10 +262,10 @@ def _accumulate_gateway(
                 bucket["models"].append(m)
 
 
-def _finding_from_gateway(key: str, acc: Dict[str, Any]) -> Finding:
+def _finding_from_gateway(key: str, acc: dict[str, Any]) -> Finding:
     files = sorted(set(acc["files"]))
-    metadata: Dict[str, Any] = {"gateway": key}
-    permissions: List[str] = []
+    metadata: dict[str, Any] = {"gateway": key}
+    permissions: list[str] = []
     if key == "LiteLLM" and acc.get("models"):
         metadata["models_routed"] = list(acc["models"])
         permissions = list(acc["models"])
@@ -289,7 +289,7 @@ def _finding_from_gateway(key: str, acc: Dict[str, Any]) -> Finding:
 # ---------------------------------------------------------------------------
 
 
-def _parse_litellm_proxy(text: str, path: Path) -> Optional[List[str]]:
+def _parse_litellm_proxy(text: str, path: Path) -> list[str] | None:
     """Return the list of model names if the YAML looks like a LiteLLM proxy config.
 
     Only YAML files (``*.yaml`` / ``*.yml``) are considered, and only when the
@@ -305,7 +305,7 @@ def _parse_litellm_proxy(text: str, path: Path) -> Optional[List[str]]:
         return None
 
     parsed = _parse_yaml_lenient(text)
-    models: List[str] = []
+    models: list[str] = []
     if isinstance(parsed, dict):
         ml = parsed.get("model_list")
         if isinstance(ml, list):
@@ -328,9 +328,9 @@ def _parse_litellm_proxy(text: str, path: Path) -> Optional[List[str]]:
 # ---------------------------------------------------------------------------
 
 
-def _detect_k8s_ai_workloads(text: str, rel: str) -> List[Finding]:
+def _detect_k8s_ai_workloads(text: str, rel: str) -> list[Finding]:
     """Find K8s Deployment / StatefulSet docs that run an AI runtime image."""
-    out: List[Finding] = []
+    out: list[Finding] = []
     for doc in _split_yaml_documents(text):
         kind = _yaml_top_value(doc, "kind")
         if kind not in {"Deployment", "StatefulSet"}:
@@ -343,7 +343,7 @@ def _detect_k8s_ai_workloads(text: str, rel: str) -> List[Finding]:
             namespace = _yaml_nested_value(doc, ["metadata", "namespace"]) or "default"
             replicas = _yaml_nested_value(doc, ["spec", "replicas"])
             workload_name = _yaml_nested_value(doc, ["metadata", "name"]) or short
-            metadata: Dict[str, Any] = {
+            metadata: dict[str, Any] = {
                 "image": image,
                 "namespace": namespace,
                 "kind": kind,
@@ -371,15 +371,15 @@ def _detect_k8s_ai_workloads(text: str, rel: str) -> List[Finding]:
     return out
 
 
-def _detect_helm_values_ai(text: str, rel: str) -> List[Finding]:
+def _detect_helm_values_ai(text: str, rel: str) -> list[Finding]:
     """Find AI runtime image references in a Helm ``values.yaml`` file.
 
     Helm values files are not K8s manifests; they declare the inputs that
     templates render into manifests. We surface them so users are aware of
     the chart configuration even when no rendered manifest is checked in.
     """
-    out: List[Finding] = []
-    seen: Set[str] = set()
+    out: list[Finding] = []
+    seen: set[str] = set()
     # Look for `image: <value>` and `repository: <value>` style lines.
     for m in re.finditer(
         r"^\s*(?:image|repository)\s*:\s*['\"]?([^'\"#\n]+)", text, re.MULTILINE,
@@ -407,7 +407,7 @@ def _detect_helm_values_ai(text: str, rel: str) -> List[Finding]:
     return out
 
 
-def _match_ai_image(image: str) -> Optional[str]:
+def _match_ai_image(image: str) -> str | None:
     img_l = image.lower()
     for substr, short in _AI_IMAGE_PATTERNS:
         if substr in img_l:
@@ -420,9 +420,9 @@ def _match_ai_image(image: str) -> Optional[str]:
 # ---------------------------------------------------------------------------
 
 
-def _detect_terraform_ai(text: str, rel: str) -> List[Finding]:
+def _detect_terraform_ai(text: str, rel: str) -> list[Finding]:
     """Surface AI-related Terraform resources from a single ``.tf`` file."""
-    out: List[Finding] = []
+    out: list[Finding] = []
     for m in _TF_RESOURCE_RE.finditer(text):
         rtype = m.group("type")
         rname = m.group("name")
@@ -435,17 +435,13 @@ def _detect_terraform_ai(text: str, rel: str) -> List[Finding]:
 
         # SageMaker endpoints are common for non-LLM workloads. Only surface
         # them if the body or name hints at an LLM.
-        if rtype == "aws_sagemaker_endpoint":
-            if not (
-                _LLM_HINT_RE.search(body)
-                or _LLM_HINT_RE.search(rname)
-            ):
-                continue
+        if rtype == "aws_sagemaker_endpoint" and not (
+            _LLM_HINT_RE.search(body)
+            or _LLM_HINT_RE.search(rname)
+        ):
+            continue
 
-        if model_id:
-            surface = f"{label}: {model_id}"
-        else:
-            surface = f"{label}: {rname}"
+        surface = f"{label}: {model_id}" if model_id else f"{label}: {rname}"
 
         snippet = _first_line_containing(text, f'"{rtype}"')
         out.append(
@@ -506,12 +502,12 @@ def _parse_yaml_lenient(text: str) -> Any:
         return None
 
 
-def _split_yaml_documents(text: str) -> List[str]:
+def _split_yaml_documents(text: str) -> list[str]:
     """Split a YAML stream on ``---`` document markers (zero-aware)."""
     if "\n---" not in text and not text.lstrip().startswith("---"):
         return [text]
-    parts: List[str] = []
-    buf: List[str] = []
+    parts: list[str] = []
+    buf: list[str] = []
     for line in text.splitlines():
         if line.strip() == "---":
             if buf:
@@ -524,7 +520,7 @@ def _split_yaml_documents(text: str) -> List[str]:
     return parts or [text]
 
 
-def _yaml_top_value(doc: str, key: str) -> Optional[str]:
+def _yaml_top_value(doc: str, key: str) -> str | None:
     """Extract a top-level scalar value (no indentation) from a YAML doc."""
     m = re.search(
         rf"^{re.escape(key)}\s*:\s*['\"]?([^'\"\n#]+?)['\"]?\s*$",
@@ -536,7 +532,7 @@ def _yaml_top_value(doc: str, key: str) -> Optional[str]:
     return m.group(1).strip() or None
 
 
-def _yaml_nested_value(doc: str, path: List[str]) -> Optional[str]:
+def _yaml_nested_value(doc: str, path: list[str]) -> str | None:
     """Best-effort nested scalar lookup by indentation depth.
 
     Walks the YAML line by line tracking the current key path via indentation;
@@ -545,7 +541,7 @@ def _yaml_nested_value(doc: str, path: List[str]) -> Optional[str]:
     """
     if not path:
         return None
-    stack: List[Tuple[int, str]] = []  # (indent, key)
+    stack: list[tuple[int, str]] = []  # (indent, key)
     for raw in doc.splitlines():
         if not raw.strip() or raw.lstrip().startswith("#"):
             continue
@@ -570,9 +566,9 @@ def _yaml_nested_value(doc: str, path: List[str]) -> Optional[str]:
     return None
 
 
-def _find_yaml_image_values(doc: str) -> List[str]:
+def _find_yaml_image_values(doc: str) -> list[str]:
     """Return every ``image: <value>`` value in the YAML document text."""
-    out: List[str] = []
+    out: list[str] = []
     for m in re.finditer(
         r"""^\s*image\s*:\s*['"]?([^'"#\n]+)""", doc, re.MULTILINE,
     ):
@@ -600,7 +596,7 @@ def _first_line_containing(text: str, needle: str) -> str:
     return text[line_start:line_end].strip()
 
 
-def _first_match_line(patterns: Tuple[re.Pattern, ...], text: str) -> str:
+def _first_match_line(patterns: tuple[re.Pattern, ...], text: str) -> str:
     for p in patterns:
         m = p.search(text)
         if not m:

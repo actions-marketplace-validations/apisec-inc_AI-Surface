@@ -14,15 +14,22 @@ from __future__ import annotations
 import re
 from collections import OrderedDict
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Set, Tuple
+from typing import TypedDict
 
 from ..types import CATEGORY_AGENT_FRAMEWORK, Evidence, Finding
 from ..utils.walk import read_text_safe, relative_to_root, walk_files
 
 
+class _FrameworkInfo(TypedDict):
+    """Per-framework metadata stored in FRAMEWORK_PATTERNS."""
+
+    display: str
+    imports: list[re.Pattern[str]]
+    usage: list[re.Pattern[str]]
+
 # Framework signatures. Each entry: (key, display, import_roots, usage_patterns).
 # Order matters: more specific (langgraph) before more general (langchain).
-_FRAMEWORK_SPECS: List[Tuple[str, str, List[str], List[str]]] = [
+_FRAMEWORK_SPECS: list[tuple[str, str, list[str], list[str]]] = [
     # (key, display, import_roots, usage_patterns)
     ("langgraph", "LangGraph", ["langgraph"], [r"\bStateGraph\s*\(", r"\bMessageGraph\s*\("]),
     ("langchain", "LangChain", ["langchain", "langchain_core", "langchain_community"], []),
@@ -36,7 +43,7 @@ _FRAMEWORK_SPECS: List[Tuple[str, str, List[str], List[str]]] = [
 ]
 
 
-def _build_import_regex(roots: List[str]) -> "re.Pattern[str]":
+def _build_import_regex(roots: list[str]) -> re.Pattern[str]:
     """Build a multiline regex matching `from <root>...import` or `import <root>`."""
     alt = "|".join(re.escape(r) for r in roots)
     return re.compile(
@@ -45,7 +52,7 @@ def _build_import_regex(roots: List[str]) -> "re.Pattern[str]":
     )
 
 
-FRAMEWORK_PATTERNS: "OrderedDict[str, Dict[str, object]]" = OrderedDict(
+FRAMEWORK_PATTERNS: OrderedDict[str, _FrameworkInfo] = OrderedDict(
     (
         key,
         {
@@ -72,12 +79,12 @@ WRITE_TOKENS = (
 )
 
 
-def _classify_tools(tool_names: List[str]) -> List[str]:
+def _classify_tools(tool_names: list[str]) -> list[str]:
     """Map a list of tool names to risk indicator phrases."""
     if not tool_names:
         return []
     lowered = [t.lower() for t in tool_names]
-    indicators: List[str] = []
+    indicators: list[str] = []
 
     if any(any(tok in name for tok in FINANCIAL_TOKENS) for name in lowered):
         indicators.append("financial action exposed")
@@ -119,7 +126,7 @@ _LC_CTORS = (
     "AgentExecutor|initialize_agent|create_react_agent"
     "|create_openai_tools_agent|create_tool_calling_agent"
 )
-AGENT_PATTERNS: List[Tuple[str, "re.Pattern[str]"]] = [
+AGENT_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ("langchain", re.compile(rf"^([A-Za-z_]\w*)\s*=\s*(?:{_LC_CTORS})\s*\(", re.MULTILINE)),
     ("crewai", re.compile(r"\bAgent\s*\(\s*[^)]*?\brole\s*=\s*['\"]([^'\"]+)['\"]", re.DOTALL)),
     ("crewai", re.compile(r"\bAgent\s*\(\s*[^)]*?\bname\s*=\s*['\"]([^'\"]+)['\"]", re.DOTALL)),
@@ -135,7 +142,7 @@ AGENT_PATTERNS: List[Tuple[str, "re.Pattern[str]"]] = [
 _BRACKET_PAIRS = {"[": "]", "(": ")", "{": "}"}
 
 
-def _match_bracket(text: str, open_idx: int) -> Optional[int]:
+def _match_bracket(text: str, open_idx: int) -> int | None:
     """Return the index of the bracket matching the one at open_idx, or None.
 
     Skips over Python string literals (single/double quoted) so brackets inside
@@ -148,7 +155,7 @@ def _match_bracket(text: str, open_idx: int) -> Optional[int]:
     if close_ch is None:
         return None
     depth = 0
-    in_str: Optional[str] = None
+    in_str: str | None = None
     i = open_idx
     while i < len(text):
         ch = text[i]
@@ -172,7 +179,7 @@ def _match_bracket(text: str, open_idx: int) -> Optional[int]:
     return None
 
 
-def _balanced_content(text: str, open_idx: int) -> Optional[str]:
+def _balanced_content(text: str, open_idx: int) -> str | None:
     """Return the inner content of the bracket pair starting at open_idx."""
     end = _match_bracket(text, open_idx)
     if end is None:
@@ -183,7 +190,7 @@ def _balanced_content(text: str, open_idx: int) -> Optional[str]:
 _IDENT_SKIP = {"True", "False", "None", "Tool", "and", "or", "not"}
 
 
-def _extract_tools_from_block(block: str) -> List[str]:
+def _extract_tools_from_block(block: str) -> list[str]:
     """Pull tool names out of a tools=[ ... ] block content.
 
     Tries (in order): Tool(name="x") constructors, {"name": "x"} dicts, and
@@ -191,8 +198,8 @@ def _extract_tools_from_block(block: str) -> List[str]:
     identifier path runs only when neither structured pattern matched — this
     avoids double-counting an identifier appearing as a Tool's func= arg.
     """
-    names: List[str] = []
-    seen: Set[str] = set()
+    names: list[str] = []
+    seen: set[str] = set()
 
     def _add(n: str) -> None:
         if n not in seen:
@@ -213,21 +220,21 @@ def _extract_tools_from_block(block: str) -> List[str]:
     return names
 
 
-def _extract_decorator_tools(text: str) -> List[Tuple[str, int]]:
+def _extract_decorator_tools(text: str) -> list[tuple[str, int]]:
     """Find @tool-decorated functions. Returns list of (tool_name, line_no)."""
-    out: List[Tuple[str, int]] = []
+    out: list[tuple[str, int]] = []
     for m in TOOL_DECORATOR_RE.finditer(text):
         line_no = text.count("\n", 0, m.start()) + 1
         out.append((m.group(1), line_no))
     return out
 
 
-def _extract_tools_blocks(text: str) -> List[Tuple[List[str], int, str]]:
+def _extract_tools_blocks(text: str) -> list[tuple[list[str], int, str]]:
     """Find every tools=[ ... ] block in text.
 
     Returns list of (tool_names, line_no, block_content) tuples.
     """
-    out: List[Tuple[List[str], int, str]] = []
+    out: list[tuple[list[str], int, str]] = []
     for m in TOOLS_BLOCK_RE.finditer(text):
         bracket_idx = text.find("[", m.end() - 1)
         if bracket_idx < 0:
@@ -241,7 +248,7 @@ def _extract_tools_blocks(text: str) -> List[Tuple[List[str], int, str]]:
     return out
 
 
-def _enclosing_function(text: str, char_offset: int) -> Optional[str]:
+def _enclosing_function(text: str, char_offset: int) -> str | None:
     """Find the name of the function containing `char_offset`. Best-effort."""
     # Scan backwards for the most recent `def name(` or `async def name(` at
     # column 0 (module-level) or any indentation.
@@ -252,11 +259,11 @@ def _enclosing_function(text: str, char_offset: int) -> Optional[str]:
     return matches[-1].group(1)
 
 
-def _detect_frameworks_in_file(text: str) -> Set[str]:
+def _detect_frameworks_in_file(text: str) -> set[str]:
     """Return the set of framework keys detected in `text`."""
-    found: Set[str] = set()
+    found: set[str] = set()
     for key, info in FRAMEWORK_PATTERNS.items():
-        patterns = list(info["imports"]) + list(info["usage"])  # type: ignore[arg-type]
+        patterns = [*info["imports"], *info["usage"]]
         if any(pat.search(text) is not None for pat in patterns):
             found.add(key)
     return found
@@ -271,7 +278,7 @@ class _AgentDef:
     file: str
     line_no: int
     snippet: str
-    tools: List[str]
+    tools: list[str]
 
 
 class AgentFrameworkDetector:
@@ -285,11 +292,11 @@ class AgentFrameworkDetector:
     name = "agent_frameworks"
     category = CATEGORY_AGENT_FRAMEWORK
 
-    def detect(self, root_path: str) -> List[Finding]:
-        framework_files: Dict[str, List[str]] = {k: [] for k in FRAMEWORK_PATTERNS}
-        framework_first_snippet: Dict[str, str] = {}
-        agent_defs: List[_AgentDef] = []
-        anthropic_tool_blocks: List[_AgentDef] = []
+    def detect(self, root_path: str) -> list[Finding]:
+        framework_files: dict[str, list[str]] = {k: [] for k in FRAMEWORK_PATTERNS}
+        framework_first_snippet: dict[str, str] = {}
+        agent_defs: list[_AgentDef] = []
+        anthropic_tool_blocks: list[_AgentDef] = []
 
         for path in walk_files(root_path, extensions=[".py"]):
             text = read_text_safe(path)
@@ -327,8 +334,8 @@ class AgentFrameworkDetector:
                         )
                     )
 
-        findings: List[Finding] = []
-        files_used_by_agents: Dict[str, Set[str]] = {k: set() for k in FRAMEWORK_PATTERNS}
+        findings: list[Finding] = []
+        files_used_by_agents: dict[str, set[str]] = {k: set() for k in FRAMEWORK_PATTERNS}
 
         # 1. Per-agent findings (frameworks + anthropic-shape standalone).
         for ad in agent_defs + anthropic_tool_blocks:
@@ -342,7 +349,7 @@ class AgentFrameworkDetector:
             leftover = sorted(set(files) - files_used_by_agents.get(fw, set()))
             if not leftover:
                 continue
-            display = FRAMEWORK_PATTERNS[fw]["display"]  # type: ignore[index]
+            display = FRAMEWORK_PATTERNS[fw]["display"]
             n = len(leftover)
             findings.append(
                 Finding(
@@ -362,7 +369,7 @@ class AgentFrameworkDetector:
     @staticmethod
     def _first_import_line(text: str, framework_key: str) -> str:
         info = FRAMEWORK_PATTERNS[framework_key]
-        patterns = list(info["imports"]) + list(info["usage"])  # type: ignore[arg-type]
+        patterns = [*info["imports"], *info["usage"]]
         for pat in patterns:
             m = pat.search(text)
             if m:
@@ -375,10 +382,10 @@ class AgentFrameworkDetector:
         self,
         text: str,
         rel_file: str,
-        frameworks: Set[str],
-        blocks: List[Tuple[List[str], int, str]],
-        decorator_tools: List[Tuple[str, int]],
-    ) -> List[_AgentDef]:
+        frameworks: set[str],
+        blocks: list[tuple[list[str], int, str]],
+        decorator_tools: list[tuple[str, int]],
+    ) -> list[_AgentDef]:
         """Identify named agent definitions and attach the closest tools block.
 
         Tool resolution falls back in priority order: tools=[...] inside the
@@ -386,7 +393,7 @@ class AgentFrameworkDetector:
         any @tool-decorated functions in the file. v0.6 should track these
         with real dataflow.
         """
-        defs: List[_AgentDef] = []
+        defs: list[_AgentDef] = []
         decorator_tool_names = [name for name, _ in decorator_tools]
 
         for fw, pat in AGENT_PATTERNS:
@@ -421,7 +428,7 @@ class AgentFrameworkDetector:
         return defs
 
     @staticmethod
-    def _extract_tools_from_constructor(ctor_text: str) -> List[str]:
+    def _extract_tools_from_constructor(ctor_text: str) -> list[str]:
         """Pull tools=[...] from inside a single constructor's argument list."""
         m = TOOLS_BLOCK_RE.search(ctor_text)
         if not m:
@@ -436,10 +443,10 @@ class AgentFrameworkDetector:
 
     @staticmethod
     def _nearest_tools_block(
-        blocks: List[Tuple[List[str], int, str]], target_line: int
-    ) -> List[str]:
+        blocks: list[tuple[list[str], int, str]], target_line: int
+    ) -> list[str]:
         """Return the tool names from the tools=[...] block closest to target_line."""
-        best: Optional[Tuple[int, List[str]]] = None
+        best: tuple[int, list[str]] | None = None
         for tools, line_no, _ in blocks:
             dist = abs(line_no - target_line)
             if dist > 30:
@@ -453,7 +460,7 @@ class AgentFrameworkDetector:
         if ad.framework == "anthropic_tools":
             label = "Claude Tools"
         else:
-            label = f"{FRAMEWORK_PATTERNS[ad.framework]['display']} Agent"  # type: ignore[index]
+            label = f"{FRAMEWORK_PATTERNS[ad.framework]['display']} Agent"
         surface = f"{label}: {ad.agent_name}"
         if ad.file:
             surface = f"{surface} (in {ad.file})"

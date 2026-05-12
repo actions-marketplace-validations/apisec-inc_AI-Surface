@@ -24,7 +24,7 @@ Design notes:
 """
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Tuple
+from typing import TypedDict
 from urllib.parse import urlencode
 
 from .types import (
@@ -37,6 +37,15 @@ from .types import (
     Finding,
 )
 
+
+class SpecialistTool(TypedDict):
+    """Per-category specialist tool metadata in SPECIALIST_TOOLS."""
+
+    tool: str
+    available: bool
+    url: str
+    tagline: str
+    install: str
 
 # ---------------------------------------------------------------------------
 # Vertical: APIsec validation (the conversion link)
@@ -60,7 +69,7 @@ DEFAULT_UTM_CAMPAIGN = "oss-funnel"
 # deeper analysis, run X" pointer in the report. Flip `available` to True
 # when each tool ships.
 
-SPECIALIST_TOOLS: Dict[str, Dict[str, object]] = {
+SPECIALIST_TOOLS: dict[str, SpecialistTool] = {
     CATEGORY_MCP_SERVER: {
         "tool": "mcp-audit",
         "available": True,
@@ -94,7 +103,7 @@ SPECIALIST_TOOLS: Dict[str, Dict[str, object]] = {
 # over regex slugification to keep URLs predictable for analytics and to
 # make the slug an explicit product surface, not a side effect.
 
-RISK_SLUG: Dict[str, str] = {
+RISK_SLUG: dict[str, str] = {
     # MCP server risks
     "broad permissions": "broad-permissions",
     "in-house MCP server (custom code, audit recommended)": "in-house-mcp",
@@ -126,7 +135,7 @@ def slugify_risk(indicator: str) -> str:
     if indicator in RISK_SLUG:
         return RISK_SLUG[indicator]
     # Permissive fallback: lowercase, alnum + dashes, length-capped
-    out: List[str] = []
+    out: list[str] = []
     for ch in indicator.lower():
         if ch.isalnum():
             out.append(ch)
@@ -145,7 +154,7 @@ def slugify_risk(indicator: str) -> str:
 
 
 def build_upgrade_url(
-    finding: Optional[Finding] = None,
+    finding: Finding | None = None,
     source: str = "ai-surface",
     medium: str = "cli",
     campaign: str = DEFAULT_UTM_CAMPAIGN,
@@ -164,7 +173,7 @@ def build_upgrade_url(
     Returns:
         A fully-qualified URL safe to embed in markdown or terminal output.
     """
-    params: List[Tuple[str, str]] = []
+    params: list[tuple[str, str]] = []
 
     if finding is not None:
         if finding.category:
@@ -182,7 +191,7 @@ def build_upgrade_url(
     return f"{APISEC_BASE_URL}?{query}"
 
 
-def headline_finding(findings: List[Finding]) -> Optional[Finding]:
+def headline_finding(findings: list[Finding]) -> Finding | None:
     """Return the most severe finding from a list, for use in footer links.
 
     Severity heuristic: number of risk indicators on the finding. Tied counts
@@ -212,7 +221,7 @@ def headline_finding(findings: List[Finding]) -> Optional[Finding]:
 # ---------------------------------------------------------------------------
 
 
-def specialist_for(category: str) -> Optional[Dict[str, object]]:
+def specialist_for(category: str) -> SpecialistTool | None:
     """Return the specialist tool entry for a category if one is registered AND
     available. Returns None when no specialist exists or the registered
     specialist is not yet shipped (`available: False`).
@@ -229,14 +238,14 @@ def specialist_for(category: str) -> Optional[Dict[str, object]]:
     return entry
 
 
-def specialists_for_report(findings: List[Finding]) -> List[Dict[str, object]]:
+def specialists_for_report(findings: list[Finding]) -> list[SpecialistTool]:
     """Return the deduplicated set of available specialists relevant to a report.
 
     Walks the findings, collects categories, and returns one entry per
     available specialist whose category appears in the report.
     """
     seen_categories = set()
-    out: List[Dict[str, object]] = []
+    out: list[SpecialistTool] = []
     for f in findings:
         if f.category in seen_categories:
             continue

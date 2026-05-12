@@ -11,12 +11,10 @@ populate evidence.metadata and risk_indicators respectively.
 from __future__ import annotations
 
 import re
-from pathlib import Path
-from typing import Dict, List, Optional, Pattern, Tuple
+from re import Pattern
 
 from ..types import CATEGORY_LLM_SDK, Evidence, Finding
 from ..utils.walk import read_text_safe, relative_to_root, walk_files
-
 
 # ---------------------------------------------------------------------------
 # SDK signature table
@@ -28,7 +26,7 @@ from ..utils.walk import read_text_safe, relative_to_root, walk_files
 # Note: Azure OpenAI is treated as its own surface even though it shares the
 # `openai` package, because the deployment model and key surface are distinct.
 
-_SDK_PATTERNS: Dict[str, List[str]] = {
+_SDK_PATTERNS: dict[str, list[str]] = {
     "Anthropic SDK": [
         # Python
         r"^\s*from\s+anthropic(\.|\s+import\b)",
@@ -107,7 +105,7 @@ _SDK_PATTERNS: Dict[str, List[str]] = {
 }
 
 # Compile once.
-_COMPILED: Dict[str, List[Pattern[str]]] = {
+_COMPILED: dict[str, list[Pattern[str]]] = {
     surface: [re.compile(p, re.MULTILINE) for p in patterns]
     for surface, patterns in _SDK_PATTERNS.items()
 }
@@ -203,16 +201,16 @@ class LlmSdkDetector:
     name = "llm_sdks"
     category = CATEGORY_LLM_SDK
 
-    EXTENSIONS: Tuple[str, ...] = (".py", ".ts", ".tsx", ".js", ".jsx", ".mjs")
+    EXTENSIONS: tuple[str, ...] = (".py", ".ts", ".tsx", ".js", ".jsx", ".mjs")
 
-    def detect(self, root_path: str) -> List[Finding]:
+    def detect(self, root_path: str) -> list[Finding]:
         """Walk root_path and emit one Finding per detected SDK."""
         # Per-SDK accumulators.
-        files_by_sdk: Dict[str, List[str]] = {}
-        snippet_by_sdk: Dict[str, str] = {}
-        models_by_sdk: Dict[str, List[str]] = {}
-        call_count_by_sdk: Dict[str, int] = {}
-        flow_risk_by_sdk: Dict[str, bool] = {}
+        files_by_sdk: dict[str, list[str]] = {}
+        snippet_by_sdk: dict[str, str] = {}
+        models_by_sdk: dict[str, list[str]] = {}
+        call_count_by_sdk: dict[str, int] = {}
+        flow_risk_by_sdk: dict[str, bool] = {}
 
         for file_path in walk_files(root_path, extensions=list(self.EXTENSIONS)):
             text = read_text_safe(file_path)
@@ -243,7 +241,7 @@ class LlmSdkDetector:
                 if file_has_nonliteral_flow:
                     flow_risk_by_sdk[sdk] = True
 
-        findings: List[Finding] = []
+        findings: list[Finding] = []
         for sdk in _DETECTION_ORDER:
             if sdk not in files_by_sdk:
                 continue
@@ -256,7 +254,7 @@ class LlmSdkDetector:
                     "call_site_count": call_count_by_sdk.get(sdk, 0),
                 },
             )
-            risk_indicators: List[str] = []
+            risk_indicators: list[str] = []
             if flow_risk_by_sdk.get(sdk):
                 risk_indicators.append("non-literal data flows into LLM call")
             findings.append(
@@ -275,14 +273,14 @@ class LlmSdkDetector:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _detect_sdks_in_text(text: str) -> Dict[str, str]:
+    def _detect_sdks_in_text(text: str) -> dict[str, str]:
         """Return a mapping of SDK name -> representative line for matches in text.
 
         Uses _DETECTION_ORDER so Azure OpenAI is matched before plain OpenAI.
         A single file may match multiple SDKs (e.g., a file using both
         `anthropic` and `openai`).
         """
-        out: Dict[str, str] = {}
+        out: dict[str, str] = {}
         for sdk in _DETECTION_ORDER:
             for pat in _COMPILED[sdk]:
                 m = pat.search(text)
@@ -304,9 +302,12 @@ class LlmSdkDetector:
         # signal is the AzureOpenAI import line itself. We approximate this
         # by checking whether OpenAI SDK matched purely via the
         # `from openai import ... AzureOpenAI ...` form with no other import.
-        if "Azure OpenAI" in out and "OpenAI SDK" in out:
-            if _openai_only_via_azure_import(text):
-                out.pop("OpenAI SDK", None)
+        if (
+            "Azure OpenAI" in out
+            and "OpenAI SDK" in out
+            and _openai_only_via_azure_import(text)
+        ):
+            out.pop("OpenAI SDK", None)
         return out
 
 
@@ -324,15 +325,12 @@ def _openai_only_via_azure_import(text: str) -> bool:
     )
     if not openai_imports:
         return False
-    for line in openai_imports:
-        if "AzureOpenAI" not in line:
-            return False
-    return True
+    return all("AzureOpenAI" in line for line in openai_imports)
 
 
-def _extract_models(text: str) -> List[str]:
+def _extract_models(text: str) -> list[str]:
     """Pull out plausible model names mentioned as string literals."""
-    seen: List[str] = []
+    seen: list[str] = []
     for m in _MODEL_LITERAL.finditer(text):
         name = m.group(1)
         if name not in seen:
@@ -348,6 +346,4 @@ def _has_nonliteral_flow(text: str) -> bool:
     """
     if _CONTENT_NONLITERAL.search(text):
         return True
-    if _PROMPT_NONLITERAL.search(text):
-        return True
-    return False
+    return bool(_PROMPT_NONLITERAL.search(text))

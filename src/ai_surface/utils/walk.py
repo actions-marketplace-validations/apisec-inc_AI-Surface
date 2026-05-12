@@ -6,11 +6,10 @@ respect .gitignore by default and behave consistently.
 from __future__ import annotations
 
 import os
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Iterator, List, Optional
 
 import pathspec
-
 
 # Directories we always skip even if not in .gitignore. Saves time on large repos.
 ALWAYS_SKIP_DIRS = frozenset(
@@ -42,7 +41,7 @@ ALWAYS_SKIP_DIRS = frozenset(
 )
 
 
-def _load_gitignore(root: Path) -> Optional[pathspec.PathSpec]:
+def _load_gitignore(root: Path) -> pathspec.PathSpec | None:
     """Load .gitignore at root if present. Returns None if no gitignore."""
     gitignore_path = root / ".gitignore"
     if not gitignore_path.is_file():
@@ -56,7 +55,7 @@ def _load_gitignore(root: Path) -> Optional[pathspec.PathSpec]:
 
 def walk_files(
     root: str,
-    extensions: Optional[List[str]] = None,
+    extensions: list[str] | None = None,
     follow_symlinks: bool = False,
 ) -> Iterator[Path]:
     """Yield file paths under `root`, respecting .gitignore and ALWAYS_SKIP_DIRS.
@@ -77,7 +76,7 @@ def walk_files(
     gitignore = _load_gitignore(root_path)
 
     # Normalize extensions: ensure leading dot, lowercase
-    ext_filter: Optional[set] = None
+    ext_filter: set | None = None
     if extensions:
         ext_filter = {("." + e.lstrip(".")).lower() for e in extensions}
 

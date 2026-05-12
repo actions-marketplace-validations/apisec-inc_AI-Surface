@@ -1,12 +1,11 @@
 """Tests for the agent framework detector."""
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable, List
 
 from ai_surface.detectors.agent_frameworks import AgentFrameworkDetector
 from ai_surface.types import CATEGORY_AGENT_FRAMEWORK, Finding
-
 
 FIXTURE_ROOT = Path(__file__).parent / "fixtures" / "agents"
 
@@ -15,7 +14,7 @@ def _by_surface(findings: Iterable[Finding]) -> dict:
     return {f.surface: f for f in findings}
 
 
-def _findings_for(*fixtures: str, tmp_path: Path) -> List[Finding]:
+def _findings_for(*fixtures: str, tmp_path: Path) -> list[Finding]:
     """Copy a subset of fixture files into tmp_path and run the detector."""
     for fname in fixtures:
         src = FIXTURE_ROOT / fname

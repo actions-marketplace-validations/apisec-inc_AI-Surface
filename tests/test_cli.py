@@ -1,8 +1,6 @@
 """Tests for CLI helpers and the typer entrypoint."""
 from __future__ import annotations
 
-from typing import List
-
 import pytest
 import typer
 from typer.testing import CliRunner
@@ -18,10 +16,7 @@ from ai_surface.types import (
     CATEGORY_LLM_SDK,
     CATEGORY_MCP_SERVER,
     CATEGORY_MODEL_GATEWAY,
-    Evidence,
-    Finding,
 )
-
 
 # ---------------------------------------------------------------------------
 # _resolve_categories
@@ -89,7 +84,7 @@ class _StubDetector:
 
 
 def test_filter_detectors_none_returns_all() -> None:
-    detectors: List[_StubDetector] = [
+    detectors: list[_StubDetector] = [
         _StubDetector("a", CATEGORY_MCP_SERVER),
         _StubDetector("b", CATEGORY_LLM_SDK),
     ]
@@ -98,7 +93,7 @@ def test_filter_detectors_none_returns_all() -> None:
 
 
 def test_filter_detectors_keeps_matching_only() -> None:
-    detectors: List[_StubDetector] = [
+    detectors: list[_StubDetector] = [
         _StubDetector("a", CATEGORY_MCP_SERVER),
         _StubDetector("b", CATEGORY_LLM_SDK),
         _StubDetector("c", CATEGORY_AGENT_FRAMEWORK),
@@ -109,7 +104,7 @@ def test_filter_detectors_keeps_matching_only() -> None:
 
 
 def test_filter_detectors_empty_when_no_match() -> None:
-    detectors: List[_StubDetector] = [_StubDetector("a", CATEGORY_MCP_SERVER)]
+    detectors: list[_StubDetector] = [_StubDetector("a", CATEGORY_MCP_SERVER)]
     out = _filter_detectors_by_category(detectors, {CATEGORY_LLM_SDK})
     assert out == []
 

@@ -1,5 +1,5 @@
 """Synthetic LangChain agent fixture: refund agent with read+financial tools."""
-from langchain.agents import AgentExecutor, initialize_agent
+from langchain.agents import AgentExecutor
 from langchain.tools import Tool
 
 

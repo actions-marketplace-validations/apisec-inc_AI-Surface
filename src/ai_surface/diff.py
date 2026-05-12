@@ -19,8 +19,9 @@ a v0.6 problem.
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field
-from typing import Any, Dict, List, Mapping, Optional, Tuple
+from typing import Any
 
 from .cross_promo import build_upgrade_url
 from .types import Finding, Report
@@ -36,12 +37,12 @@ class FindingChange:
 
     surface: str
     category: str
-    permissions_added: List[str] = field(default_factory=list)
-    permissions_removed: List[str] = field(default_factory=list)
-    risks_added: List[str] = field(default_factory=list)
-    risks_removed: List[str] = field(default_factory=list)
-    files_added: List[str] = field(default_factory=list)
-    files_removed: List[str] = field(default_factory=list)
+    permissions_added: list[str] = field(default_factory=list)
+    permissions_removed: list[str] = field(default_factory=list)
+    risks_added: list[str] = field(default_factory=list)
+    risks_removed: list[str] = field(default_factory=list)
+    files_added: list[str] = field(default_factory=list)
+    files_removed: list[str] = field(default_factory=list)
 
     def is_meaningful(self) -> bool:
         """True if this change is worth showing in the PR comment."""
@@ -59,9 +60,9 @@ class FindingChange:
 class Diff:
     """The complete diff between two scans."""
 
-    added: List[Finding] = field(default_factory=list)
-    removed: List[Finding] = field(default_factory=list)
-    modified: List[FindingChange] = field(default_factory=list)
+    added: list[Finding] = field(default_factory=list)
+    removed: list[Finding] = field(default_factory=list)
+    modified: list[FindingChange] = field(default_factory=list)
     base_scan_root: str = ""
     head_scan_root: str = ""
     base_timestamp: str = ""
@@ -78,13 +79,13 @@ class Diff:
 
 def compute_diff(base: Report, head: Report) -> Diff:
     """Return the change set between `base` (older) and `head` (newer) reports."""
-    base_by_surface: Dict[str, Finding] = {f.surface: f for f in base.findings}
-    head_by_surface: Dict[str, Finding] = {f.surface: f for f in head.findings}
+    base_by_surface: dict[str, Finding] = {f.surface: f for f in base.findings}
+    head_by_surface: dict[str, Finding] = {f.surface: f for f in head.findings}
 
     added = [head_by_surface[k] for k in head_by_surface if k not in base_by_surface]
     removed = [base_by_surface[k] for k in base_by_surface if k not in head_by_surface]
 
-    modified: List[FindingChange] = []
+    modified: list[FindingChange] = []
     for surface in head_by_surface:
         if surface not in base_by_surface:
             continue
@@ -119,7 +120,7 @@ def _changes_between(before: Finding, after: Finding) -> FindingChange:
     )
 
 
-def _list_diff(a: List[str], b: List[str]) -> List[str]:
+def _list_diff(a: list[str], b: list[str]) -> list[str]:
     """Items in `a` that are not in `b`, preserving order from `a`."""
     bset = set(b)
     return [x for x in a if x not in bset]
@@ -140,7 +141,7 @@ def _report_from_dict(data: Mapping[str, Any]) -> Report:
     from .types import Evidence  # local import to avoid circulars
 
     raw_findings = data.get("findings", []) or []
-    findings: List[Finding] = []
+    findings: list[Finding] = []
     for f in raw_findings:
         ev_data = f.get("evidence", {}) or {}
         ev = Evidence(
@@ -170,7 +171,7 @@ def _report_from_dict(data: Mapping[str, Any]) -> Report:
     )
 
 
-def diff_to_dict(diff: Diff) -> Dict[str, Any]:
+def diff_to_dict(diff: Diff) -> dict[str, Any]:
     """Serialize a Diff to a JSON-friendly dict."""
     return {
         "added": [_finding_to_dict(f) for f in diff.added],
@@ -184,7 +185,7 @@ def diff_to_dict(diff: Diff) -> Dict[str, Any]:
     }
 
 
-def _finding_to_dict(finding: Finding) -> Dict[str, Any]:
+def _finding_to_dict(finding: Finding) -> dict[str, Any]:
     return asdict(finding)
 
 
@@ -198,7 +199,7 @@ def render_diff_markdown(diff: Diff) -> str:
     if diff.is_empty:
         return _render_empty_diff()
 
-    parts: List[str] = []
+    parts: list[str] = []
     parts.append(_render_header(diff))
 
     if diff.added:
@@ -228,7 +229,7 @@ def render_diff_markdown(diff: Diff) -> str:
 
 
 def _render_header(diff: Diff) -> str:
-    bits: List[str] = []
+    bits: list[str] = []
     if diff.added:
         bits.append(f"**{len(diff.added)} new**")
     if diff.modified:
@@ -248,7 +249,7 @@ def _render_empty_diff() -> str:
 
 
 def _render_added_finding(f: Finding) -> str:
-    parts: List[str] = []
+    parts: list[str] = []
     parts.append(f"- **{f.surface}**")
     if f.permissions:
         perms = ", ".join(f"`{p}`" for p in f.permissions[:6])
@@ -270,7 +271,7 @@ def _render_added_finding(f: Finding) -> str:
 
 
 def _render_removed_finding(f: Finding) -> str:
-    parts: List[str] = []
+    parts: list[str] = []
     parts.append(f"- ~~**{f.surface}**~~")
     if f.evidence.files:
         files = ", ".join(f"`{x}`" for x in f.evidence.files[:3])
@@ -281,7 +282,7 @@ def _render_removed_finding(f: Finding) -> str:
 
 
 def _render_modified(c: FindingChange) -> str:
-    parts: List[str] = []
+    parts: list[str] = []
     parts.append(f"- **{c.surface}**")
 
     if c.permissions_added:

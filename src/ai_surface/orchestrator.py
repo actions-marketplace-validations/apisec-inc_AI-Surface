@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import List, Optional
 
 from .types import Detector, Finding, Report
 
@@ -18,8 +17,8 @@ class Orchestrator:
         report = orch.run("/path/to/repo")
     """
 
-    def __init__(self, detectors: Optional[List[Detector]] = None) -> None:
-        self.detectors: List[Detector] = list(detectors or [])
+    def __init__(self, detectors: list[Detector] | None = None) -> None:
+        self.detectors: list[Detector] = list(detectors or [])
 
     def register(self, detector: Detector) -> None:
         """Add a detector to the run list."""
@@ -33,9 +32,9 @@ class Orchestrator:
         if not root.is_dir():
             raise NotADirectoryError(f"scan root is not a directory: {scan_root}")
 
-        all_findings: List[Finding] = []
-        errors: List[str] = []
-        detector_names: List[str] = []
+        all_findings: list[Finding] = []
+        errors: list[str] = []
+        detector_names: list[str] = []
 
         for detector in self.detectors:
             name = getattr(detector, "name", detector.__class__.__name__)
@@ -62,13 +61,13 @@ class Orchestrator:
         )
 
 
-def default_detectors() -> List[Detector]:
+def default_detectors() -> list[Detector]:
     """Return the default v0.5 detector set.
 
     Imports are deferred so each detector module can be developed and tested
     independently without breaking the orchestrator.
     """
-    detectors: List[Detector] = []
+    detectors: list[Detector] = []
 
     # Lazy imports keep the orchestrator usable even if a detector module is missing
     # during development. Each detector module is implemented in detectors/.

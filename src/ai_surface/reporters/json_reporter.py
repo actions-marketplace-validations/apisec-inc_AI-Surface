@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict
-from typing import Any, Dict
+from typing import Any
 
 from ..types import Report
 
@@ -18,7 +18,7 @@ def render_json(report: Report, indent: int = 2) -> str:
     return json.dumps(report_to_dict(report), indent=indent, ensure_ascii=False)
 
 
-def report_to_dict(report: Report) -> Dict[str, Any]:
+def report_to_dict(report: Report) -> dict[str, Any]:
     """Convert Report to a plain dict (JSON-friendly)."""
     return {
         "schema_version": report.schema_version,
@@ -32,7 +32,7 @@ def report_to_dict(report: Report) -> Dict[str, Any]:
     }
 
 
-def _finding_to_dict(finding: Any) -> Dict[str, Any]:
+def _finding_to_dict(finding: Any) -> dict[str, Any]:
     """asdict-compatible conversion that flattens Evidence nicely."""
     d = asdict(finding)
     # asdict already flattens dataclasses to dicts. Just clean up if needed.

@@ -1,11 +1,10 @@
 """Synthetic fixture: ordinary code, no LLM SDK imports."""
 import json
 import os
-from typing import Dict
 
 
-def load_config(path: str) -> Dict[str, str]:
-    with open(path, "r", encoding="utf-8") as f:
+def load_config(path: str) -> dict[str, str]:
+    with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 

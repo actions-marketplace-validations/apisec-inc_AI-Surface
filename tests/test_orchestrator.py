@@ -2,14 +2,12 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List
 
 import pytest
 
 from ai_surface.orchestrator import Orchestrator
 from ai_surface.types import (
     CATEGORY_LLM_SDK,
-    Detector,
     Evidence,
     Finding,
     Report,
@@ -22,10 +20,10 @@ class StubDetector:
     name = "stub"
     category = CATEGORY_LLM_SDK
 
-    def __init__(self, findings: List[Finding]) -> None:
+    def __init__(self, findings: list[Finding]) -> None:
         self._findings = findings
 
-    def detect(self, root_path: str) -> List[Finding]:
+    def detect(self, root_path: str) -> list[Finding]:
         return list(self._findings)
 
 
@@ -33,7 +31,7 @@ class FailingDetector:
     name = "boom"
     category = CATEGORY_LLM_SDK
 
-    def detect(self, root_path: str) -> List[Finding]:
+    def detect(self, root_path: str) -> list[Finding]:
         raise RuntimeError("simulated failure")
 
 

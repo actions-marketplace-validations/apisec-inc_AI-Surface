@@ -2,15 +2,11 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List
-
-import pytest
 
 from ai_surface.detectors.env_keys import EnvKeyDetector
 from ai_surface.reporters.json_reporter import render_json
 from ai_surface.reporters.markdown_reporter import render_markdown
 from ai_surface.types import CATEGORY_ENV_KEY, Finding, Report
-
 
 FIXTURES = Path(__file__).parent / "fixtures" / "env_keys"
 
@@ -26,7 +22,7 @@ FAKE_VALUES = (
 )
 
 
-def _build_report(findings: List[Finding]) -> Report:
+def _build_report(findings: list[Finding]) -> Report:
     return Report(
         findings=findings,
         scan_root=str(FIXTURES),

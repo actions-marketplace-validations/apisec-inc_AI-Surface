@@ -6,8 +6,6 @@ visible without scrolling.
 """
 from __future__ import annotations
 
-from typing import Dict, List, Optional
-
 from rich.console import Console
 from rich.padding import Padding
 from rich.rule import Rule
@@ -15,7 +13,6 @@ from rich.text import Text
 
 from ..cross_promo import build_upgrade_url, headline_finding, specialists_for_report
 from ..types import (
-    ALL_CATEGORIES,
     CATEGORY_AGENT_FRAMEWORK,
     CATEGORY_AI_INFRA,
     CATEGORY_ENV_KEY,
@@ -26,8 +23,7 @@ from ..types import (
     Report,
 )
 
-
-CATEGORY_DISPLAY: Dict[str, str] = {
+CATEGORY_DISPLAY: dict[str, str] = {
     CATEGORY_LLM_SDK: "LLM SDK CALL SITES",
     CATEGORY_AGENT_FRAMEWORK: "AGENT FRAMEWORKS",
     CATEGORY_MCP_SERVER: "MCP SERVERS",
@@ -36,7 +32,7 @@ CATEGORY_DISPLAY: Dict[str, str] = {
     CATEGORY_ENV_KEY: "AI PROVIDER API KEYS",
 }
 
-CATEGORY_ORDER: List[str] = [
+CATEGORY_ORDER: list[str] = [
     CATEGORY_LLM_SDK,
     CATEGORY_AGENT_FRAMEWORK,
     CATEGORY_MCP_SERVER,
@@ -48,7 +44,7 @@ CATEGORY_ORDER: List[str] = [
 
 def render_terminal(
     report: Report,
-    console: Optional[Console] = None,
+    console: Console | None = None,
     verbose: bool = False,
 ) -> None:
     """Render `report` as a rich-styled CLI output.
@@ -101,7 +97,7 @@ def _render_summary_line(report: Report, console: Console) -> None:
     surface_word = "surfaces" if surface_count != 1 else "surface"
     risk_word = "indicators" if risk_count != 1 else "indicator"
 
-    parts: List[str] = [
+    parts: list[str] = [
         f"[bold green]{surface_count}[/bold green] production AI {surface_word}",
     ]
     if risk_count:
@@ -131,7 +127,7 @@ def _render_empty(report: Report, console: Console) -> None:
 
 def _render_category(
     category: str,
-    findings: List[Finding],
+    findings: list[Finding],
     console: Console,
     verbose: bool = False,
 ) -> None:

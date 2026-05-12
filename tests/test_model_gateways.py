@@ -194,7 +194,8 @@ def test_non_ai_k8s_deployment_ignored(tmp_path: Path) -> None:
         "apiVersion: apps/v1\n"
         "kind: Deployment\n"
         "metadata:\n  name: nginx\n  namespace: web\n"
-        "spec:\n  template:\n    spec:\n      containers:\n        - name: nginx\n          image: nginx:1.25\n",
+        "spec:\n  template:\n    spec:\n"
+        "      containers:\n        - name: nginx\n          image: nginx:1.25\n",
         encoding="utf-8",
     )
     findings = ModelGatewayDetector().detect(str(tmp_path))

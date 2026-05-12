@@ -118,7 +118,7 @@ def _filter_detectors_by_category(detectors: list, allowed: Optional[Set[str]]) 
     return [d for d in detectors if getattr(d, "category", None) in allowed]
 
 
-def _print_quiet_summary(report) -> None:  # type: ignore[no-untyped-def]
+def _print_quiet_summary(report) -> None:
     """One-line summary for CI / scripted use."""
     surfaces = len(report.findings)
     risks = sum(len(f.risk_indicators) for f in report.findings)

@@ -2,18 +2,14 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, List
-
-import pytest
 
 from ai_surface.detectors.llm_sdks import LlmSdkDetector
 from ai_surface.types import CATEGORY_LLM_SDK, Finding
 
-
 FIXTURES = Path(__file__).parent / "fixtures" / "llm_sdks"
 
 
-def _by_surface(findings: List[Finding]) -> Dict[str, Finding]:
+def _by_surface(findings: list[Finding]) -> dict[str, Finding]:
     return {f.surface: f for f in findings}
 
 

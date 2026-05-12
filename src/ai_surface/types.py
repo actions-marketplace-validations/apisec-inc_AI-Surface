@@ -10,8 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Protocol, runtime_checkable
-
+from typing import Any, Protocol, runtime_checkable
 
 # Categories that detectors can claim. Keep this list short and stable.
 # New detectors should reuse one of these or propose adding a category.
@@ -36,16 +35,16 @@ ALL_CATEGORIES = (
 class Evidence:
     """Where a finding came from. Always include enough for a human to verify."""
 
-    files: List[str] = field(default_factory=list)
+    files: list[str] = field(default_factory=list)
     """File paths (relative to scan root) where the surface was found."""
 
     snippet: str = ""
     """A short code/config snippet showing the detection. Truncate to ~200 chars."""
 
-    line_numbers: List[int] = field(default_factory=list)
+    line_numbers: list[int] = field(default_factory=list)
     """Optional: specific line numbers in the primary file."""
 
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     """Detector-specific extras (model name, tool list, permissions, etc.)."""
 
 
@@ -72,11 +71,11 @@ class Finding:
     evidence: Evidence
     """Where this surface was detected."""
 
-    permissions: List[str] = field(default_factory=list)
+    permissions: list[str] = field(default_factory=list)
     """What this surface can reach. Examples: ["read pages", "write pages"],
     ["repo:read", "repo:write"], ["query_customer_db", "refund_payment"]."""
 
-    risk_indicators: List[str] = field(default_factory=list)
+    risk_indicators: list[str] = field(default_factory=list)
     """Plain-English risk flags for human review. Examples:
       - "broad permissions"
       - "financial action exposed"
@@ -92,13 +91,13 @@ class Finding:
 class Report:
     """The complete output of one scan run."""
 
-    findings: List[Finding]
+    findings: list[Finding]
     scan_root: str
     scan_timestamp: str
-    detectors_run: List[str]
+    detectors_run: list[str]
     schema_version: str = "0.5"
     tool_version: str = "0.5.0"
-    errors: List[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
     """Non-fatal errors from individual detectors. Surface to user but do not abort."""
 
     @classmethod
@@ -106,14 +105,14 @@ class Report:
         """Standard ISO timestamp for scan_timestamp."""
         return datetime.now(timezone.utc).isoformat()
 
-    def by_category(self) -> Dict[str, List[Finding]]:
+    def by_category(self) -> dict[str, list[Finding]]:
         """Group findings by category for reporting."""
-        out: Dict[str, List[Finding]] = {}
+        out: dict[str, list[Finding]] = {}
         for f in self.findings:
             out.setdefault(f.category, []).append(f)
         return out
 
-    def all_risk_indicators(self) -> List[str]:
+    def all_risk_indicators(self) -> list[str]:
         """Flatten unique risk indicators across all findings."""
         seen = []
         for f in self.findings:
@@ -142,7 +141,7 @@ class Detector(Protocol):
     name: str
     category: str
 
-    def detect(self, root_path: str) -> List[Finding]:
+    def detect(self, root_path: str) -> list[Finding]:
         ...
 
 
@@ -158,4 +157,4 @@ class DetectorContext:
 
     scan_root: str
     has_git: bool = False
-    cache: Dict[str, Any] = field(default_factory=dict)
+    cache: dict[str, Any] = field(default_factory=dict)

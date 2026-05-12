@@ -20,11 +20,10 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Dict, List, Optional, Pattern, Tuple
+from re import Pattern
 
 from ..types import CATEGORY_ENV_KEY, Evidence, Finding
 from ..utils.walk import read_text_safe, relative_to_root, walk_files
-
 
 # ---------------------------------------------------------------------------
 # Provider key catalogue
@@ -38,7 +37,7 @@ from ..utils.walk import read_text_safe, relative_to_root, walk_files
 # Patterns are case-insensitive at match time. They match the entire key
 # name (^...$), so substrings like ``MY_OPENAI_API_KEY`` won't match.
 
-_KEY_RULES: Tuple[Tuple[str, str], ...] = (
+_KEY_RULES: tuple[tuple[str, str], ...] = (
     # --- Azure OpenAI (must precede plain OpenAI) ---
     (r"AZURE_OPENAI_[A-Z0-9_]+", "Azure OpenAI"),
 
@@ -93,7 +92,7 @@ _KEY_RULES: Tuple[Tuple[str, str], ...] = (
 )
 
 # Compiled, fully-anchored, case-insensitive.
-_COMPILED_RULES: Tuple[Tuple[Pattern[str], str], ...] = tuple(
+_COMPILED_RULES: tuple[tuple[Pattern[str], str], ...] = tuple(
     (re.compile(rf"^{pat}$", re.IGNORECASE), label) for pat, label in _KEY_RULES
 )
 
@@ -124,9 +123,7 @@ def _is_env_file(path: Path) -> bool:
     if name.startswith(".env.") and len(name) > len(".env."):
         return True
     # *.env (e.g. staging.env). Excludes plain ".env" — already matched above.
-    if name.endswith(".env") and name != ".env":
-        return True
-    return False
+    return bool(name.endswith(".env") and name != ".env")
 
 
 # ---------------------------------------------------------------------------
@@ -141,7 +138,7 @@ _KEY_LINE_RE = re.compile(
 )
 
 
-def _classify_key(name: str) -> Optional[str]:
+def _classify_key(name: str) -> str | None:
     """Return the provider label for ``name`` or ``None`` if not an AI key."""
     upper = name.upper()
     for rx, label in _COMPILED_RULES:
@@ -175,13 +172,13 @@ class EnvKeyDetector:
     name = "env_keys"
     category = CATEGORY_ENV_KEY
 
-    def detect(self, root_path: str) -> List[Finding]:
-        files_with_hits: List[str] = []
-        key_names: List[str] = []  # preserves discovery order; deduped via seen
+    def detect(self, root_path: str) -> list[Finding]:
+        files_with_hits: list[str] = []
+        key_names: list[str] = []  # preserves discovery order; deduped via seen
         seen_keys: set = set()
-        providers: List[str] = []
+        providers: list[str] = []
         seen_providers: set = set()
-        first_snippet: Optional[str] = None
+        first_snippet: str | None = None
         has_observability = False
 
         # Walk without an extension filter; we filter by filename shape.
@@ -192,7 +189,7 @@ class EnvKeyDetector:
             if not text:
                 continue
 
-            file_keys: List[str] = []
+            file_keys: list[str] = []
             for raw in text.splitlines():
                 line = raw.lstrip()
                 # Skip blank lines and full-line comments.
@@ -229,7 +226,7 @@ class EnvKeyDetector:
         if not key_names:
             return []
 
-        risk_indicators: List[str] = []
+        risk_indicators: list[str] = []
         if len(providers) >= 3:
             risk_indicators.append("multiple AI provider keys present")
         if has_observability:

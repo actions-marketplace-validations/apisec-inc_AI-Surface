@@ -22,8 +22,9 @@ from __future__ import annotations
 import json
 import logging
 import re
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
+from typing import Any
 
 from ..types import CATEGORY_MCP_SERVER, Evidence, Finding
 from ..utils.walk import read_text_safe, relative_to_root, walk_files
@@ -85,14 +86,14 @@ class McpServerDetector:
     name = "mcp-servers"
     category = CATEGORY_MCP_SERVER
 
-    def detect(self, root_path: str) -> List[Finding]:
-        findings: List[Finding] = []
+    def detect(self, root_path: str) -> list[Finding]:
+        findings: list[Finding] = []
         findings.extend(self._detect_configs(root_path))
         findings.extend(self._detect_source(root_path))
         return findings
 
-    def _detect_configs(self, root_path: str) -> List[Finding]:
-        out: List[Finding] = []
+    def _detect_configs(self, root_path: str) -> list[Finding]:
+        out: list[Finding] = []
         root = Path(root_path).resolve()
         for path in walk_files(root_path, extensions=[".json", ".yaml", ".yml"]):
             if not _is_mcp_config_path(path, root):
@@ -108,8 +109,8 @@ class McpServerDetector:
                 out.append(_finding_from_config(rel, server_name, server_cfg, text))
         return out
 
-    def _detect_source(self, root_path: str) -> List[Finding]:
-        out: List[Finding] = []
+    def _detect_source(self, root_path: str) -> list[Finding]:
+        out: list[Finding] = []
         exts = [".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"]
         for path in walk_files(root_path, extensions=exts):
             text = read_text_safe(path)
@@ -158,7 +159,7 @@ def _is_mcp_config_path(path: Path, root: Path) -> bool:
     return False
 
 
-def _parse_mcp_config(path: Path, text: str) -> List[Tuple[str, Dict[str, Any]]]:
+def _parse_mcp_config(path: Path, text: str) -> list[tuple[str, dict[str, Any]]]:
     """Parse an MCP config file → ``[(server_name, cfg), ...]``. Empty on failure."""
     if path.suffix.lower() == ".json":
         try:
@@ -176,7 +177,7 @@ def _parse_mcp_config(path: Path, text: str) -> List[Tuple[str, Dict[str, Any]]]
 
 def _extract_servers_from_config(
     data: Any, path: Path
-) -> List[Tuple[str, Dict[str, Any]]]:
+) -> list[tuple[str, dict[str, Any]]]:
     """Recognise common MCP-config shapes and yield server entries.
 
     Shapes: ``{"mcpServers": {name: cfg}}``, ``{"servers": {name: cfg}}``,
@@ -190,7 +191,7 @@ def _extract_servers_from_config(
         if isinstance(block, dict) and block:
             return [(str(k), v if isinstance(v, dict) else {}) for k, v in block.items()]
         if isinstance(block, list) and block:
-            out: List[Tuple[str, Dict[str, Any]]] = []
+            out: list[tuple[str, dict[str, Any]]] = []
             for entry in block:
                 if not isinstance(entry, dict):
                     continue
@@ -206,7 +207,7 @@ def _extract_servers_from_config(
     return []
 
 
-def _parse_yaml_lenient(text: str) -> Optional[Dict[str, Any]]:
+def _parse_yaml_lenient(text: str) -> dict[str, Any] | None:
     """Best-effort YAML parser. Uses PyYAML if importable, else a fallback."""
     try:  # pragma: no cover - depends on environment
         import yaml  # type: ignore
@@ -221,15 +222,15 @@ def _parse_yaml_lenient(text: str) -> Optional[Dict[str, Any]]:
     return _yaml_lenient_fallback(text)
 
 
-def _yaml_lenient_fallback(text: str) -> Dict[str, Any]:
+def _yaml_lenient_fallback(text: str) -> dict[str, Any]:
     """Recover top-level mapping keys plus one level of nested mappings.
 
     Good enough for synthetic configs and the common MCP-server YAML shape;
     indentation-sensitive, ignores list entries.
     """
-    result: Dict[str, Any] = {}
-    current_parent: Optional[str] = None
-    parent_block: Dict[str, Any] = {}
+    result: dict[str, Any] = {}
+    current_parent: str | None = None
+    parent_block: dict[str, Any] = {}
     for raw in text.splitlines():
         line = raw.rstrip()
         if not line.strip() or line.lstrip().startswith("#"):
@@ -258,9 +259,9 @@ def _yaml_lenient_fallback(text: str) -> Dict[str, Any]:
     return result
 
 
-def _first_match(patterns: Iterable[re.Pattern], text: str) -> Optional[re.Match]:
+def _first_match(patterns: Iterable[re.Pattern], text: str) -> re.Match | None:
     """Return the earliest match of any pattern in ``patterns``."""
-    best: Optional[re.Match] = None
+    best: re.Match | None = None
     for pat in patterns:
         m = pat.search(text)
         if m is not None and (best is None or m.start() < best.start()):
@@ -268,10 +269,10 @@ def _first_match(patterns: Iterable[re.Pattern], text: str) -> Optional[re.Match
     return best
 
 
-def _extract_tools(text: str, *, is_python: bool) -> List[str]:
+def _extract_tools(text: str, *, is_python: bool) -> list[str]:
     """Tool names from ``@server.tool``/``@app.tool`` (Python) and ``server.tool("name", ...)``."""
-    found: List[str] = []
-    seen: Set[str] = set()
+    found: list[str] = []
+    seen: set[str] = set()
     iters = []
     if is_python:
         iters.append(_PY_TOOL_DECORATOR_RE.finditer(text))
@@ -286,11 +287,11 @@ def _extract_tools(text: str, *, is_python: bool) -> List[str]:
 
 
 def _finding_from_config(
-    rel_path: str, server_name: str, server_cfg: Dict[str, Any], full_text: str,
+    rel_path: str, server_name: str, server_cfg: dict[str, Any], full_text: str,
 ) -> Finding:
     """Build a Finding for one server declared in a config file."""
     permissions = _permissions_from_cfg(server_cfg)
-    risks: List[str] = []
+    risks: list[str] = []
     if _has_broad_permissions(permissions, server_cfg):
         risks.append("broad permissions")
     if _has_financial_action(permissions + [server_name]):
@@ -313,10 +314,10 @@ def _finding_from_config(
 
 
 def _finding_from_source(
-    rel_path: str, text: str, match: re.Match, tools: List[str],
+    rel_path: str, text: str, match: re.Match, tools: list[str],
 ) -> Finding:
     """Build a Finding for an in-house MCP server defined in source."""
-    risks: List[str] = ["in-house MCP server (custom code, audit recommended)"]
+    risks: list[str] = ["in-house MCP server (custom code, audit recommended)"]
     if _has_financial_action(tools):
         risks.append("financial action exposed")
     return Finding(
@@ -333,11 +334,11 @@ def _finding_from_source(
     )
 
 
-def _permissions_from_cfg(cfg: Dict[str, Any]) -> List[str]:
+def _permissions_from_cfg(cfg: dict[str, Any]) -> list[str]:
     """Flatten permission/capability strings from a server config."""
     if not isinstance(cfg, dict):
         return []
-    out: List[str] = []
+    out: list[str] = []
     for key in ("capabilities", "permissions", "scopes", "tools", "allowedTools"):
         val = cfg.get(key)
         if val is None:
@@ -347,9 +348,9 @@ def _permissions_from_cfg(cfg: Dict[str, Any]) -> List[str]:
         elif isinstance(val, list):
             out.extend(str(x) for x in val if isinstance(x, (str, int)))
         elif isinstance(val, dict):
-            out.extend(str(k) for k in val.keys())
-    seen: Set[str] = set()
-    uniq: List[str] = []
+            out.extend(str(k) for k in val)
+    seen: set[str] = set()
+    uniq: list[str] = []
     for p in out:
         if p not in seen:
             seen.add(p)
@@ -357,7 +358,7 @@ def _permissions_from_cfg(cfg: Dict[str, Any]) -> List[str]:
     return uniq
 
 
-def _has_broad_permissions(permissions: List[str], cfg: Dict[str, Any]) -> bool:
+def _has_broad_permissions(permissions: list[str], cfg: dict[str, Any]) -> bool:
     haystack = [p.lower() for p in permissions]
     if isinstance(cfg, dict):
         for key in ("scope", "role", "access"):
