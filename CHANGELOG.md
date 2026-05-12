@@ -13,6 +13,30 @@ All notable changes to `ai-surface` will be documented in this file. The format 
 - Agent regex now matches indented assignments inside functions (previously only module-level Agent declarations were captured).
 - Repo hygiene for public release: `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, issue templates, PR template, PyPI Trusted Publisher workflow.
 - Expanded README with "How it works (and what stays local)" section, Troubleshooting section, and explicit static-analysis / no-runtime / no-auth framing.
+- Terraform parser handles nested braces, HCL heredocs (`<<EOT ... EOT`, `<<-EOT ... EOT`), and `/* ... */` block comments. Previous `[^}]*` body capture silently truncated bodies at the first inner `}`.
+
+### Changed
+
+- Detector name `mcp-servers` is now `mcp_servers` for consistency with the other detector identifiers (`env_keys`, `llm_sdks`, `agent_frameworks`, `model_gateways`). Anyone scripting against the detector list should update; the CLI alias `--categories mcp-servers` continues to work.
+- Cross-promotion deep-link query parameter renamed from `?surface=` to `?category=` since the value being passed is the finding's category, not its surface name. The APIsec validation landing page accepts both during the v0.5 transition.
+- `Report.scan_root` now contains the basename of the scan root (e.g. `demo-app`) rather than the resolved absolute filesystem path. Reports are routinely committed to git or posted as PR comments, and absolute paths leak the user's home directory, employer name, and internal mount layout. Detectors continue to receive the resolved path internally.
+- File walker is documented as honouring the **root** `.gitignore` only. Nested per-directory `.gitignore` files, `.git/info/exclude`, and the global git excludesfile are not consulted (the implementation was always this narrow; the docs previously implied otherwise).
+
+### Security
+
+- GitHub Action refuses to run under the `pull_request_target` event. That event combines repo write secrets with attacker-controlled PR code and is the canonical supply-chain vector for Actions. The Action exits with an error before any input is read or scan is invoked. Use the `pull_request` event instead; for fork PRs, the recommended pattern is a downstream `workflow_run` workflow that consumes the artifact produced by the safe `pull_request` run.
+- File walker enforces hard resource caps to prevent denial-of-service on pathological trees: `MAX_FILES = 250,000` per traversal, `MAX_TOTAL_BYTES = 5 GiB` cumulative content size accounted via `os.lstat`. A symlink to a 100 GiB blob outside the tree contributes the symlink's own inode size (~40 bytes), not the target's.
+- `read_text_safe` refuses symlinks outright (`S_ISLNK` check after `os.lstat`) and re-bounds reads at `max_bytes` as defence-in-depth against TOCTOU races between stat and open.
+- `relative_to_root` no longer falls back to the absolute path when a path lies outside the scan root. Returns `<outside-root>/{basename}` instead so the report makes it visible that a path was redacted rather than silently truncated.
+- Fixed ReDoS in agent-framework constructor patterns. Previous DOTALL + lazy-quantifier regexes for crewai / autogen made the detector quadratic on adversarial input (~5 s per 5 K unmatched `Agent(` tokens, unresponsive at 5 MB). Patterns now anchor only the constructor opening; the body is extracted by a bracket-balanced scanner with per-call (16 KB) and per-file (256-attempt) caps. A regression test pins 5 MB of adversarial input under 8 s.
+- Fixed markdown injection in PR comment and inventory output. Snippets are now wrapped in a length-aware code fence longer than any internal backtick run, so an attacker source line containing ``` cannot break out of the fence. Surface names, file paths, permissions, and risk indicators flow through a shared sanitiser that strips control characters, angle brackets, backticks, and leading markdown structural characters.
+
+### Fixed
+
+- `_PROMPT_NONLITERAL` flow detector no longer flags `None`, `True`, `False`, or other Python keywords as "non-literal data flow into LLM call."
+- Word-boundary tokenisation in broad-permission / financial-action classifiers eliminates substring false positives (`install_app` no longer matches `all`, `customer_address` no longer matches `customer`, etc.).
+- LLM SDK detector resolves model names to the SDK they belong to via affinity heuristics, so a file using both Anthropic and OpenAI SDKs no longer cross-attributes models.
+- LangChain `AgentExecutor(agent=...)` wraps are now recognised and merged with the underlying agent rather than emitting a duplicate finding.
 
 ## [0.5.0] - 2026-05-11
 
