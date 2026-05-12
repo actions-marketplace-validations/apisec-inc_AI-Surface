@@ -168,6 +168,8 @@ ai-surface scan .
 
 Requires **Python 3.9 or newer**. The CLI scan runs 100% locally with no network calls.
 
+> **Want to see it in action?** Clone the repo and run `ai-surface scan examples/demo-app/` against the included [demo app](examples/demo-app/). It exercises every detector category and produces a rich sample report. Captured outputs in [`examples/sample-outputs/`](examples/sample-outputs/).
+
 <br>
 
 ## GitHub Action
@@ -467,6 +469,7 @@ Adding a detector: implement the `Detector` protocol in `types.py`, register in 
 
 | Resource | Link |
 |---|---|
+| **Examples** | [examples/](examples/) (demo app, sample outputs, CI workflow templates) |
 | **Issues** | [github.com/apisec-inc/AI-Surface/issues](https://github.com/apisec-inc/AI-Surface/issues) |
 | **Discussions** | [github.com/apisec-inc/AI-Surface/discussions](https://github.com/apisec-inc/AI-Surface/discussions) |
 | **Changelog** | [CHANGELOG.md](CHANGELOG.md) |

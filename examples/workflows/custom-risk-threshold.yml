@@ -1,0 +1,50 @@
+# ai-surface PR check with custom risk-severity gating.
+#
+# Pattern: don't fail on every risk, only on a defined high-severity subset.
+# Useful when you want to allow some risks (observability keys, multi-key
+# present) but block on others (financial, destructive, blast-radius).
+
+name: AI Surface Check (Custom Threshold)
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  ai-surface:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: scan
+        uses: apisec-inc/AI-Surface@v0
+        with:
+          path: '.'
+          comment-on-pr: 'true'
+          fail-on-risk: 'false'    # we'll enforce below
+
+      - name: Block on high-severity risks only
+        run: |
+          HIGH_RISKS=$(jq '
+            [
+              .findings[].risk_indicators[] |
+              select(
+                . == "broad permissions"
+                or . == "financial action exposed"
+                or . == "destructive action exposed"
+                or . == "high blast-radius combination"
+              )
+            ] | length
+          ' "${{ steps.scan.outputs.json-report }}")
+
+          if [ "$HIGH_RISKS" -gt 0 ]; then
+            echo "::error::Blocking due to $HIGH_RISKS high-severity AI surface risks. See PR comment for detail."
+            exit 1
+          fi
+
+          echo "No high-severity risks. Proceeding."

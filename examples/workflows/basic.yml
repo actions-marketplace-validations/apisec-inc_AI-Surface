@@ -1,0 +1,29 @@
+# Basic ai-surface PR check.
+# Drop this into .github/workflows/ai-surface.yml in your own repo.
+#
+# Triggers on every pull request. Posts a sticky comment showing what AI
+# surfaces the PR adds, modifies, or removes. Does NOT block merges.
+
+name: AI Surface Check
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  ai-surface:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0    # required for base-vs-head diff
+
+      - uses: apisec-inc/AI-Surface@v0
+        with:
+          path: '.'
+          comment-on-pr: 'true'
+          fail-on-risk: 'false'

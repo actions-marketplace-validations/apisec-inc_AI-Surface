@@ -1,0 +1,38 @@
+# CircleCI configuration for ai-surface.
+#
+# Runs on every PR. Generates a JSON report as a job artifact for downstream
+# review. Doesn't auto-post a PR comment (CircleCI doesn't directly integrate
+# with GitHub comments), but the JSON artifact is available in the CircleCI UI.
+
+version: 2.1
+
+jobs:
+  ai-surface:
+    docker:
+      - image: cimg/python:3.11
+    steps:
+      - checkout
+
+      - run:
+          name: Install ai-surface
+          command: pip install ai-surface
+
+      - run:
+          name: Scan PR head
+          command: ai-surface scan . --output json > head.json
+
+      - run:
+          name: Quick summary
+          command: ai-surface scan . --quiet
+
+      - store_artifacts:
+          path: head.json
+          destination: ai-surface-report.json
+
+workflows:
+  pr-check:
+    jobs:
+      - ai-surface:
+          filters:
+            branches:
+              ignore: main

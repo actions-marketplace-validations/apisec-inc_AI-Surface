@@ -1,0 +1,41 @@
+# Refresh the committed AI inventory when main is updated.
+#
+# Pattern: on every merge to main, regenerate .ai-inventory.md and commit it
+# back to main. This keeps the inventory file fresh as a baseline for the
+# diff comments on subsequent PRs.
+
+name: Refresh AI Inventory
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write    # required to commit the inventory back
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install ai-surface
+        run: pip install ai-surface
+
+      - name: Generate inventory
+        run: ai-surface scan . --write-inventory
+
+      - name: Commit inventory if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if ! git diff --quiet .ai-inventory.md; then
+            git add .ai-inventory.md
+            git commit -m "chore: refresh AI surface inventory"
+            git push
+          else
+            echo "Inventory unchanged. Nothing to commit."
+          fi

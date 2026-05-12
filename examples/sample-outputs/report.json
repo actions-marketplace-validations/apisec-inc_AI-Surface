@@ -1,0 +1,315 @@
+{
+  "schema_version": "0.5",
+  "tool_version": "0.5.0",
+  "scan_root": "/Users/rajaramramanathan/ACTIVE/NG/ai-surface/examples/demo-app",
+  "scan_timestamp": "2026-05-12T01:25:23.068424+00:00",
+  "detectors_run": [
+    "mcp-servers",
+    "llm_sdks",
+    "agent_frameworks",
+    "env_keys",
+    "model_gateways"
+  ],
+  "findings_count": 11,
+  "findings": [
+    {
+      "surface": "MCP Server: github-mcp",
+      "category": "mcp-server",
+      "evidence": {
+        "files": [
+          ".mcp.json"
+        ],
+        "snippet": "\"github-mcp\": {",
+        "line_numbers": [],
+        "metadata": {
+          "server_name": "github-mcp",
+          "config_keys": [
+            "tools",
+            "url"
+          ],
+          "source": "config"
+        }
+      },
+      "permissions": [
+        "repo:read",
+        "issues:write",
+        "admin"
+      ],
+      "risk_indicators": [
+        "broad permissions"
+      ],
+      "detector_name": "mcp-servers"
+    },
+    {
+      "surface": "MCP Server: stripe-mcp",
+      "category": "mcp-server",
+      "evidence": {
+        "files": [
+          ".mcp.json"
+        ],
+        "snippet": "\"stripe-mcp\": {",
+        "line_numbers": [],
+        "metadata": {
+          "server_name": "stripe-mcp",
+          "config_keys": [
+            "args",
+            "command",
+            "tools"
+          ],
+          "source": "config"
+        }
+      },
+      "permissions": [
+        "read_charges",
+        "refund",
+        "customer:read"
+      ],
+      "risk_indicators": [
+        "financial action exposed"
+      ],
+      "detector_name": "mcp-servers"
+    },
+    {
+      "surface": "MCP Server (in-house): src/orders_mcp_server.py",
+      "category": "mcp-server",
+      "evidence": {
+        "files": [
+          "src/orders_mcp_server.py"
+        ],
+        "snippet": "`,   `destructive action exposed`, `database write exposed` \"\"\" from __future__ import annotations  from mcp.server.fastmcp import FastMCP   mcp = FastMCP(\"orders-mcp\")   @mcp.tool() def lookup_order(",
+        "line_numbers": [
+          11
+        ],
+        "metadata": {
+          "tools": [
+            "lookup_order",
+            "refund_payment",
+            "cancel_order",
+            "delete_customer",
+            "update_record"
+          ],
+          "source": "code"
+        }
+      },
+      "permissions": [
+        "lookup_order",
+        "refund_payment",
+        "cancel_order",
+        "delete_customer",
+        "update_record"
+      ],
+      "risk_indicators": [
+        "in-house MCP server (custom code, audit recommended)",
+        "financial action exposed"
+      ],
+      "detector_name": "mcp-servers"
+    },
+    {
+      "surface": "Anthropic SDK",
+      "category": "llm-sdk",
+      "evidence": {
+        "files": [
+          "src/llm_service.py"
+        ],
+        "snippet": "from anthropic import Anthropic",
+        "line_numbers": [],
+        "metadata": {
+          "models_used": [
+            "claude-sonnet-4-6",
+            "gpt-4-turbo"
+          ],
+          "call_site_count": 1
+        }
+      },
+      "permissions": [],
+      "risk_indicators": [
+        "non-literal data flows into LLM call"
+      ],
+      "detector_name": "llm_sdks"
+    },
+    {
+      "surface": "OpenAI SDK",
+      "category": "llm-sdk",
+      "evidence": {
+        "files": [
+          "src/llm_service.py"
+        ],
+        "snippet": "from openai import OpenAI",
+        "line_numbers": [],
+        "metadata": {
+          "models_used": [
+            "claude-sonnet-4-6",
+            "gpt-4-turbo"
+          ],
+          "call_site_count": 1
+        }
+      },
+      "permissions": [],
+      "risk_indicators": [
+        "non-literal data flows into LLM call"
+      ],
+      "detector_name": "llm_sdks"
+    },
+    {
+      "surface": "AWS Bedrock",
+      "category": "llm-sdk",
+      "evidence": {
+        "files": [
+          "src/support_workflow.py"
+        ],
+        "snippet": "from strands.models import BedrockModel",
+        "line_numbers": [],
+        "metadata": {
+          "models_used": [
+            "us.anthropic.claude-sonnet-4-20250514-v1:0"
+          ],
+          "call_site_count": 1
+        }
+      },
+      "permissions": [],
+      "risk_indicators": [],
+      "detector_name": "llm_sdks"
+    },
+    {
+      "surface": "AWS Strands Agent: triage_agent (in src/support_workflow.py)",
+      "category": "agent-framework",
+      "evidence": {
+        "files": [
+          "src/support_workflow.py"
+        ],
+        "snippet": "triage_agent = Agent(",
+        "line_numbers": [
+          40
+        ],
+        "metadata": {
+          "framework": "strands",
+          "agent_name": "triage_agent",
+          "tool_count": 3
+        }
+      },
+      "permissions": [
+        "fetch_customer_profile",
+        "search_knowledge_base",
+        "escalate_to_human"
+      ],
+      "risk_indicators": [],
+      "detector_name": "agent_frameworks"
+    },
+    {
+      "surface": "LangChain Agent: support_agent (in src/chat_agent.py)",
+      "category": "agent-framework",
+      "evidence": {
+        "files": [
+          "src/chat_agent.py"
+        ],
+        "snippet": "support_agent = create_react_agent(llm=llm, tools=tools, prompt=\"...\")",
+        "line_numbers": [
+          41
+        ],
+        "metadata": {
+          "framework": "langchain",
+          "agent_name": "support_agent",
+          "tool_count": 3
+        }
+      },
+      "permissions": [
+        "lookup_order",
+        "refund_payment",
+        "cancel_subscription"
+      ],
+      "risk_indicators": [
+        "financial action exposed",
+        "high blast-radius combination"
+      ],
+      "detector_name": "agent_frameworks"
+    },
+    {
+      "surface": "LangChain Agent: agent_executor (in src/chat_agent.py)",
+      "category": "agent-framework",
+      "evidence": {
+        "files": [
+          "src/chat_agent.py"
+        ],
+        "snippet": "agent_executor = AgentExecutor(agent=support_agent, tools=tools)",
+        "line_numbers": [
+          42
+        ],
+        "metadata": {
+          "framework": "langchain",
+          "agent_name": "agent_executor",
+          "tool_count": 3
+        }
+      },
+      "permissions": [
+        "lookup_order",
+        "refund_payment",
+        "cancel_subscription"
+      ],
+      "risk_indicators": [
+        "financial action exposed",
+        "high blast-radius combination"
+      ],
+      "detector_name": "agent_frameworks"
+    },
+    {
+      "surface": "AI Provider API Keys",
+      "category": "env-key",
+      "evidence": {
+        "files": [
+          ".env.example"
+        ],
+        "snippet": "OPENAI_API_KEY=<redacted>",
+        "line_numbers": [],
+        "metadata": {
+          "key_names": [
+            "ANTHROPIC_API_KEY",
+            "HELICONE_API_KEY",
+            "LANGSMITH_API_KEY",
+            "OPENAI_API_KEY"
+          ],
+          "providers": [
+            "Anthropic",
+            "Helicone",
+            "LangSmith",
+            "OpenAI"
+          ]
+        }
+      },
+      "permissions": [],
+      "risk_indicators": [
+        "multiple AI provider keys present",
+        "observability/tracing key present (production telemetry to third party)"
+      ],
+      "detector_name": "env_keys"
+    },
+    {
+      "surface": "Model Gateway: LiteLLM",
+      "category": "model-gateway",
+      "evidence": {
+        "files": [
+          "litellm.config.yaml"
+        ],
+        "snippet": "model_list:",
+        "line_numbers": [],
+        "metadata": {
+          "gateway": "LiteLLM",
+          "models_routed": [
+            "claude-sonnet-4",
+            "gpt-4",
+            "bedrock-claude"
+          ]
+        }
+      },
+      "permissions": [
+        "claude-sonnet-4",
+        "gpt-4",
+        "bedrock-claude"
+      ],
+      "risk_indicators": [
+        "multi-model routing layer (production traffic flows through this)"
+      ],
+      "detector_name": "model_gateways"
+    }
+  ],
+  "errors": []
+}
