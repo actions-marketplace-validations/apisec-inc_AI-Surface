@@ -74,7 +74,7 @@ SPECIALIST_TOOLS: dict[str, SpecialistTool] = {
         "tool": "mcp-audit",
         "available": True,
         "url": "https://github.com/apisec-inc/mcp-audit",
-        "tagline": "for deep MCP server analysis",
+        "tagline": "for source-level analysis of MCP servers (shell injection, etc.)",
         "install": "pip install mcp-audit",
     },
     CATEGORY_AGENT_FRAMEWORK: {

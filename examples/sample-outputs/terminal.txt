@@ -84,6 +84,6 @@ telemetry to third party)
 through this)
 
 ────────────────────────────────────────────────────────────────────────────────
-For deep mcp server analysis: mcp-audit
+For source-level analysis of mcp servers (shell injection, etc.): mcp-audit
 Validate which surfaces are exploitable: apisec.ai/ai-validation
 
