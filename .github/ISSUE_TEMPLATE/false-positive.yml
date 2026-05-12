@@ -1,0 +1,39 @@
+name: False positive
+description: ai-surface flagged something that isn't actually an AI surface
+title: "[false positive] "
+labels: ["false-positive"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Minimal reproducers are gold — please include the smallest possible code snippet that causes the false flag.
+  - type: textarea
+    id: code-snippet
+    attributes:
+      label: Code that triggered the false finding
+      description: Paste the source code (sanitized of any actual secrets).
+      render: python
+    validations:
+      required: true
+  - type: textarea
+    id: ai-surface-output
+    attributes:
+      label: What ai-surface reported
+      description: Output of `ai-surface scan .` or relevant section. Use `--output json` if helpful.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      description: Why this code shouldn't have produced a finding.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: ai-surface version
+      placeholder: "v0.5.0"
+    validations:
+      required: true

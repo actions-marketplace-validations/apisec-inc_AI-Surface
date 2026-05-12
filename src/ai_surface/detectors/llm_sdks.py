@@ -58,6 +58,9 @@ _SDK_PATTERNS: Dict[str, List[str]] = {
         # Python: boto3.client("bedrock") or "bedrock-runtime"
         r"""boto3\.client\(\s*['"]bedrock(-runtime)?['"]""",
         r"""boto3\.client\(\s*service_name\s*=\s*['"]bedrock(-runtime)?['"]""",
+        # Python: AWS Strands SDK's Bedrock wrapper
+        r"^\s*from\s+strands\.models\s+import\s+[^#\n]*\bBedrockModel\b",
+        r"\bBedrockModel\s*\(",
         # JS/TS
         r"""['"]@aws-sdk/client-bedrock(-runtime)?['"]""",
     ],
@@ -145,12 +148,12 @@ _DETECTION_ORDER = [
 _MODEL_LITERAL = re.compile(
     r"""['"]
     (
-        anthropic\.claude-[a-z0-9.:_-]+
-      | amazon\.titan-[a-z0-9.:_-]+
-      | amazon\.nova-[a-z0-9.:_-]+
-      | meta\.llama[a-z0-9.:_-]*
-      | mistral\.[a-z0-9.:_-]+
-      | cohere\.command-[a-z0-9.:_-]+
+        (?:[a-z]{2,4}\.)?anthropic\.claude-[a-z0-9.:_-]+
+      | (?:[a-z]{2,4}\.)?amazon\.titan-[a-z0-9.:_-]+
+      | (?:[a-z]{2,4}\.)?amazon\.nova-[a-z0-9.:_-]+
+      | (?:[a-z]{2,4}\.)?meta\.llama[a-z0-9.:_-]*
+      | (?:[a-z]{2,4}\.)?mistral\.[a-z0-9.:_-]+
+      | (?:[a-z]{2,4}\.)?cohere\.command-[a-z0-9.:_-]+
       | claude-[a-z0-9._-]+
       | gpt-[a-z0-9._-]+
       | o[1-9](?:-[a-z0-9._-]+)?

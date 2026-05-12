@@ -1,0 +1,53 @@
+name: Bug report
+description: ai-surface crashed, produced invalid output, or behaved unexpectedly
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: Describe the behavior you saw.
+    validations:
+      required: true
+  - type: textarea
+    id: what-expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: Steps, ideally a minimal example. Include the exact command line.
+      render: bash
+    validations:
+      required: true
+  - type: textarea
+    id: error-output
+    attributes:
+      label: Error output (if any)
+      description: Run with `-v` for verbose mode if relevant.
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: ai-surface version
+      placeholder: "v0.5.0"
+    validations:
+      required: true
+  - type: input
+    id: python-version
+    attributes:
+      label: Python version
+      placeholder: "3.11.5"
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: "macOS 14.5 / Ubuntu 22.04 / Windows 11"
+    validations:
+      required: true

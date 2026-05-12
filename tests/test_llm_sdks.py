@@ -105,6 +105,26 @@ def test_bedrock_python_boto3_client(tmp_path: Path) -> None:
     assert any("claude-3-5-sonnet" in m for m in models)
 
 
+def test_bedrock_via_strands_sdk(tmp_path: Path) -> None:
+    """AWS Strands wraps Bedrock in BedrockModel — should still be flagged as AWS Bedrock."""
+    src = tmp_path / "strands_bedrock.py"
+    src.write_text(
+        "from strands.models import BedrockModel\n"
+        "\n"
+        "def make_model():\n"
+        '    return BedrockModel(\n'
+        '        model_id="us.anthropic.claude-sonnet-4-20250514-v1:0",\n'
+        '        region_name="us-east-1",\n'
+        '    )\n',
+        encoding="utf-8",
+    )
+    findings = LlmSdkDetector().detect(str(tmp_path))
+    by_surface = _by_surface(findings)
+    assert "AWS Bedrock" in by_surface
+    models = by_surface["AWS Bedrock"].evidence.metadata["models_used"]
+    assert any("claude-sonnet-4" in m for m in models)
+
+
 def test_azure_openai_does_not_double_count_as_openai(tmp_path: Path) -> None:
     src = tmp_path / "azure.py"
     src.write_text(

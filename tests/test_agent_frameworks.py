@@ -107,6 +107,44 @@ def test_anthropic_tools_finding(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
+# AWS Strands
+# ---------------------------------------------------------------------------
+
+
+def test_strands_agent_finding(tmp_path: Path) -> None:
+    findings = _findings_for("strands_param_hydration.py", tmp_path=tmp_path)
+    # One named Strands agent + the @tool decorators don't produce separate findings.
+    assert len(findings) == 1
+    f = findings[0]
+    assert f.category == CATEGORY_AGENT_FRAMEWORK
+    assert "AWS Strands Agent" in f.surface
+    assert "param_resolver" in f.surface
+    assert "strands_param_hydration.py" in f.surface
+    # The constructor uses bare-identifier references — the detector should
+    # fall back to @tool-decorated functions.
+    assert "lookup_endpoint" in f.permissions
+    assert "execute_endpoint" in f.permissions
+    assert "resolve_auth" in f.permissions
+    assert f.evidence.metadata["framework"] == "strands"
+    assert f.evidence.metadata["agent_name"] == "param_resolver"
+
+
+def test_strands_framework_only_fallback(tmp_path: Path) -> None:
+    """A file that imports strands but defines no Agent yields a framework-only finding."""
+    (tmp_path / "uses_strands.py").write_text(
+        "from strands.models import BedrockModel\n\n"
+        "def make_model():\n"
+        '    return BedrockModel(model_id="us.anthropic.claude-sonnet-4-20250514-v1:0")\n',
+        encoding="utf-8",
+    )
+    findings = AgentFrameworkDetector().detect(str(tmp_path))
+    assert len(findings) == 1
+    f = findings[0]
+    assert f.surface.startswith("AWS Strands (used in 1 file")
+    assert f.evidence.metadata["framework"] == "strands"
+
+
+# ---------------------------------------------------------------------------
 # Mixed & framework-only fallbacks
 # ---------------------------------------------------------------------------
 

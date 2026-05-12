@@ -53,13 +53,31 @@ for deep MCP-specific analysis.
 
 ## What this is for
 
-DevOps, Platform, and SRE engineers governing what AI ships into production. Not what AI tools your developers use locally — Cursor, Claude Code, and Copilot live in a different conversation. This is about what AI lives in the application code that ships to customers.
+DevOps, Platform, and SRE engineers governing what AI ships into production. Not what AI tools your developers use locally. Cursor, Claude Code, and Copilot live in a different conversation. This is about what AI lives in the application code that ships to customers.
 
 The job is to make AI surfaces visible and reviewable at PR time, before they reach production.
 
 ## Status
 
-**v0.5 alpha.** Code-side detection across 5 categories. CLI works end to end. GitHub Action ships in this version. Stable on real APIsec internal repos. Roadmap below.
+**v0.5 alpha.** Code-side detection across 5 categories. CLI works end to end. GitHub Action ships in this version. Stable on real APIsec internal repos. Roadmap below. Feedback is what we want most at this stage.
+
+## How it works (and what stays local)
+
+`ai-surface` is a static source-code analyzer. When you run `ai-surface scan .`, it:
+
+- Reads files from the directory you point it at, gitignore-aware
+- Pattern-matches against known AI surface signatures (imports, decorators, config keys, tool registrations)
+- Writes findings to stdout, a JSON file, a markdown file, or a PR comment via the GitHub Action
+
+It does **not**:
+
+- Run any of your code
+- Connect to APIsec, third parties, or any external service during a normal scan
+- Need credentials, tokens, or authentication to function
+- Read `.env` file *values* (key names only)
+- Persist anything beyond the report file you ask for
+
+The only network call is the GitHub Action posting a PR comment via the GitHub API, using a token your workflow provides. Local CLI runs are 100% offline.
 
 ## Install
 
@@ -135,7 +153,7 @@ Set `fail-on-risk: 'true'` to block PRs that introduce any risk indicators.
 |---|---|
 | **MCP servers** | Configured (`.mcp.json`, `mcp_servers/`) and source-resident in-house servers (Python `FastMCP`, `mcp.Server`, JS `@modelcontextprotocol/sdk`). Tool catalogs and capabilities. |
 | **LLM SDK call sites** | Anthropic, OpenAI, Azure OpenAI, AWS Bedrock, Google Generative AI, Vertex AI, Together, Mistral, Cohere, Replicate, Groq, LiteLLM. Models extracted, data-flow risk flagged. |
-| **Agent frameworks** | LangChain, LangGraph, CrewAI, LlamaIndex, AutoGen, Haystack, Semantic Kernel, Pydantic AI, plus Anthropic-shape `tools=[{...}]`. Tool inventories per agent. |
+| **Agent frameworks** | LangChain, LangGraph, CrewAI, LlamaIndex, AutoGen, Haystack, Semantic Kernel, Pydantic AI, AWS Strands, plus Anthropic-shape `tools=[{...}]`. Tool inventories per agent. |
 | **AI provider env keys** | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `AZURE_OPENAI_*`, `GROQ_API_KEY`, `LANGSMITH_API_KEY`, etc. across `.env` files. **Names only, never values.** |
 | **Model gateways and AI infra** | LiteLLM proxy configs, Portkey, Helicone, Cloudflare AI Gateway, Kubernetes deployments running ollama/vllm/text-generation-inference, Terraform Bedrock provisioned throughput. |
 
@@ -222,7 +240,19 @@ Most AI security and observability tools see AI activity AFTER it ships: `Helico
 
 ## Cross-sell
 
-`ai-surface` tells you what AI surfaces exist. To validate which ones are actually exploitable in a running application — agent-to-tool authorization, integration chain exploits, BOLA across the agent layer, dual-evidence findings backed by code AND runtime — see [APIsec](https://apisec.ai/ai-validation).
+`ai-surface` tells you what AI surfaces exist. To validate which ones are actually exploitable in a running application (agent-to-tool authorization, integration chain exploits, BOLA across the agent layer, replayable evidence backed by code AND runtime), see [APIsec](https://apisec.ai/ai-validation).
+
+## Troubleshooting
+
+**No findings on a repo I know has AI code.** Confirm the scan path includes the directories with the AI code (not just the repo root if your AI code lives in a subdirectory). Run with `--verbose` to see all files walked. Check that your `.gitignore` isn't excluding the relevant paths.
+
+**Scan crashes with a detector error.** Run with `--verbose` to see the exception detail. File a bug with the redacted source file that triggered the crash. The orchestrator isolates detector failures so one broken detector doesn't kill the whole report, but we still want to fix the underlying issue.
+
+**GitHub Action posts no comment.** Check that the workflow has `pull-requests: write` permissions and that `comment-on-pr: 'true'` is set. The Action posts a sticky comment, so subsequent runs update the existing comment rather than creating a new one.
+
+**Diff comment shows the full inventory instead of just changes.** This happens when the base branch isn't reachable. Confirm `fetch-depth: 0` is set on the checkout step. For fork PRs without base history, the full inventory is the expected fallback.
+
+**False positive or missing detection.** Please file an issue with a minimal reproducer. See the templates under `.github/ISSUE_TEMPLATE/`.
 
 ## Development
 

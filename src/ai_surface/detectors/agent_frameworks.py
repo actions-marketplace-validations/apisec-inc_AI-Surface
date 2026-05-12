@@ -32,6 +32,7 @@ _FRAMEWORK_SPECS: List[Tuple[str, str, List[str], List[str]]] = [
     ("haystack", "Haystack", ["haystack"], []),
     ("semantic_kernel", "Semantic Kernel", ["semantic_kernel"], []),
     ("pydantic_ai", "Pydantic AI", ["pydantic_ai"], []),
+    ("strands", "AWS Strands", ["strands"], []),
 ]
 
 
@@ -126,7 +127,8 @@ AGENT_PATTERNS: List[Tuple[str, "re.Pattern[str]"]] = [
         "autogen",
         re.compile(r"\bAssistantAgent\s*\(\s*[^)]*?\bname\s*=\s*['\"]([^'\"]+)['\"]", re.DOTALL),
     ),
-    ("pydantic_ai", re.compile(r"^([A-Za-z_]\w*)\s*=\s*Agent\s*\(", re.MULTILINE)),
+    ("pydantic_ai", re.compile(r"^\s*([A-Za-z_]\w*)\s*=\s*Agent\s*\(", re.MULTILINE)),
+    ("strands", re.compile(r"^\s*([A-Za-z_]\w*)\s*=\s*Agent\s*\(", re.MULTILINE)),
 ]
 
 

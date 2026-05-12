@@ -1,0 +1,44 @@
+name: False negative
+description: A real AI surface exists in code that ai-surface did NOT find
+title: "[missed surface] "
+labels: ["false-negative"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Coverage gaps drive a lot of our roadmap.
+  - type: dropdown
+    id: category
+    attributes:
+      label: Surface category
+      options:
+        - LLM SDK call site
+        - Agent framework
+        - MCP server
+        - AI provider env key
+        - Model gateway / AI infra
+        - Other (please specify in description)
+    validations:
+      required: true
+  - type: textarea
+    id: code-snippet
+    attributes:
+      label: Source code that wasn't detected
+      description: Paste the smallest snippet that should have produced a finding.
+      render: python
+    validations:
+      required: true
+  - type: textarea
+    id: expected-finding
+    attributes:
+      label: What you expected ai-surface to report
+      description: e.g., framework name, tool inventory, risk indicators expected.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: ai-surface version
+      placeholder: "v0.5.0"
+    validations:
+      required: true
