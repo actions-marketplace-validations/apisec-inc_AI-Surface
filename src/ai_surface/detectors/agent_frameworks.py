@@ -186,6 +186,13 @@ _BRACKET_PAIRS = {"[": "]", "(": ")", "{": "}"}
 # detector quadratic. Real constructors fit in a few KB; the cap is generous.
 _MATCH_BRACKET_MAX_SCAN = 16 * 1024
 
+# Per-file cap on bracket-match attempts. A real source file has at most a
+# few dozen agent constructors; a file with thousands of unmatched ``Agent(``
+# openers is adversarial input designed to drive quadratic traversal cost.
+# Stop after the cap and rely on the rest of the analysis for a partial
+# inventory.
+_BRACKET_ATTEMPTS_PER_FILE = 256
+
 
 def _match_bracket(text: str, open_idx: int) -> int | None:
     """Return the index of the bracket matching the one at open_idx, or None.
@@ -454,12 +461,6 @@ class AgentFrameworkDetector:
         captured_names: set[str] = set()
         wrapped_names: set[str] = set()
 
-        # Per-file cap on bracket-match attempts. A real source file has at
-        # most a few dozen agent constructors; a file with thousands of
-        # unmatched ``Agent(`` openers is adversarial input designed to drive
-        # quadratic traversal cost. Stop after the cap and rely on the rest
-        # of the analysis for a partial inventory.
-        BRACKET_ATTEMPTS_PER_FILE = 256
         bracket_attempts = 0
         # Track the end index of the last successfully matched constructor.
         # Subsequent regex hits whose ``(`` falls inside that already-scanned
@@ -476,7 +477,7 @@ class AgentFrameworkDetector:
                     continue
                 if paren_idx <= last_match_end:
                     continue
-                if bracket_attempts >= BRACKET_ATTEMPTS_PER_FILE:
+                if bracket_attempts >= _BRACKET_ATTEMPTS_PER_FILE:
                     log.debug(
                         "agent_frameworks: bracket-match budget exhausted for %s",
                         rel_file,

@@ -23,7 +23,7 @@ from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
-from . import __version__ as _TOOL_VERSION
+from . import __version__ as _TOOL_VERSION  # noqa: N812 - module-private alias
 from .cross_promo import build_upgrade_url
 from .types import Finding, Report
 from .utils.markdown_safety import sanitise_inline as _sanitise_inline

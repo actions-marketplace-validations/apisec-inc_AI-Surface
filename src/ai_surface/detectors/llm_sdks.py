@@ -407,10 +407,12 @@ def _has_nonliteral_flow(text: str) -> bool:
     Heuristic-only: scans for `"content": <bareword>` or
     `prompt=<bareword>` (no quote, no f-string). False positives possible.
     """
-    for m in _CONTENT_NONLITERAL.finditer(text):
-        if m.group(1) not in _NONFLOW_IDENTIFIERS:
-            return True
-    for m in _PROMPT_NONLITERAL.finditer(text):
-        if m.group(1) not in _NONFLOW_IDENTIFIERS:
-            return True
-    return False
+    if any(
+        m.group(1) not in _NONFLOW_IDENTIFIERS
+        for m in _CONTENT_NONLITERAL.finditer(text)
+    ):
+        return True
+    return any(
+        m.group(1) not in _NONFLOW_IDENTIFIERS
+        for m in _PROMPT_NONLITERAL.finditer(text)
+    )

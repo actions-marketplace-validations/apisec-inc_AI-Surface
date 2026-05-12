@@ -380,10 +380,7 @@ def _has_broad_permissions(permissions: list[str], cfg: dict[str, Any]) -> bool:
             v = cfg.get(key)
             if isinstance(v, str):
                 haystack.append(v)
-    for p in haystack:
-        if _perm_words(p) & _BROAD_PERMISSION_TOKENS:
-            return True
-    return False
+    return any(_perm_words(p) & _BROAD_PERMISSION_TOKENS for p in haystack)
 
 
 def _has_financial_action(names: Iterable[str]) -> bool:

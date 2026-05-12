@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Protocol, runtime_checkable
 
-from . import __version__ as _TOOL_VERSION
+from . import __version__ as _TOOL_VERSION  # noqa: N812 - module-private alias
 
 # Categories that detectors can claim. Keep this list short and stable.
 # New detectors should reuse one of these or propose adding a category.
