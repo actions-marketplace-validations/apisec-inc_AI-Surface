@@ -25,7 +25,7 @@ ai-surface scan examples/demo-app
 You should see something close to:
 
 ```
-11 production AI surfaces · 13 risk indicators · across 5 detector(s)
+10 production AI surfaces · 11 risk indicators · across 5 detector(s)
 ```
 
 ## What the scan should find

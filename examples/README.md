@@ -18,7 +18,7 @@ Hands-on examples for `ai-surface`. Use them to see the tool in action, model yo
 ai-surface scan examples/demo-app
 ```
 
-Expected: **11 AI surfaces, 13 risk indicators, 5 detectors**.
+Expected: **10 AI surfaces, 11 risk indicators, 5 detectors**.
 
 The demo app covers:
 

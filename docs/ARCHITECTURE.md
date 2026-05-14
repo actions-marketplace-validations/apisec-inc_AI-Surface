@@ -99,7 +99,7 @@ class Detector(Protocol):
 
 That's it. The orchestrator calls `detect(root_path)`, captures exceptions, and aggregates results. A detector decides for itself how to walk files, what to read, and what shape its findings take.
 
-Most detectors share infrastructure via `utils/walk.py` (a file walker that prunes a fixed set of build/vendor directories and honours the **scan-root** `.gitignore` only — nested `.gitignore` files, `.git/info/exclude`, and the global git excludesfile are NOT consulted) and `utils/io.py` (safe text reading with encoding fallback), but neither is required by the protocol.
+Most detectors share infrastructure via `utils/walk.py` (a file walker that prunes a fixed set of build/vendor directories and honours the **scan-root** `.gitignore` only; nested `.gitignore` files, `.git/info/exclude`, and the global git excludesfile are NOT consulted) and `utils/io.py` (safe text reading with encoding fallback), but neither is required by the protocol.
 
 The walker enforces hard resource caps so a pathological or hostile tree cannot stall the scanner: `MAX_FILES = 250,000` files per traversal and `MAX_TOTAL_BYTES = 5 GiB` of cumulative content size, accounted via `os.lstat` so symlinks count as their own inode size. Per-file reads via `read_text_safe` are bounded at 5 MB and symlinks are refused outright. See `SECURITY.md` for the full threat-model rationale.
 
