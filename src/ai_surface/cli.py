@@ -149,6 +149,107 @@ def _maybe_fail_on_risk(report, enabled: bool) -> None:
         raise typer.Exit(code=1)
 
 
+def _write_baseline_file(report, bp: Path) -> None:
+    """Serialize the current scan as the baseline snapshot at `bp`.
+
+    Creates parent directories if needed. Reports the captured counts on
+    stderr so a CI log makes the snapshot visible.
+    """
+    from .reporters.json_reporter import render_json  # noqa: PLC0415
+
+    try:
+        bp.parent.mkdir(parents=True, exist_ok=True)
+        bp.write_text(render_json(report), encoding="utf-8")
+    except OSError as exc:
+        err_console.print(f"[red]error[/red]: cannot write baseline {bp}: {exc}")
+        raise typer.Exit(code=2) from exc
+    surfaces = len(report.findings)
+    risks = sum(len(f.risk_indicators) for f in report.findings)
+    err_console.print(
+        f"[green]baseline[/green]: wrote {bp} "
+        f"({surfaces} surfaces, {risks} risks captured)"
+    )
+
+
+def _load_and_diff_baseline(report, bp: Path):
+    """Load the stored baseline at `bp` and return a Diff vs the current report."""
+    from .diff import compute_diff, load_report_from_json  # noqa: PLC0415
+
+    if not bp.is_file():
+        err_console.print(
+            f"[red]error[/red]: no baseline at {bp}. "
+            "Run with --update-baseline first to capture the current state, "
+            "then re-run with --baseline."
+        )
+        raise typer.Exit(code=2)
+    try:
+        base_text = bp.read_text(encoding="utf-8")
+        base_report = load_report_from_json(base_text)
+    except OSError as exc:
+        err_console.print(f"[red]error[/red]: cannot read baseline {bp}: {exc}")
+        raise typer.Exit(code=2) from exc
+    except (json.JSONDecodeError, KeyError, TypeError) as exc:
+        err_console.print(f"[red]error[/red]: invalid baseline JSON in {bp}: {exc}")
+        raise typer.Exit(code=2) from exc
+    return compute_diff(base_report, report)
+
+
+def _render_diff(diff, output: str, quiet: bool) -> None:
+    """Render a Diff in the requested output mode.
+
+    Diff rendering reuses the existing markdown / JSON renderers from
+    diff.py. Terminal mode prints the markdown directly: it is human
+    readable and avoids inventing a second rich-styled diff renderer for
+    v0.5.3. A dedicated rich diff view can land later.
+    """
+    from .diff import diff_to_dict, render_diff_markdown  # noqa: PLC0415
+
+    if quiet:
+        _print_quiet_diff_summary(diff)
+        return
+    if output == "json":
+        console.print_json(json.dumps(diff_to_dict(diff)))
+    else:
+        # markdown is the default for diff output; terminal mode shows the
+        # same markdown source (still readable, just unstyled).
+        console.print(render_diff_markdown(diff))
+
+
+def _print_quiet_diff_summary(diff) -> None:
+    """One-line baseline-diff summary for CI / scripted use."""
+    new_risks = _count_new_risks(diff)
+    parts = [
+        f"{len(diff.added)} new",
+        f"{len(diff.modified)} modified",
+        f"{len(diff.removed)} removed",
+        f"{new_risks} new risks",
+    ]
+    console.print(f"ai-surface (vs baseline): {', '.join(parts)}")
+
+
+def _count_new_risks(diff) -> int:
+    """Risks introduced since baseline: risks on added surfaces + risks_added
+    on modified surfaces. Risks present in baseline are intentionally NOT
+    counted: --fail-on-risk in baseline mode gates on what changed, not on
+    what was already accepted."""
+    new_from_added = sum(len(f.risk_indicators) for f in diff.added)
+    new_from_modified = sum(len(c.risks_added) for c in diff.modified)
+    return new_from_added + new_from_modified
+
+
+def _maybe_fail_on_diff_risk(diff, enabled: bool) -> None:
+    """In baseline mode, gate only on NEW risks (since baseline)."""
+    if not enabled:
+        return
+    new_risks = _count_new_risks(diff)
+    if new_risks > 0:
+        err_console.print(
+            f"[red]fail-on-risk[/red]: {new_risks} new risk indicator(s) "
+            "introduced since baseline; failing as requested."
+        )
+        raise typer.Exit(code=1)
+
+
 @app.command()
 def scan(
     path: str = typer.Argument(".", help="Directory to scan."),
@@ -178,7 +279,35 @@ def scan(
         "--fail-on-risk",
         help=(
             "Exit non-zero (code 1) if any risk indicators are detected. "
+            "In --baseline mode, gates only on risks introduced since the baseline. "
             "Use to gate PRs in any CI, not just the GitHub Action."
+        ),
+    ),
+    baseline: bool = typer.Option(
+        False,
+        "--baseline",
+        help=(
+            "Compare the scan against a stored baseline file and report only "
+            "surfaces that are NEW / MODIFIED / REMOVED since the baseline. "
+            "Default baseline path is .ai-surface-baseline.json at the scan "
+            "root; override with --baseline-file."
+        ),
+    ),
+    update_baseline: bool = typer.Option(
+        False,
+        "--update-baseline",
+        help=(
+            "Capture the current scan as the baseline file and exit. "
+            "Use once after reviewing the inventory; subsequent --baseline "
+            "runs compare against this snapshot."
+        ),
+    ),
+    baseline_file: str = typer.Option(
+        ".ai-surface-baseline.json",
+        "--baseline-file",
+        help=(
+            "Path to the baseline JSON file (relative to scan root or "
+            "absolute). Default: .ai-surface-baseline.json"
         ),
     ),
     quiet: bool = typer.Option(
@@ -196,6 +325,13 @@ def scan(
 ) -> None:
     """Scan PATH for production AI surfaces and report what's there."""
     _setup_logging(verbose)
+
+    if baseline and update_baseline:
+        err_console.print(
+            "[red]error[/red]: --baseline and --update-baseline are "
+            "mutually exclusive"
+        )
+        raise typer.Exit(code=2)
 
     root = Path(path).resolve()
     if not root.is_dir():
@@ -220,6 +356,28 @@ def scan(
 
     orch = Orchestrator(detectors=detectors)
     report = orch.run(str(root))
+
+    # Resolve the baseline file path once. Relative paths are anchored at
+    # scan root so the same flag works from any working directory.
+    bp = Path(baseline_file)
+    if not bp.is_absolute():
+        bp = root / bp
+
+    # --update-baseline: capture current scan as the baseline snapshot and exit.
+    # No diff is rendered; --fail-on-risk does not gate (the user is asking
+    # the tool to ACCEPT the current state, gating on it would defeat the
+    # purpose).
+    if update_baseline:
+        _write_baseline_file(report, bp)
+        return
+
+    # --baseline: load the snapshot, diff against the current scan, render
+    # only the changes. --fail-on-risk in this mode counts only NEW risks.
+    if baseline:
+        diff = _load_and_diff_baseline(report, bp)
+        _render_diff(diff, output, quiet)
+        _maybe_fail_on_diff_risk(diff, fail_on_risk)
+        return
 
     # Quiet mode short-circuits all reporters and prints a single line.
     if quiet:

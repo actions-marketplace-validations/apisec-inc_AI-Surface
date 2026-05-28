@@ -184,3 +184,150 @@ def test_fail_on_risk_works_in_terminal_output_mode(tmp_path) -> None:
     _write_risky_env(tmp_path)
     result = runner.invoke(app, ["scan", str(tmp_path), "--fail-on-risk"])
     assert result.exit_code == 1
+
+
+# ---------------------------------------------------------------------------
+# --baseline / --update-baseline
+# ---------------------------------------------------------------------------
+
+
+def _write_two_provider_env(tmp_path) -> None:
+    """Two distinct providers: a Finding exists, but no risk yet (risk needs 3+)."""
+    (tmp_path / ".env").write_text(
+        "OPENAI_API_KEY=sk-x\nANTHROPIC_API_KEY=sk-y\n", encoding="utf-8"
+    )
+
+
+def _add_third_provider(tmp_path) -> None:
+    """Tip the env into the 'multiple AI provider keys present' risk."""
+    with (tmp_path / ".env").open("a", encoding="utf-8") as f:
+        f.write("GROQ_API_KEY=sk-z\n")
+
+
+def test_update_baseline_writes_file_and_exits_zero(tmp_path) -> None:
+    _write_two_provider_env(tmp_path)
+    result = runner.invoke(app, ["scan", str(tmp_path), "--update-baseline"])
+    assert result.exit_code == 0
+    baseline_path = tmp_path / ".ai-surface-baseline.json"
+    assert baseline_path.is_file()
+    # Captured snapshot is a valid Report JSON.
+    import json as _json
+
+    data = _json.loads(baseline_path.read_text(encoding="utf-8"))
+    assert data["findings_count"] == 1
+    assert data["schema_version"] == "0.5"
+
+
+def test_baseline_with_no_file_errors_helpfully(tmp_path) -> None:
+    result = runner.invoke(app, ["scan", str(tmp_path), "--baseline", "--quiet"])
+    assert result.exit_code == 2
+    assert "no baseline" in result.output.lower()
+    assert "--update-baseline" in result.output
+
+
+def test_baseline_unchanged_state_reports_zero_diff(tmp_path) -> None:
+    _write_two_provider_env(tmp_path)
+    snap = runner.invoke(app, ["scan", str(tmp_path), "--update-baseline"])
+    assert snap.exit_code == 0
+    result = runner.invoke(app, ["scan", str(tmp_path), "--baseline", "--quiet"])
+    assert result.exit_code == 0
+    assert "0 new" in result.output
+    assert "0 modified" in result.output
+
+
+def test_baseline_detects_new_risk_after_change(tmp_path) -> None:
+    _write_two_provider_env(tmp_path)
+    runner.invoke(app, ["scan", str(tmp_path), "--update-baseline"])
+    _add_third_provider(tmp_path)
+    result = runner.invoke(app, ["scan", str(tmp_path), "--baseline", "--quiet"])
+    assert result.exit_code == 0
+    assert "1 modified" in result.output
+    assert "1 new risks" in result.output
+
+
+def test_baseline_fail_on_risk_gates_on_new_risk_only(tmp_path) -> None:
+    """Risks already in the baseline must not trip the gate; only newly
+    introduced risks should. The baseline mode's whole point."""
+    # Start with three providers (a risk is already present in baseline).
+    (tmp_path / ".env").write_text(
+        "OPENAI_API_KEY=sk-x\nANTHROPIC_API_KEY=sk-y\nGROQ_API_KEY=sk-z\n",
+        encoding="utf-8",
+    )
+    runner.invoke(app, ["scan", str(tmp_path), "--update-baseline"])
+    # No new change: --fail-on-risk in baseline mode must NOT trip,
+    # even though the baseline-state surface still carries 1 risk.
+    result = runner.invoke(
+        app, ["scan", str(tmp_path), "--baseline", "--fail-on-risk", "--quiet"]
+    )
+    assert result.exit_code == 0
+
+
+def test_baseline_fail_on_risk_trips_when_new_risk_added(tmp_path) -> None:
+    _write_two_provider_env(tmp_path)
+    runner.invoke(app, ["scan", str(tmp_path), "--update-baseline"])
+    _add_third_provider(tmp_path)
+    result = runner.invoke(
+        app, ["scan", str(tmp_path), "--baseline", "--fail-on-risk", "--quiet"]
+    )
+    assert result.exit_code == 1
+    assert "new risk indicator" in result.output.lower()
+
+
+def test_baseline_and_update_baseline_mutually_exclusive(tmp_path) -> None:
+    result = runner.invoke(
+        app, ["scan", str(tmp_path), "--baseline", "--update-baseline"]
+    )
+    assert result.exit_code == 2
+    assert "mutually exclusive" in result.output
+
+
+def test_baseline_file_custom_path(tmp_path) -> None:
+    """--baseline-file PATH overrides the default .ai-surface-baseline.json."""
+    _write_two_provider_env(tmp_path)
+    custom = tmp_path / "snapshots" / "my-baseline.json"
+    snap = runner.invoke(
+        app,
+        ["scan", str(tmp_path), "--update-baseline", "--baseline-file", str(custom)],
+    )
+    assert snap.exit_code == 0
+    assert custom.is_file()
+    # The default path should NOT have been written.
+    assert not (tmp_path / ".ai-surface-baseline.json").exists()
+    # And --baseline against the same custom path should round-trip.
+    result = runner.invoke(
+        app,
+        [
+            "scan",
+            str(tmp_path),
+            "--baseline",
+            "--baseline-file",
+            str(custom),
+            "--quiet",
+        ],
+    )
+    assert result.exit_code == 0
+    assert "0 new" in result.output
+
+
+def test_baseline_invalid_json_errors_helpfully(tmp_path) -> None:
+    (tmp_path / ".ai-surface-baseline.json").write_text("not valid json", encoding="utf-8")
+    result = runner.invoke(app, ["scan", str(tmp_path), "--baseline", "--quiet"])
+    assert result.exit_code == 2
+    assert "invalid baseline" in result.output.lower()
+
+
+def test_baseline_added_surface_counts_its_risks_as_new(tmp_path) -> None:
+    """A wholly new surface (not in baseline) contributes its risk indicators
+    to the new-risk count. Sanity check for the gate semantics."""
+    # Baseline: empty repo, zero surfaces, zero risks.
+    runner.invoke(app, ["scan", str(tmp_path), "--update-baseline"])
+    # Now add a risky env from nothing.
+    (tmp_path / ".env").write_text(
+        "OPENAI_API_KEY=a\nANTHROPIC_API_KEY=b\nGROQ_API_KEY=c\n",
+        encoding="utf-8",
+    )
+    result = runner.invoke(
+        app, ["scan", str(tmp_path), "--baseline", "--fail-on-risk", "--quiet"]
+    )
+    assert result.exit_code == 1
+    assert "1 new" in result.output
