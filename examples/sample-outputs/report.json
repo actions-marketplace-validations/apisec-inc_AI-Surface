@@ -1,16 +1,17 @@
 {
   "schema_version": "0.5",
-  "tool_version": "0.5.1",
+  "tool_version": "0.5.2",
   "scan_root": "demo-app",
-  "scan_timestamp": "2026-05-12T20:14:02.574508+00:00",
+  "scan_timestamp": "2026-05-27T21:33:14.914740+00:00",
   "detectors_run": [
     "mcp_servers",
     "llm_sdks",
     "agent_frameworks",
     "env_keys",
-    "model_gateways"
+    "model_gateways",
+    "ai_infra"
   ],
-  "findings_count": 10,
+  "findings_count": 12,
   "findings": [
     {
       "surface": "MCP Server: github-mcp",
@@ -279,6 +280,51 @@
         "multi-model routing layer (production traffic flows through this)"
       ],
       "detector_name": "model_gateways"
+    },
+    {
+      "surface": "K8s AI Workload: vllm (in deploy/vllm-embeddings.yaml)",
+      "category": "ai-infra",
+      "evidence": {
+        "files": [
+          "deploy/vllm-embeddings.yaml"
+        ],
+        "snippet": "image: vllm/vllm-openai:latest",
+        "line_numbers": [],
+        "metadata": {
+          "image": "vllm/vllm-openai:latest",
+          "namespace": "ai",
+          "kind": "Deployment",
+          "workload_name": "vllm-embeddings",
+          "runtime": "vllm",
+          "replicas": "2"
+        }
+      },
+      "permissions": [],
+      "risk_indicators": [
+        "self-hosted LLM runtime (operational responsibility on the team)"
+      ],
+      "detector_name": "ai_infra"
+    },
+    {
+      "surface": "Bedrock provisioned throughput: anthropic.claude-sonnet-4-20250514-v1:0",
+      "category": "ai-infra",
+      "evidence": {
+        "files": [
+          "deploy/bedrock.tf"
+        ],
+        "snippet": "resource \"aws_bedrock_provisioned_model_throughput\" \"support_claude\" {",
+        "line_numbers": [],
+        "metadata": {
+          "resource_type": "aws_bedrock_provisioned_model_throughput",
+          "resource_name": "support_claude",
+          "model_id": "anthropic.claude-sonnet-4-20250514-v1:0"
+        }
+      },
+      "permissions": [],
+      "risk_indicators": [
+        "high-cost AI infrastructure (billing exposure)"
+      ],
+      "detector_name": "ai_infra"
     }
   ],
   "errors": []

@@ -25,7 +25,7 @@ ai-surface scan examples/demo-app
 You should see something close to:
 
 ```
-10 production AI surfaces · 11 risk indicators · across 5 detector(s)
+12 production AI surfaces · 13 risk indicators · across 6 detector(s)
 ```
 
 ## What the scan should find
@@ -35,7 +35,8 @@ You should see something close to:
 | **LLM SDK** | OpenAI, Anthropic, AWS Bedrock (via Strands) |
 | **Agent frameworks** | LangChain (named agent), AWS Strands (named agent) |
 | **MCP servers** | github-mcp, stripe-mcp (configured), orders-mcp (in-house) |
-| **AI provider env keys** | OpenAI + Anthropic + LangSmith + Helicone keys |
 | **Model gateways** | LiteLLM multi-provider routing config |
+| **AI infrastructure** | K8s vllm deployment (`deploy/`), Terraform Bedrock provisioned throughput |
+| **AI provider env keys** | OpenAI + Anthropic + LangSmith + Helicone keys |
 
 Captured outputs from a real scan are in [`../sample-outputs/`](../sample-outputs/).

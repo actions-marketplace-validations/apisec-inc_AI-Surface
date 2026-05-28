@@ -18,7 +18,7 @@ Hands-on examples for `ai-surface`. Use them to see the tool in action, model yo
 ai-surface scan examples/demo-app
 ```
 
-Expected: **10 AI surfaces, 11 risk indicators, 5 detectors**.
+Expected: **12 AI surfaces, 13 risk indicators, 6 detectors**.
 
 The demo app covers:
 
@@ -27,8 +27,9 @@ The demo app covers:
 | LLM SDKs | OpenAI, Anthropic, AWS Bedrock (via Strands) |
 | Agent frameworks | LangChain support agent, AWS Strands triage agent |
 | MCP servers | 2 configured (github, stripe), 1 in-house (orders) |
-| AI provider env keys | OpenAI, Anthropic, LangSmith, Helicone |
 | Model gateways | LiteLLM with 3-provider fallback chain |
+| AI infrastructure | K8s vllm deployment + Terraform Bedrock provisioned throughput |
+| AI provider env keys | OpenAI, Anthropic, LangSmith, Helicone |
 
 ## Pick a workflow
 

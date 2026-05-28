@@ -2,7 +2,7 @@
 AI Surface Report
 ────────────────────────────────────────────────────────────────────────────────
 Scanned: demo-app
-10 production AI surfaces · 11 risk indicators · across 5 detector(s)
+12 production AI surfaces · 13 risk indicators · across 6 detector(s)
 
 LLM SDK CALL SITES
   • Anthropic SDK
@@ -57,6 +57,16 @@ MODEL GATEWAYS
       ⚠ multi-model routing layer (production traffic flows through this)       
       → validate this surface                                                   
 
+AI INFRASTRUCTURE
+  • K8s AI Workload: vllm (in deploy/vllm-embeddings.yaml)
+      → deploy/vllm-embeddings.yaml                                             
+      ⚠ self-hosted LLM runtime (operational responsibility on the team)        
+      → validate this surface                                                   
+  • Bedrock provisioned throughput: anthropic.claude-sonnet-4-20250514-v1:0
+      → deploy/bedrock.tf                                                       
+      ⚠ high-cost AI infrastructure (billing exposure)                          
+      → validate this surface                                                   
+
 AI PROVIDER API KEYS
   • AI Provider API Keys
       → .env.example                                                            
@@ -65,7 +75,7 @@ AI PROVIDER API KEYS
       → validate this surface                                                   
 
 ────────────────────────────────────────────────────────────────────────────────
-Risk indicators (11):
+Risk indicators (13):
   ⚠ MCP Server: github-mcp: broad permissions
   ⚠ MCP Server: stripe-mcp: financial action exposed
   ⚠ MCP Server (in-house): src/orders_mcp_server.py: in-house MCP server (custom
@@ -82,6 +92,10 @@ combination
 telemetry to third party)
   ⚠ Model Gateway: LiteLLM: multi-model routing layer (production traffic flows 
 through this)
+  ⚠ K8s AI Workload: vllm (in deploy/vllm-embeddings.yaml): self-hosted LLM 
+runtime (operational responsibility on the team)
+  ⚠ Bedrock provisioned throughput: anthropic.claude-sonnet-4-20250514-v1:0: 
+high-cost AI infrastructure (billing exposure)
 
 ────────────────────────────────────────────────────────────────────────────────
 For source-level analysis of mcp servers (shell injection, etc.): mcp-audit
