@@ -4,6 +4,27 @@ All notable changes to `ai-surface` will be documented in this file. The format 
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-05-28
+
+### Added
+
+- **Baseline mode for the `scan` command.** Three new flags work together so a team can capture an "accepted" snapshot of the AI inventory and from then on review only what has changed:
+  - `--update-baseline` writes the current scan as the baseline snapshot at `.ai-surface-baseline.json` (or wherever `--baseline-file` points). Use it once after reviewing the initial inventory of a mature repo.
+  - `--baseline` reads the snapshot back, runs the current scan, and prints the diff (new, modified, removed surfaces). The renderer is the same one the GitHub Action already uses for PR diff comments.
+  - `--baseline-file PATH` overrides the default snapshot path so a team can store the baseline outside the scan root (for example in a separate config directory under CI control).
+  - `--fail-on-risk` paired with `--baseline` gates only on risks introduced since the snapshot. Risks that were present in the baseline and have been accepted do not retrip the gate. This is the gating semantics most teams want once they are past initial onboarding.
+- **`docs/PRIVACY.md`**, a procurement-grade data-handling contract that enumerates what the tool reads, what it writes, what network calls it makes (none for a CLI scan), what it explicitly does not do, and how to verify the claims with `strace`, `tcpdump`, or a no-network container. Linked from the README hero and from `SECURITY.md`.
+- **README privacy callout** near the top, plus a "No Telemetry" badge, so a security-conscious reader is reassured about the data posture above the fold rather than after scrolling into the internals section.
+- **Recommended first-run flow** added to the Quick Start section, walking through inventory, snapshot, and ongoing diff use.
+
+### Changed
+
+- Roadmap updated: baseline mode moves from the v0.6 planned list into the v0.5 shipped list. v0.6 now scopes to SARIF, AI-BOM export, the `.ai-surface.yml` policy file, AST-based tool resolution, and the GitLab CI component.
+
+### Tested
+
+- 190 tests passing on Python 3.9 through 3.12; ruff and mypy clean.
+
 ## [0.5.2] - 2026-05-27
 
 ### Added

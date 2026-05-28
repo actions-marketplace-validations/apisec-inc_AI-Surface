@@ -6,11 +6,14 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
-[![Version](https://img.shields.io/badge/version-0.5.2-orange.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.5.3-orange.svg)](CHANGELOG.md)
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-yellow.svg)](#status)
-[![Tests](https://img.shields.io/badge/tests-180%20passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-190%20passing-brightgreen.svg)](tests/)
+[![No Telemetry](https://img.shields.io/badge/no_telemetry-runs_offline-brightgreen.svg)](docs/PRIVACY.md)
 
 </div>
+
+> 🔒 **`ai-surface` is a static source-code analyzer that runs entirely on your machine.** A CLI scan makes no network calls and the project contains no telemetry code path of any kind, so your source never leaves the host you run it on. The full data-handling contract is in [`docs/PRIVACY.md`](docs/PRIVACY.md).
 
 Your application code is shipping AI surfaces (LLM calls, agents, MCP servers, model gateways, self-hosted runtimes) faster than DevOps can govern them. `ai-surface` runs in your CI on every PR. It **surfaces every AI component your code is about to expose to production**, flags the permissions they hold and the risks they introduce, and can **fail the build** when a PR adds a risky one. Visibility plus a kill switch, at the cheapest control point you have.
 
@@ -168,9 +171,28 @@ pip install ai-surface
 ai-surface scan .
 ```
 
-Requires **Python 3.9 or newer**. The CLI scan runs 100% locally with no network calls.
+Requires **Python 3.9 or newer**. The CLI scan runs 100% locally with no network calls. See [`docs/PRIVACY.md`](docs/PRIVACY.md) for the full data-handling contract.
 
 > **Want to see it in action?** Clone the repo and run `ai-surface scan examples/demo-app/` against the included [demo app](examples/demo-app/). It exercises every detector category and produces a rich sample report. Captured outputs in [`examples/sample-outputs/`](examples/sample-outputs/).
+
+### Recommended first-run flow on a mature repo
+
+The first scan of an established codebase will surface every AI component already shipping, which is by design but can feel like noise. The pattern that scales:
+
+```bash
+# 1. Inventory what's there today and snapshot it as the baseline.
+ai-surface scan . --update-baseline
+# → reviews the full picture once, captures it to .ai-surface-baseline.json
+
+# 2. From here on, only report what changes.
+ai-surface scan . --baseline
+# → shows ONLY new / modified / removed surfaces since the snapshot
+
+# 3. In CI, gate only on NEWLY introduced risks (not pre-existing ones).
+ai-surface scan . --baseline --fail-on-risk
+```
+
+The `.ai-surface-baseline.json` file is plain JSON. Commit it to track your team's accepted inventory in git, or add it to `.gitignore` if you prefer to regenerate locally.
 
 <br>
 
@@ -349,6 +371,12 @@ ai-surface scan . --categories infra             # AI infrastructure only
 ai-surface scan . --fail-on-risk                 # works in any CI, not just the GitHub Action
 ai-surface scan . --fail-on-risk --quiet         # gate + one-line summary
 
+# Baseline mode: snapshot the current inventory, then later show only what is NEW
+ai-surface scan . --update-baseline              # writes .ai-surface-baseline.json
+ai-surface scan . --baseline                     # diff vs the snapshot
+ai-surface scan . --baseline --fail-on-risk      # CI gate fires only on NEWLY added risks
+ai-surface scan . --baseline --baseline-file ci/baseline.json   # custom path
+
 # CI / scripted use
 ai-surface scan . --quiet                        # → ai-surface: 12 surfaces, 13 risks, 6 detectors
 
@@ -397,8 +425,8 @@ ai-surface compare base.json head.json --output json
 
 | Version | Status | What's in it |
 |---|---|---|
-| **v0.5** | Current (alpha) | Code-side detection across 6 categories, terminal + JSON + markdown reporters, GitHub Action with PR diff comments, base-vs-head comparison, 13 risk indicators, `--fail-on-risk` CI gate. Stable on real APIsec internal repos. |
-| **v0.6** | Planned | `--baseline` mode (flag only new surfaces), SARIF output, AI-BOM export (SPDX / CycloneDX), `.ai-surface.yml` policy file, AST-based tool resolution, GitLab CI component. |
+| **v0.5** | Current (alpha) | Code-side detection across 6 categories, terminal + JSON + markdown reporters, GitHub Action with PR diff comments, base-vs-head comparison, 13 risk indicators, `--fail-on-risk` CI gate, `--baseline` mode for "only new since snapshot" CLI runs. Stable on real APIsec internal repos. |
+| **v0.6** | Planned | SARIF output, AI-BOM export (SPDX / CycloneDX), `.ai-surface.yml` policy file, AST-based tool resolution, GitLab CI component. |
 | **v0.7** | Planned | kubectl plugin, live cluster discovery, GitHub repo settings ingestion. |
 | **v0.8** | Planned | Continuous mode, drift alerts, multi-repo rollup, hosted dashboard option. |
 | **v1.0** | Planned | Stable schema, plugin SDK for custom detectors, performance work for monorepos. |
@@ -407,7 +435,7 @@ ai-surface compare base.json head.json --output json
 
 ## Status
 
-**v0.5.2 alpha (May 2026).** Code-side detection across 6 categories. CLI works end to end with a `--fail-on-risk` gate for any CI. GitHub Action ships. Stable on real internal repos plus AWS Strands-based agents. Roadmap above. **Feedback is what we want most at this stage.**
+**v0.5.3 alpha (May 2026).** Code-side detection across six categories. The CLI works end to end with a `--fail-on-risk` gate that works in any CI and a `--baseline` mode that lets day-two runs surface only what has changed since a stored snapshot. The GitHub Action ships and posts sticky PR diff comments. Stable on real internal repos plus AWS Strands based agents. The roadmap above lists what is still planned, and feedback is what we want most at this stage.
 
 If you find a false positive, false negative, or bug, please [file an issue](https://github.com/apisec-inc/AI-Surface/issues) using the templates.
 

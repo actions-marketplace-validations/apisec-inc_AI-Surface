@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ai-surface"
-version = "0.5.2"
+version = "0.5.3"
 description = "Find and govern the AI surfaces in your application code at PR time. MCP servers, agent frameworks, LLM call sites, model gateways, AI infrastructure, provider keys."
 readme = "README.md"
 license = "MIT"
