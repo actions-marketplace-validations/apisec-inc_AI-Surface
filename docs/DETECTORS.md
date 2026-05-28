@@ -10,7 +10,8 @@ This document is the **detection contract**. If you're evaluating whether `ai-su
 - [Agent frameworks](#agent-frameworks)
 - [MCP servers](#mcp-servers)
 - [AI provider env keys](#ai-provider-env-keys)
-- [Model gateways and AI infrastructure](#model-gateways-and-ai-infrastructure)
+- [Model gateways](#model-gateways)
+- [AI infrastructure](#ai-infrastructure)
 - [Risk indicator vocabulary](#risk-indicator-vocabulary)
 - [Known limitations](#known-limitations)
 
@@ -155,43 +156,56 @@ Scans `.env`, `.env.example`, `.env.local`, etc. for AI provider API key **names
 - `multiple AI provider keys present`: when more than one provider's keys are configured (suggests multi-vendor AI architecture)
 - `observability/tracing key present (production telemetry to third party)`: when LangSmith, Helicone, Arize, or similar telemetry keys are present (signals where production AI data flows)
 
-## Model gateways and AI infrastructure
+## Model gateways
 
 Detector: `src/ai_surface/detectors/model_gateways.py`
 
-Scans for model gateway configs, self-hosted LLM runtimes, and AI infrastructure declarations in code, config files, IaC, and Kubernetes manifests.
-
-### Gateways
+Scans for model gateway / routing layers that sit in front of LLM providers, from config files and source-level imports / URL references.
 
 | Tool | What we look for |
 |---|---|
-| **LiteLLM** proxy | `litellm_config.yaml`, `litellm` Python imports in proxy contexts |
-| **Portkey** | `portkey-ai` SDK, Portkey config files |
-| **Helicone** | Helicone SDK setup, observability instrumentation |
-| **Cloudflare AI Gateway** | Cloudflare AI Gateway endpoint URLs, TOML configs |
+| **LiteLLM** proxy | `litellm` proxy `config.yaml` (`model_list` + `litellm_params`), `litellm.proxy` Python imports |
+| **Portkey** | `portkey-ai` SDK, `portkey-config.json` |
+| **Helicone** | Helicone proxy URLs, `HELICONE_API_KEY`, `Helicone-*` headers |
+| **Cloudflare AI Gateway** | `gateway.ai.cloudflare.com` URLs, Workers AI bindings |
+| **OpenRouter** | `openrouter.ai/api` URLs, `OPENROUTER_API_KEY` |
 
-### Self-hosted runtimes
+### Risk indicators
+
+- `multi-model routing layer (production traffic flows through this)`: gateway config detected, signaling where AI traffic concentrates
+
+## AI infrastructure
+
+Detector: `src/ai_surface/detectors/ai_infra.py`
+
+Scans for self-hosted AI runtimes and managed AI cloud resources declared in deployment specs and infrastructure-as-code. Selectable with `--categories infra`.
+
+### Self-hosted runtimes (Kubernetes / Helm / docker-compose / Dockerfiles)
+
+Workload kinds recognised in K8s manifests: `Deployment`, `StatefulSet`, `DaemonSet`, `Pod`, `Job`, `CronJob`, `ReplicaSet`, Argo `Rollout`.
 
 | Pattern | Where |
 |---|---|
-| **Ollama** | Kubernetes deployments with `ollama/ollama` image, `docker-compose.yaml` with ollama service |
-| **vLLM** | Kubernetes deployments with `vllm/vllm-openai` image, vLLM Python serve scripts |
-| **Text Generation Inference (TGI)** | Kubernetes deployments with `ghcr.io/huggingface/text-generation-inference` |
-| **LocalAI** | LocalAI container images in Kubernetes / docker-compose |
+| **Ollama** | K8s / Helm / compose image `ollama/ollama`; Dockerfile `FROM` or `ollama serve` |
+| **vLLM** | image `vllm/vllm-openai`; Dockerfile `FROM` or `vllm serve` / `vllm.entrypoints` |
+| **Text Generation Inference (TGI)** | image `huggingface/text-generation-inference`; `text-generation-launcher` |
+| **SGLang / Triton / llama.cpp / LocalAI / Aphrodite / Infinity / OpenLLM / NVIDIA NIM / Ray LLM / xinference / text-embeddings-inference** | container images in K8s / Helm / compose, or AI-runtime Dockerfiles |
+
+Dockerfiles (`Dockerfile`, `*.Dockerfile`, `Containerfile`) match on the `FROM` base image first, then fall back to serve commands (shell or JSON-array exec form).
 
 ### IaC / cloud AI infrastructure
 
 | Pattern | Source |
 |---|---|
-| Bedrock provisioned throughput | Terraform `aws_bedrock_*` resources |
-| Bedrock custom models | Terraform `aws_bedrock_custom_model` resources |
-| Sagemaker endpoints (LLM-tagged) | Terraform `aws_sagemaker_endpoint` with LLM-named models |
+| Bedrock provisioned throughput | Terraform `aws_bedrock_provisioned_model_throughput` |
+| Bedrock custom models | Terraform `aws_bedrock_custom_model` |
+| SageMaker endpoints (LLM-tagged) | Terraform `aws_sagemaker_endpoint` with LLM-named models |
+| Vertex AI endpoints | Terraform `google_vertex_ai_endpoint` |
 
 ### Risk indicators
 
-- `multi-model routing layer (production traffic flows through this)`: gateway config detected, signaling where AI traffic concentrates
-- `self-hosted LLM runtime (operational responsibility on the team)`: self-hosted ollama/vLLM/TGI detected
-- `high-cost AI infrastructure (billing exposure)`: Bedrock provisioned throughput or large GPU instances
+- `self-hosted LLM runtime (operational responsibility on the team)`: self-hosted runtime detected in a manifest, compose file, or Dockerfile
+- `high-cost AI infrastructure (billing exposure)`: managed AI compute such as Bedrock provisioned throughput or a SageMaker LLM endpoint
 
 ## Risk indicator vocabulary
 

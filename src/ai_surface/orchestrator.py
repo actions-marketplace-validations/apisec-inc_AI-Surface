@@ -115,4 +115,10 @@ def default_detectors() -> list[Detector]:
     except ImportError as e:
         log.debug("Model gateway detector unavailable: %s", e)
 
+    try:
+        from .detectors.ai_infra import AiInfraDetector  # noqa: PLC0415
+        detectors.append(AiInfraDetector())
+    except ImportError as e:
+        log.debug("AI infra detector unavailable: %s", e)
+
     return detectors

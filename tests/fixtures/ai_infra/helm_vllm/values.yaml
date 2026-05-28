@@ -1,0 +1,7 @@
+image:
+  repository: vllm/vllm-openai
+  tag: latest
+replicaCount: 1
+resources:
+  limits:
+    nvidia.com/gpu: 1
