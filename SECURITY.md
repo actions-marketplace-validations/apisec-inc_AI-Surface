@@ -35,6 +35,8 @@ Out of scope:
 
 If you believe `ai-surface` is doing any of these things contrary to its design, that itself is a security issue worth reporting.
 
+For the procurement-level data-handling contract (what is read, what is written, what network calls happen, how to verify), see [`docs/PRIVACY.md`](docs/PRIVACY.md).
+
 ## What we defend against
 
 Because the scanner regularly reads **attacker-controlled source code** (the whole point is scanning a PR's contents), the tool ships with explicit defences for the threats that follow from that posture:
