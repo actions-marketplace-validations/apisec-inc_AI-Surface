@@ -131,6 +131,24 @@ def _print_quiet_summary(report) -> None:
     console.print(f"ai-surface: {', '.join(parts)}")
 
 
+def _maybe_fail_on_risk(report, enabled: bool) -> None:
+    """Exit non-zero when --fail-on-risk is set and any risk was detected.
+
+    Exit code 1 is the gate-tripped signal (distinct from code 2, which this
+    CLI reserves for usage errors). Lets any CI block a PR on risk, not just
+    the GitHub Action.
+    """
+    if not enabled:
+        return
+    risks = sum(len(f.risk_indicators) for f in report.findings)
+    if risks > 0:
+        err_console.print(
+            f"[red]fail-on-risk[/red]: {risks} risk indicator(s) detected; "
+            "failing as requested."
+        )
+        raise typer.Exit(code=1)
+
+
 @app.command()
 def scan(
     path: str = typer.Argument(".", help="Directory to scan."),
@@ -154,6 +172,14 @@ def scan(
         False,
         "--write-inventory",
         help="Generate .ai-inventory.md alongside the terminal output.",
+    ),
+    fail_on_risk: bool = typer.Option(
+        False,
+        "--fail-on-risk",
+        help=(
+            "Exit non-zero (code 1) if any risk indicators are detected. "
+            "Use to gate PRs in any CI, not just the GitHub Action."
+        ),
     ),
     quiet: bool = typer.Option(
         False,
@@ -198,6 +224,7 @@ def scan(
     # Quiet mode short-circuits all reporters and prints a single line.
     if quiet:
         _print_quiet_summary(report)
+        _maybe_fail_on_risk(report, fail_on_risk)
         return
 
     # Render based on requested output
@@ -250,6 +277,8 @@ def scan(
                 "[yellow]warning[/yellow]: --write-inventory requested but "
                 "markdown reporter not yet implemented."
             )
+
+    _maybe_fail_on_risk(report, fail_on_risk)
 
 
 @app.command()

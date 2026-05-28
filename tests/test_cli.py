@@ -146,3 +146,41 @@ def test_scan_categories_aliases_accepted(tmp_path) -> None:
 def test_scan_nonexistent_path_exits_with_error() -> None:
     result = runner.invoke(app, ["scan", "/path/that/does/not/exist"])
     assert result.exit_code == 2
+
+
+# ---------------------------------------------------------------------------
+# --fail-on-risk gate
+# ---------------------------------------------------------------------------
+
+
+def _write_risky_env(tmp_path) -> None:
+    """Three distinct provider keys trip the 'multiple AI provider keys' risk."""
+    (tmp_path / ".env").write_text(
+        "OPENAI_API_KEY=sk-x\nANTHROPIC_API_KEY=sk-y\nGROQ_API_KEY=sk-z\n",
+        encoding="utf-8",
+    )
+
+
+def test_fail_on_risk_exits_one_when_risk_present(tmp_path) -> None:
+    _write_risky_env(tmp_path)
+    result = runner.invoke(app, ["scan", str(tmp_path), "--fail-on-risk", "--quiet"])
+    assert result.exit_code == 1
+    assert "fail-on-risk" in result.output.lower()
+
+
+def test_no_fail_on_risk_exits_zero_despite_risk(tmp_path) -> None:
+    _write_risky_env(tmp_path)
+    result = runner.invoke(app, ["scan", str(tmp_path), "--quiet"])
+    assert result.exit_code == 0
+
+
+def test_fail_on_risk_clean_dir_exits_zero(tmp_path) -> None:
+    result = runner.invoke(app, ["scan", str(tmp_path), "--fail-on-risk", "--quiet"])
+    assert result.exit_code == 0
+
+
+def test_fail_on_risk_works_in_terminal_output_mode(tmp_path) -> None:
+    """The gate must fire regardless of output format, not just --quiet."""
+    _write_risky_env(tmp_path)
+    result = runner.invoke(app, ["scan", str(tmp_path), "--fail-on-risk"])
+    assert result.exit_code == 1

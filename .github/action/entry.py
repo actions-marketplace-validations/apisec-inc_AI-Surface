@@ -435,7 +435,7 @@ def main() -> int:
 
     if inputs["fail_on_risk"] and risks > 0:
         print(f"::error::fail-on-risk is set and {risks} risk indicators were detected")
-        return 2
+        return 1
 
     return 0
 
