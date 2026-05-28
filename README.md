@@ -2,17 +2,17 @@
 
 # `ai-surface`
 
-**Inventory the AI surfaces in your application code, before they ship to production.**
+**Find and govern the AI surfaces in your code, at PR time, before they ship to production.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
-[![Version](https://img.shields.io/badge/version-0.5.1-orange.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.5.2-orange.svg)](CHANGELOG.md)
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-yellow.svg)](#status)
-[![Tests](https://img.shields.io/badge/tests-165%20passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-180%20passing-brightgreen.svg)](tests/)
 
 </div>
 
-Your application code is shipping AI surfaces (LLM calls, agents, MCP servers, model gateways) faster than DevOps can govern them. `ai-surface` runs in your CI on every PR and **surfaces every AI component your code is about to expose to production**, with the permissions they hold and the risks they introduce.
+Your application code is shipping AI surfaces (LLM calls, agents, MCP servers, model gateways, self-hosted runtimes) faster than DevOps can govern them. `ai-surface` runs in your CI on every PR. It **surfaces every AI component your code is about to expose to production**, flags the permissions they hold and the risks they introduce, and can **fail the build** when a PR adds a risky one. Visibility plus a kill switch, at the cheapest control point you have.
 
 <br>
 
@@ -41,46 +41,48 @@ Your application code is shipping AI surfaces (LLM calls, agents, MCP servers, m
 ## The 60-second demo
 
 ```console
-$ ai-surface scan .
+$ ai-surface scan examples/demo-app
 
 AI Surface Report
 ────────────────────────────────────────────────────────────────
-Scanned: /path/to/repo
-7 production AI surfaces · 9 risk indicators · across 5 detector(s)
+Scanned: demo-app
+12 production AI surfaces · 13 risk indicators · across 6 detector(s)
 
 LLM SDK CALL SITES
   • Anthropic SDK
       Models: claude-3-5-sonnet-20241022
-      → src/agents/refund.py
+      → src/llm_service.py
       ⚠ non-literal data flows into LLM call
-      → validate this surface
 
 AGENT FRAMEWORKS
-  • LangChain Agent: refund_agent (in src/agents/refund.py)
-      Tools/perms: query_db, refund_payment
+  • LangChain Agent: support_agent (in src/chat_agent.py)
+      Tools/perms: lookup_order, refund_payment, cancel_subscription
       ⚠ financial action exposed
       ⚠ high blast-radius combination
-      → validate this surface
-  • AWS Strands Agent: param_resolver (in tools/resolver.py)
-      Tools/perms: lookup_endpoint, execute_endpoint, resolve_auth
-      → validate this surface
+  • AWS Strands Agent: triage_agent (in src/support_workflow.py)
+      Tools/perms: fetch_customer_profile, search_knowledge_base, escalate_to_human
 
 MCP SERVERS
-  • MCP Server: github-mcp
-      Tools/perms: admin, write, repo:read
-      → .mcp.json
-      ⚠ broad permissions
-      → validate this surface
-  • MCP Server (in-house): src/mcp/orders_server.py
-      Tools/perms: lookup_order, refund_payment, cancel_order
+  • MCP Server: github-mcp        → ⚠ broad permissions
+  • MCP Server: stripe-mcp        → ⚠ financial action exposed
+  • MCP Server (in-house): src/orders_mcp_server.py
       ⚠ in-house MCP server (custom code, audit recommended)
       ⚠ financial action exposed
-      → validate this surface
 
+AI INFRASTRUCTURE
+  • K8s AI Workload: vllm (in deploy/vllm-embeddings.yaml)
+      ⚠ self-hosted LLM runtime (operational responsibility on the team)
+  • Bedrock provisioned throughput: anthropic.claude-sonnet-4-...
+      → deploy/bedrock.tf
+      ⚠ high-cost AI infrastructure (billing exposure)
+
+  ... (Model Gateways and AI Provider API Keys sections truncated)
 ────────────────────────────────────────────────────────────────
-For deep mcp server analysis: mcp-audit
+For source-level analysis of mcp servers: mcp-audit
 Validate which surfaces are exploitable: apisec.ai/ai-validation
 ```
+
+> Full captured output for every format is in [`examples/sample-outputs/`](examples/sample-outputs/). Add `--fail-on-risk` to exit non-zero (and fail the build) whenever any risk indicator is present.
 
 <br>
 
@@ -101,7 +103,7 @@ flowchart LR
 
 Most AI security and observability tools see AI activity **after it ships**: Helicone, LangSmith, Arize show what got called in production. Wiz and cloud platforms see what got deployed. They're useful and complementary.
 
-`ai-surface` runs at the moment a developer is about to merge a change. It catches new MCP servers, widened permissions, agents with refund authority, and PII flowing into LLM calls **before they exist in production**.
+`ai-surface` runs at the moment a developer is about to merge a change. It catches new MCP servers, widened permissions, agents with refund authority, and non-literal data flowing into LLM calls **before they exist in production**.
 
 **PR-time visibility is materially different from post-deploy telemetry.** It's where DevOps governance has the cheapest control point.
 
@@ -229,13 +231,16 @@ Set `fail-on-risk: 'true'` to block PRs that introduce any risk indicators.
 
 ## What it detects
 
+Six categories, one per detector:
+
 | Category | Coverage | Examples |
 |---|---|---|
 | **LLM SDK call sites** | 12 providers | Anthropic, OpenAI, Azure OpenAI, AWS Bedrock (direct + Strands wrapper), Google Generative AI, Vertex AI, Together, Mistral, Cohere, Replicate, Groq, LiteLLM. Models extracted, data-flow risk flagged. |
 | **Agent frameworks** | 10 frameworks | LangChain, LangGraph, CrewAI, LlamaIndex, AutoGen, Haystack, Semantic Kernel, Pydantic AI, AWS Strands, plus Anthropic-shape `tools=[{...}]`. Tool inventories per agent. |
 | **MCP servers** | Config + in-house | Configured (`.mcp.json`, `mcp_servers/`) and source-resident in-house servers (Python `FastMCP`, `mcp.Server`, JS `@modelcontextprotocol/sdk`). Tool catalogs and capabilities. |
+| **Model gateways** | Configs + source | LiteLLM proxy configs, Portkey, Helicone, Cloudflare AI Gateway, OpenRouter. Routed-model inventories. |
+| **AI infrastructure** | Manifests + IaC | Kubernetes / Helm / docker-compose workloads running ollama, vllm, TGI, SGLang, Triton, llama.cpp and others; AI-runtime Dockerfiles; Terraform Bedrock provisioned throughput / custom models, SageMaker LLM endpoints, Vertex AI endpoints. |
 | **AI provider env keys** | Names only | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `AZURE_OPENAI_*`, `GROQ_API_KEY`, `LANGSMITH_API_KEY`, etc. across `.env` files. **Never reads values.** |
-| **Model gateways + AI infra** | Configs + IaC | LiteLLM proxy configs, Portkey, Helicone, Cloudflare AI Gateway, Kubernetes deployments running ollama/vllm/text-generation-inference, Terraform Bedrock provisioned throughput. |
 
 > **See [`docs/DETECTORS.md`](docs/DETECTORS.md) for the complete coverage list, including every pattern matched and every framework version supported.**
 
@@ -281,7 +286,7 @@ sequenceDiagram
     Git->>CI: Trigger workflow
     CI->>AS: scan PR head
     AS->>AS: walk files (root .gitignore honoured)
-    AS->>AS: run 5 detectors
+    AS->>AS: run 6 detectors
     AS->>AS: aggregate findings
     AS-->>CI: head report JSON
     CI->>AS: compare against .ai-inventory.md baseline
@@ -337,10 +342,15 @@ ai-surface scan . --write-inventory              # generates .ai-inventory.md
 # Filter to specific categories
 ai-surface scan . --categories mcp               # MCP servers only
 ai-surface scan . --categories agents,llm        # agents + LLM SDKs
+ai-surface scan . --categories infra             # AI infrastructure only
 # Aliases: mcp, agents, llm, gateway, infra, keys
 
+# CI gate: exit non-zero (code 1) if any risk indicator is present
+ai-surface scan . --fail-on-risk                 # works in any CI, not just the GitHub Action
+ai-surface scan . --fail-on-risk --quiet         # gate + one-line summary
+
 # CI / scripted use
-ai-surface scan . --quiet                        # → ai-surface: 7 surfaces, 9 risks, 5 detectors
+ai-surface scan . --quiet                        # → ai-surface: 12 surfaces, 13 risks, 6 detectors
 
 # Verbose mode
 ai-surface scan . --verbose                      # all files (no truncation), surface detector errors
@@ -361,7 +371,9 @@ ai-surface compare base.json head.json --output json
 - **Live cluster scanning.** Planned for v0.7.
 - **Multi-repo or org-wide rollup.** Planned for v0.8.
 - **Prompt injection or LLM behavior testing.** Different problem; out of scope by design. See the APIsec platform for runtime exploit validation.
-- **Cross-file dataflow for tool resolution.** Regex-based today; AST in v0.6.
+- **Cross-file dataflow for tool resolution.** Regex-based today; AST in v0.6. This means the scanner can miss surfaces that only become clear across files. Treat the inventory as a strong floor, not a proof of completeness.
+- **PII / secret-value detection.** `ai-surface` flags non-literal data flow into LLM calls and the *names* of provider keys, but it does not classify PII or read secret values. Use a dedicated secret scanner (gitleaks, GitGuardian) for values.
+- **Standardised AI-BOM export** (SPDX / CycloneDX). The JSON and `.ai-inventory.md` are ai-surface's own formats today; a standard AI-BOM format is planned.
 
 <br>
 
@@ -385,8 +397,8 @@ ai-surface compare base.json head.json --output json
 
 | Version | Status | What's in it |
 |---|---|---|
-| **v0.5** | Current (alpha) | Code-side detection across 5 categories, terminal + JSON + markdown reporters, GitHub Action with PR diff comments, base-vs-head comparison, 13 risk indicators. Stable on real APIsec internal repos. |
-| **v0.6** | Planned | `.ai-surface.yml` policy file (allowlists, fail-on triggers), GitLab CI component, AST-based tool resolution, multi-document YAML support. |
+| **v0.5** | Current (alpha) | Code-side detection across 6 categories, terminal + JSON + markdown reporters, GitHub Action with PR diff comments, base-vs-head comparison, 13 risk indicators, `--fail-on-risk` CI gate. Stable on real APIsec internal repos. |
+| **v0.6** | Planned | `--baseline` mode (flag only new surfaces), SARIF output, AI-BOM export (SPDX / CycloneDX), `.ai-surface.yml` policy file, AST-based tool resolution, GitLab CI component. |
 | **v0.7** | Planned | kubectl plugin, live cluster discovery, GitHub repo settings ingestion. |
 | **v0.8** | Planned | Continuous mode, drift alerts, multi-repo rollup, hosted dashboard option. |
 | **v1.0** | Planned | Stable schema, plugin SDK for custom detectors, performance work for monorepos. |
@@ -395,7 +407,7 @@ ai-surface compare base.json head.json --output json
 
 ## Status
 
-**v0.5.1 alpha (May 2026).** Code-side detection across 5 categories. CLI works end to end. GitHub Action ships. Stable on real internal repos plus AWS Strands-based agents. Roadmap above. **Feedback is what we want most at this stage.**
+**v0.5.2 alpha (May 2026).** Code-side detection across 6 categories. CLI works end to end with a `--fail-on-risk` gate for any CI. GitHub Action ships. Stable on real internal repos plus AWS Strands-based agents. Roadmap above. **Feedback is what we want most at this stage.**
 
 If you find a false positive, false negative, or bug, please [file an issue](https://github.com/apisec-inc/AI-Surface/issues) using the templates.
 
@@ -448,17 +460,20 @@ src/ai_surface/
 ├── cli.py                  # Typer entry point
 ├── orchestrator.py         # Runs detectors, aggregates findings
 ├── types.py                # Finding, Detector protocol, Report
-├── detectors/              # One module per detector
+├── detectors/              # One module per detector (one per category)
 │   ├── mcp_servers.py
 │   ├── llm_sdks.py
 │   ├── agent_frameworks.py
 │   ├── env_keys.py
-│   └── model_gateways.py
+│   ├── model_gateways.py
+│   └── ai_infra.py
 ├── reporters/              # Output renderers
 │   ├── terminal_reporter.py
 │   ├── json_reporter.py
 │   └── markdown_reporter.py
-└── utils/walk.py           # file walker (root .gitignore only)
+└── utils/
+    ├── walk.py             # file walker (root .gitignore only)
+    └── specs.py            # shared YAML / HCL parsing helpers
 ```
 
 Adding a detector: implement the `Detector` protocol in `types.py`, register in `default_detectors()`, add fixtures + tests under `tests/`. See [CONTRIBUTING.md](CONTRIBUTING.md) for full details.

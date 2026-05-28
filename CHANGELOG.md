@@ -4,6 +4,25 @@ All notable changes to `ai-surface` will be documented in this file. The format 
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-05-27
+
+### Added
+
+- **AI infrastructure is now a first-class category with its own detector.** `ai-surface scan --categories infra` previously errored because no detector claimed the `ai-infra` category (the detection was bundled inside `model_gateways` and reported under the gateway detector's name). AI infrastructure now has a dedicated `ai_infra` detector, so the category is selectable and findings are attributed correctly. This completes the 6-category coverage the project advertises: LLM calls, agents, MCP, model gateways, **AI infrastructure**, provider keys.
+- Expanded AI infrastructure coverage:
+  - Kubernetes kinds beyond `Deployment` / `StatefulSet`: `DaemonSet`, `Pod`, `Job`, `CronJob`, `ReplicaSet`, and Argo `Rollout`.
+  - More self-hosted runtime images: SGLang, NVIDIA Triton, llama.cpp, text-embeddings-inference, LocalAI, Aphrodite, Infinity, OpenLLM, NVIDIA NIM, Ray LLM, in addition to the existing ollama / vllm / TGI / FastChat / xinference.
+  - **Dockerfiles** (`Dockerfile`, `*.Dockerfile`, `Containerfile`): matched on the `FROM` base image, with a fallback to serve commands (`vllm serve`, `ollama serve`, `text-generation-launcher`, `tritonserver`, etc.) so a generic base image that launches a runtime is still caught.
+  - **docker-compose** (`docker-compose*.yml`, `compose*.yml`): service images matched against the runtime catalogue.
+- **`--fail-on-risk` flag on the `scan` command.** Exits with code 1 when any risk indicator is detected, so a PR can be gated on risk in any CI (GitLab, CircleCI, Jenkins, pre-commit), not only via the GitHub Action. Works across all output modes including `--quiet`.
+- Demo app (`examples/demo-app/`) gains a `deploy/` directory (a Kubernetes vllm deployment and a Terraform Bedrock provisioned-throughput resource) so a scan exercises all six categories. Sample outputs in `examples/sample-outputs/` regenerated accordingly (12 surfaces, 13 risk indicators, 6 detectors).
+
+### Changed
+
+- `model_gateways` detector now covers gateways only (LiteLLM, Portkey, Helicone, Cloudflare AI Gateway, OpenRouter). Kubernetes / Helm / Terraform detection moved to the new `ai_infra` detector.
+- Shared YAML and HCL parsing helpers (multi-document split, nested-scalar lookup, image-value extraction, the brace-balanced HCL body extractor with heredoc / comment handling) extracted to `utils/specs.py` and used by both detectors, so the edge-case-heavy Terraform parser lives and is tested in one place.
+- GitHub Action `fail-on-risk` now exits with code 1 (was 2) to match the CLI gate convention. Code 2 remains reserved for usage errors.
+
 ## [0.5.1] - 2026-05-12
 
 ### Added
