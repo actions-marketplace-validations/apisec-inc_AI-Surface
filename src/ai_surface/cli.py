@@ -171,8 +171,15 @@ def _write_baseline_file(report, bp: Path) -> None:
     )
 
 
-def _load_and_diff_baseline(report, bp: Path):
-    """Load the stored baseline at `bp` and return a Diff vs the current report."""
+def _load_and_diff_baseline(report, bp: Path, allowed_categories: Optional[Set[str]] = None):
+    """Load the stored baseline at `bp` and return a Diff vs the current report.
+
+    When `allowed_categories` is non-None the baseline is filtered to the
+    same set of categories before the diff is computed. The current report
+    has already been filtered upstream via the detector category filter, so
+    without filtering the baseline too every surface in a non-matching
+    category would falsely appear as "removed" in the diff.
+    """
     from .diff import compute_diff, load_report_from_json  # noqa: PLC0415
 
     if not bp.is_file():
@@ -191,6 +198,10 @@ def _load_and_diff_baseline(report, bp: Path):
     except (json.JSONDecodeError, KeyError, TypeError) as exc:
         err_console.print(f"[red]error[/red]: invalid baseline JSON in {bp}: {exc}")
         raise typer.Exit(code=2) from exc
+    if allowed_categories is not None:
+        base_report.findings = [
+            f for f in base_report.findings if f.category in allowed_categories
+        ]
     return compute_diff(base_report, report)
 
 
@@ -373,8 +384,11 @@ def scan(
 
     # --baseline: load the snapshot, diff against the current scan, render
     # only the changes. --fail-on-risk in this mode counts only NEW risks.
+    # The same --categories filter applied to the live scan is also applied
+    # to the loaded baseline before diffing, otherwise every surface NOT in
+    # the requested categories would falsely appear as "removed".
     if baseline:
-        diff = _load_and_diff_baseline(report, bp)
+        diff = _load_and_diff_baseline(report, bp, allowed_categories)
         _render_diff(diff, output, quiet)
         _maybe_fail_on_diff_risk(diff, fail_on_risk)
         return

@@ -316,6 +316,53 @@ def test_baseline_invalid_json_errors_helpfully(tmp_path) -> None:
     assert "invalid baseline" in result.output.lower()
 
 
+def test_update_baseline_then_rescan_does_not_detect_baseline_file(tmp_path) -> None:
+    """Regression: the baseline JSON captures env-key names like
+    HELICONE_API_KEY in metadata. Without the artifact-skip rule, the
+    source-level model_gateways detector matches that text inside the
+    baseline file and produces a phantom Helicone gateway finding.
+    """
+    # Three providers including Helicone so the baseline captures its name.
+    (tmp_path / ".env").write_text(
+        "OPENAI_API_KEY=a\nANTHROPIC_API_KEY=b\nHELICONE_API_KEY=c\n",
+        encoding="utf-8",
+    )
+    snap = runner.invoke(app, ["scan", str(tmp_path), "--update-baseline", "--quiet"])
+    assert snap.exit_code == 0
+    # Re-scan now. We expect ONLY the env-keys finding, not a phantom
+    # Helicone gateway dredged from the baseline JSON.
+    result = runner.invoke(app, ["scan", str(tmp_path), "--quiet"])
+    assert result.exit_code == 0
+    assert "1 surfaces" in result.output, (
+        f"expected 1 surface (env keys only), got: {result.output!r}"
+    )
+
+
+def test_baseline_with_categories_does_not_report_spurious_removed(tmp_path) -> None:
+    """Regression: --baseline applies --categories to the live scan via
+    detector filtering. The loaded baseline must be filtered to the same
+    set, otherwise every surface outside the requested categories appears
+    as 'removed' in the diff.
+    """
+    # Baseline captures everything (env keys finding).
+    (tmp_path / ".env").write_text(
+        "OPENAI_API_KEY=a\nANTHROPIC_API_KEY=b\nGROQ_API_KEY=c\n",
+        encoding="utf-8",
+    )
+    runner.invoke(app, ["scan", str(tmp_path), "--update-baseline", "--quiet"])
+    # Now diff with --categories restricted to infra. There are no infra
+    # findings in either state, so the diff must be all zeros, not "1 removed".
+    result = runner.invoke(
+        app,
+        ["scan", str(tmp_path), "--baseline", "--categories", "infra", "--quiet"],
+    )
+    assert result.exit_code == 0
+    assert "0 removed" in result.output, (
+        f"baseline + --categories should not report spurious removals, got: "
+        f"{result.output!r}"
+    )
+
+
 def test_baseline_added_surface_counts_its_risks_as_new(tmp_path) -> None:
     """A wholly new surface (not in baseline) contributes its risk indicators
     to the new-risk count. Sanity check for the gate semantics."""

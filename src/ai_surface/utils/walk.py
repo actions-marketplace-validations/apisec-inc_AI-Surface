@@ -61,6 +61,18 @@ ALWAYS_SKIP_DIRS = frozenset(
     ]
 )
 
+# Files we always skip because they are ai-surface's own output artifacts.
+# Without this, re-scanning a repo that ran --update-baseline or
+# --write-inventory turns the saved report file into a fresh finding (the
+# baseline JSON contains literal strings like HELICONE_API_KEY in its
+# captured metadata, which the source-level gateway detector then matches).
+ALWAYS_SKIP_FILES = frozenset(
+    [
+        ".ai-surface-baseline.json",
+        ".ai-inventory.md",
+    ]
+)
+
 
 def _load_gitignore(root: Path) -> pathspec.PathSpec | None:
     """Load .gitignore at root if present. Returns None if no gitignore."""
@@ -121,6 +133,8 @@ def walk_files(
             dirnames[:] = kept
 
         for fname in filenames:
+            if fname in ALWAYS_SKIP_FILES:
+                continue
             full = Path(dirpath) / fname
             if ext_filter is not None and full.suffix.lower() not in ext_filter:
                 continue

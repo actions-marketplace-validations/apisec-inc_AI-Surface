@@ -21,9 +21,15 @@ All notable changes to `ai-surface` will be documented in this file. The format 
 
 - Roadmap updated: baseline mode moves from the v0.6 planned list into the v0.5 shipped list. v0.6 now scopes to SARIF, AI-BOM export, the `.ai-surface.yml` policy file, AST-based tool resolution, and the GitLab CI component.
 
+### Fixed
+
+- End-to-end testing of baseline mode surfaced two correctness bugs that were fixed before the release was tagged.
+- The file walker now skips ai-surface's own output artifacts (`.ai-surface-baseline.json`, `.ai-inventory.md`). Without this, re-scanning a repo that had run `--update-baseline` produced a phantom `Model Gateway: Helicone` finding because the baseline JSON captured env-key names such as `HELICONE_API_KEY` in metadata, and the source-level Helicone pattern in the gateway detector matched that text inside the baseline file. The artifact-skip rule covers the default paths; for custom `--baseline-file` paths outside the scan root the rule does not apply, and gitignoring or storing outside the scan root is the recommended pattern.
+- `--baseline` combined with `--categories` now filters the loaded baseline to the same category set before diffing. Previously every surface in a non-matching category appeared as "removed" in the diff (e.g. `--baseline --categories infra` reported every non-infra surface as removed), which was misleading.
+
 ### Tested
 
-- 190 tests passing on Python 3.9 through 3.12; ruff and mypy clean.
+- 192 tests passing on Python 3.9 through 3.12; ruff and mypy clean.
 
 ## [0.5.2] - 2026-05-27
 
