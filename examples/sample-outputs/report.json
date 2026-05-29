@@ -1,8 +1,8 @@
 {
   "schema_version": "0.5",
-  "tool_version": "0.5.2",
+  "tool_version": "0.5.3",
   "scan_root": "demo-app",
-  "scan_timestamp": "2026-05-27T21:33:14.914740+00:00",
+  "scan_timestamp": "2026-05-29T13:43:27.760413+00:00",
   "detectors_run": [
     "mcp_servers",
     "llm_sdks",
