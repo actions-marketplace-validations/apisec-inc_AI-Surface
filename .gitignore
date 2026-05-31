@@ -58,3 +58,7 @@ tests/fixtures/private/
 # Internal-only GTM / strategy working docs. These live on disk for the
 # maintainer's reference but are not part of the public repo.
 docs/GTM/
+
+# Internal-only ops / marketing scripts (lead-gen, metrics polling, etc.).
+# These are maintainer tools, not part of the OSS product surface.
+ops/
