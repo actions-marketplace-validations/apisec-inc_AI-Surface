@@ -530,8 +530,7 @@ code, pre, .mono { font-family: var(--font-mono); }
 .flag { border-radius: var(--radius-xs); border: 1px solid var(--line);
   background: var(--surface); overflow: hidden; }
 .flag + .flag { margin-top: 10px; }
-.flag-top { display: flex; align-items: center; gap: 10px; padding: 12px 14px;
-  border-left: 3px solid var(--accent); }
+.flag-top { display: flex; align-items: center; gap: 10px; padding: 12px 14px; }
 .flag-top .fid { font-family: var(--font-mono); font-size: 12px; color: var(--text); font-weight: 600; }
 .flag-top .grow { flex: 1; }
 .flag-body { padding: 0 14px 13px 17px; }
