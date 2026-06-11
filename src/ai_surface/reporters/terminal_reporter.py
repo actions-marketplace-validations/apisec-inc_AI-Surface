@@ -16,10 +16,16 @@ from ..cross_promo import build_upgrade_url, headline_finding, specialists_for_r
 from ..types import (
     CATEGORY_AGENT_FRAMEWORK,
     CATEGORY_AI_INFRA,
+    CATEGORY_API,
     CATEGORY_ENV_KEY,
     CATEGORY_LLM_SDK,
     CATEGORY_MCP_SERVER,
     CATEGORY_MODEL_GATEWAY,
+    SEVERITY_CRITICAL,
+    SEVERITY_HIGH,
+    SEVERITY_INFO,
+    SEVERITY_LOW,
+    SEVERITY_MEDIUM,
     Finding,
     Report,
 )
@@ -31,6 +37,7 @@ CATEGORY_DISPLAY: dict[str, str] = {
     CATEGORY_MODEL_GATEWAY: "MODEL GATEWAYS",
     CATEGORY_AI_INFRA: "AI INFRASTRUCTURE",
     CATEGORY_ENV_KEY: "AI PROVIDER API KEYS",
+    CATEGORY_API: "API ENDPOINTS",
 }
 
 CATEGORY_ORDER: list[str] = [
@@ -40,7 +47,27 @@ CATEGORY_ORDER: list[str] = [
     CATEGORY_MODEL_GATEWAY,
     CATEGORY_AI_INFRA,
     CATEGORY_ENV_KEY,
+    CATEGORY_API,
 ]
+
+# Rich styles for severity badges. Discovery-only findings (severity None)
+# never get a badge; absence of severity is meaningful (inventoried, not
+# assessed) so we deliberately render nothing for them.
+SEVERITY_STYLE: dict[str, str] = {
+    SEVERITY_CRITICAL: "bold white on red",
+    SEVERITY_HIGH: "bold red",
+    SEVERITY_MEDIUM: "bold yellow",
+    SEVERITY_LOW: "cyan",
+    SEVERITY_INFO: "dim",
+}
+
+
+def _severity_badge(severity: str | None) -> Text | None:
+    """Return a colored severity badge, or None for unaudited findings."""
+    if not severity:
+        return None
+    style = SEVERITY_STYLE.get(severity, "bold")
+    return Text(f" [{severity.upper()}] ", style=style)
 
 
 def render_terminal(
@@ -106,6 +133,24 @@ def _render_summary_line(report: Report, console: Console) -> None:
     parts.append(f"[dim]across {detector_count} detector(s)[/dim]")
 
     console.print(" · ".join(parts))
+
+    # Severity breakdown from the report summary (audited findings only).
+    summary = report.summary or report.build_summary()
+    if summary.by_severity:
+        sev_parts: list[str] = []
+        for sev in (
+            SEVERITY_CRITICAL,
+            SEVERITY_HIGH,
+            SEVERITY_MEDIUM,
+            SEVERITY_LOW,
+            SEVERITY_INFO,
+        ):
+            count = summary.by_severity.get(sev)
+            if count:
+                style = SEVERITY_STYLE.get(sev, "bold")
+                sev_parts.append(f"[{style}]{count} {sev}[/{style}]")
+        if sev_parts:
+            console.print("Severity: " + " · ".join(sev_parts))
     console.print()
 
 
@@ -140,9 +185,17 @@ def _render_category(
 
 
 def _render_finding(finding: Finding, console: Console, verbose: bool = False) -> None:
-    # Surface name on its own line, indented
+    # Surface name on its own line, indented. Audited findings carry a colored
+    # severity badge; discovery-only findings render exactly as before.
     surface_text = Text("  • ", style="dim") + Text(finding.surface, style="bold white")
+    badge = _severity_badge(finding.severity)
+    if badge is not None:
+        surface_text = surface_text + badge
     console.print(surface_text)
+
+    # API endpoint metadata (method/path/auth/framework) from evidence.metadata.
+    if finding.category == CATEGORY_API:
+        _render_api_metadata(finding, console)
 
     # Permissions / tools / capabilities
     if finding.permissions:
@@ -170,6 +223,10 @@ def _render_finding(finding: Finding, console: Console, verbose: bool = False) -
     for risk in finding.risk_indicators:
         console.print(Padding(Text(f"  ⚠ {risk}", style="yellow"), (0, 0, 0, 4)))
 
+    # Deep-dive audit block (risk flags, secrets, trust) when present.
+    if finding.audit is not None:
+        _render_audit(finding, console)
+
     # Inline per-finding deep link to APIsec when this finding has risk
     # indicators. Conversion bridge points reviewers at the specific surface.
     if finding.risk_indicators:
@@ -177,6 +234,95 @@ def _render_finding(finding: Finding, console: Console, verbose: bool = False) -
         console.print(
             Padding(
                 Text.from_markup(f"  [dim]→ [link={url}]validate this surface[/link][/dim]"),
+                (0, 0, 0, 4),
+            )
+        )
+
+    # Paid-platform upgrade bridges (the funnel). Short "validate at runtime"
+    # line per bridge so reviewers can route the surface into APIsec.
+    _render_bridges(finding, console)
+
+
+def _render_api_metadata(finding: Finding, console: Console) -> None:
+    """Render method + path + auth/framework for an API-category finding."""
+    meta = finding.evidence.metadata if finding.evidence else {}
+    method = str(meta.get("method", "")).strip()
+    path = str(meta.get("path", "")).strip()
+    if method or path:
+        endpoint = f"{method} {path}".strip()
+        console.print(Padding(Text(f"  Endpoint: {endpoint}", style="white"), (0, 0, 0, 4)))
+
+    extras: list[str] = []
+    framework = meta.get("framework")
+    if framework:
+        extras.append(f"framework: {framework}")
+    auth = meta.get("auth")
+    if auth:
+        extras.append(f"auth: {auth}")
+    source_spec = meta.get("source_spec")
+    if source_spec:
+        extras.append(f"spec: {source_spec}")
+    if extras:
+        console.print(Padding(Text("  " + " · ".join(extras), style="dim"), (0, 0, 0, 4)))
+
+
+def _render_audit(finding: Finding, console: Console) -> None:
+    """Render the deep-dive audit block: risk flags, secrets, and trust.
+
+    Secrets render NAME/TYPE/location only. Per the privacy guarantee there is
+    never a secret value in the report; we never read or print one.
+    """
+    audit = finding.audit
+    if audit is None:
+        return
+
+    for rf in audit.risk_flags:
+        sev_style = SEVERITY_STYLE.get(rf.severity, "bold")
+        header = Text("  ⚑ ", style=sev_style)
+        header += Text(f"[{rf.severity.upper()}] ", style=sev_style)
+        header += Text(rf.flag, style="bold white")
+        console.print(Padding(header, (0, 0, 0, 4)))
+        if rf.description:
+            console.print(Padding(Text(rf.description, style="default"), (0, 0, 0, 8)))
+        if rf.owasp:
+            console.print(
+                Padding(Text("OWASP: " + ", ".join(rf.owasp), style="dim"), (0, 0, 0, 8))
+            )
+        if rf.remediation:
+            console.print(Padding(Text(f"Fix: {rf.remediation}", style="green"), (0, 0, 0, 8)))
+
+    for secret in audit.secrets:
+        # NAME and TYPE only; never a value.
+        bits = [secret.name]
+        if secret.secret_type:
+            bits.append(f"type: {secret.secret_type}")
+        if secret.confidence:
+            bits.append(f"confidence: {secret.confidence}")
+        if secret.location:
+            bits.append(f"at: {secret.location}")
+        sev_style = SEVERITY_STYLE.get(secret.severity, "bold yellow")
+        line = Text("  ⚿ ", style=sev_style)
+        if secret.severity:
+            line += Text(f"[{secret.severity.upper()}] ", style=sev_style)
+        line += Text(" · ".join(bits), style="default")
+        console.print(Padding(line, (0, 0, 0, 4)))
+
+    if audit.trust_label:
+        trust = f"Trust: {audit.trust_label}"
+        if audit.trust_score is not None:
+            trust += f" ({audit.trust_score:g}/100)"
+        console.print(Padding(Text(f"  {trust}", style="dim"), (0, 0, 0, 4)))
+
+
+def _render_bridges(finding: Finding, console: Console) -> None:
+    """Render the paid-platform upgrade bridges for a finding."""
+    for bridge in finding.bridges:
+        console.print(
+            Padding(
+                Text.from_markup(
+                    f"  [dim]→ validate at runtime: "
+                    f"[link={bridge.url}]{rich_escape(bridge.label)}[/link][/dim]"
+                ),
                 (0, 0, 0, 4),
             )
         )
@@ -229,4 +375,10 @@ def _render_footer(report: Report, console: Console, verbose: bool = False) -> N
         f"Validate which surfaces are exploitable: "
         f"[link={upgrade_url}]apisec.ai/ai-validation[/link]"
     )
+
+    # Runtime validation routes available from this scan (report.summary).
+    summary = report.summary or report.build_summary()
+    if summary.bridges_available:
+        skus = ", ".join(summary.bridges_available)
+        console.print(f"[dim]Validate at runtime in APIsec: {skus}[/dim]")
     console.print()

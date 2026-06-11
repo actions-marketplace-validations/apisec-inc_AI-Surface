@@ -23,10 +23,16 @@ from ..cross_promo import build_upgrade_url, headline_finding, specialists_for_r
 from ..types import (
     CATEGORY_AGENT_FRAMEWORK,
     CATEGORY_AI_INFRA,
+    CATEGORY_API,
     CATEGORY_ENV_KEY,
     CATEGORY_LLM_SDK,
     CATEGORY_MCP_SERVER,
     CATEGORY_MODEL_GATEWAY,
+    SEVERITY_CRITICAL,
+    SEVERITY_HIGH,
+    SEVERITY_INFO,
+    SEVERITY_LOW,
+    SEVERITY_MEDIUM,
     Finding,
     Report,
 )
@@ -40,6 +46,7 @@ CATEGORY_HEADING: dict[str, str] = {
     CATEGORY_MODEL_GATEWAY: "Model Gateways",
     CATEGORY_AI_INFRA: "AI Infrastructure",
     CATEGORY_ENV_KEY: "AI Provider API Keys (env)",
+    CATEGORY_API: "API Endpoints",
 }
 
 CATEGORY_ORDER: list[str] = [
@@ -49,7 +56,26 @@ CATEGORY_ORDER: list[str] = [
     CATEGORY_MODEL_GATEWAY,
     CATEGORY_AI_INFRA,
     CATEGORY_ENV_KEY,
+    CATEGORY_API,
 ]
+
+# Emoji severity labels for GitHub-flavored markdown badges. Discovery-only
+# findings (severity None) get no badge; absence of severity is meaningful.
+SEVERITY_BADGE: dict[str, str] = {
+    SEVERITY_CRITICAL: "🔴 CRITICAL",
+    SEVERITY_HIGH: "🟠 HIGH",
+    SEVERITY_MEDIUM: "🟡 MEDIUM",
+    SEVERITY_LOW: "🔵 LOW",
+    SEVERITY_INFO: "⚪ INFO",
+}
+
+_SEVERITY_DISPLAY_ORDER = (
+    SEVERITY_CRITICAL,
+    SEVERITY_HIGH,
+    SEVERITY_MEDIUM,
+    SEVERITY_LOW,
+    SEVERITY_INFO,
+)
 
 
 def render_markdown(report: Report) -> str:
@@ -71,6 +97,18 @@ def render_markdown(report: Report) -> str:
         f"·  **Risk indicators:** {risk_count}"
     )
     out.append("")
+
+    # Severity breakdown from the report summary (audited findings only).
+    summary = report.summary or report.build_summary()
+    if summary.by_severity:
+        sev_bits = [
+            f"{SEVERITY_BADGE.get(sev, sev.upper())} {summary.by_severity[sev]}"
+            for sev in _SEVERITY_DISPLAY_ORDER
+            if summary.by_severity.get(sev)
+        ]
+        if sev_bits:
+            out.append("**Severity:** " + "  ·  ".join(sev_bits))
+            out.append("")
 
     if not report.findings:
         out.append("No production AI surfaces detected at scan time.")
@@ -103,8 +141,18 @@ def _append_category(out: list[str], category: str, findings: list[Finding]) -> 
 
 
 def _append_finding(out: list[str], finding: Finding) -> None:
-    out.append(f"### {_sanitise_inline(finding.surface)}")
+    # Audited findings carry a severity badge in the heading; discovery-only
+    # findings (severity None) render exactly as before.
+    heading = _sanitise_inline(finding.surface)
+    if finding.severity:
+        badge = SEVERITY_BADGE.get(finding.severity, finding.severity.upper())
+        heading = f"{badge} {heading}"
+    out.append(f"### {heading}")
     out.append("")
+
+    # API endpoint metadata (method/path/auth/framework) from evidence.metadata.
+    if finding.category == CATEGORY_API:
+        _append_api_metadata(out, finding)
 
     if finding.evidence and finding.evidence.files:
         files = finding.evidence.files
@@ -140,6 +188,10 @@ def _append_finding(out: list[str], finding: Finding) -> None:
         out.append(f"[Validate this surface →]({url})")
         out.append("")
 
+    # Deep-dive audit block (risk flags, secrets, trust) when present.
+    if finding.audit is not None:
+        _append_audit(out, finding)
+
     if finding.evidence and finding.evidence.snippet:
         snippet = finding.evidence.snippet.strip()
         if snippet:
@@ -151,6 +203,96 @@ def _append_finding(out: list[str], finding: Finding) -> None:
             out.append(body)
             out.append(fence)
             out.append("")
+
+    # Paid-platform upgrade bridges (the funnel).
+    _append_bridges(out, finding)
+
+
+def _append_api_metadata(out: list[str], finding: Finding) -> None:
+    """Render method + path + auth/framework for an API-category finding."""
+    meta = finding.evidence.metadata if finding.evidence else {}
+    method = _sanitise_inline(str(meta.get("method", "")), max_len=16)
+    path = _sanitise_inline(str(meta.get("path", "")), max_len=200)
+    if method or path:
+        endpoint = f"{method} {path}".strip()
+        out.append(f"**Endpoint:** `{endpoint}`")
+        out.append("")
+
+    extras: list[str] = []
+    framework = meta.get("framework")
+    if framework:
+        extras.append(f"**Framework:** `{_sanitise_inline(str(framework), max_len=40)}`")
+    auth = meta.get("auth")
+    if auth:
+        extras.append(f"**Auth:** `{_sanitise_inline(str(auth), max_len=40)}`")
+    source_spec = meta.get("source_spec")
+    if source_spec:
+        extras.append(f"**Spec:** `{_sanitise_inline(str(source_spec), max_len=120)}`")
+    if extras:
+        out.append("  ·  ".join(extras))
+        out.append("")
+
+
+def _append_audit(out: list[str], finding: Finding) -> None:
+    """Render the deep-dive audit block: risk flags, secrets, trust.
+
+    Secrets render NAME/TYPE/location only. Per the privacy guarantee there is
+    never a secret value in the report; we never read or print one.
+    """
+    audit = finding.audit
+    if audit is None:
+        return
+
+    if audit.risk_flags:
+        out.append("**Audit risk flags:**")
+        out.append("")
+        for rf in audit.risk_flags:
+            badge = SEVERITY_BADGE.get(rf.severity, rf.severity.upper())
+            line = f"- {badge} **{_sanitise_inline(rf.flag, max_len=80)}**"
+            if rf.description:
+                line += f": {_sanitise_inline(rf.description)}"
+            out.append(line)
+            if rf.owasp:
+                owasp = ", ".join(f"`{_sanitise_inline(o, max_len=20)}`" for o in rf.owasp)
+                out.append(f"  - OWASP: {owasp}")
+            if rf.remediation:
+                out.append(f"  - Fix: {_sanitise_inline(rf.remediation)}")
+        out.append("")
+
+    if audit.secrets:
+        # NAME and TYPE only; never a value.
+        out.append("**Secrets detected (names/types only, no values):**")
+        out.append("")
+        for secret in audit.secrets:
+            bits = [f"`{_sanitise_inline(secret.name, max_len=120)}`"]
+            if secret.secret_type:
+                bits.append(f"type `{_sanitise_inline(secret.secret_type, max_len=40)}`")
+            if secret.confidence:
+                bits.append(f"confidence {_sanitise_inline(secret.confidence, max_len=20)}")
+            if secret.location:
+                bits.append(f"at `{_sanitise_inline(secret.location, max_len=120)}`")
+            sev = (
+                f"{SEVERITY_BADGE.get(secret.severity, secret.severity.upper())} "
+                if secret.severity
+                else ""
+            )
+            out.append(f"- {sev}" + " · ".join(bits))
+        out.append("")
+
+    if audit.trust_label:
+        trust = f"**Trust:** {_sanitise_inline(audit.trust_label, max_len=40)}"
+        if audit.trust_score is not None:
+            trust += f" ({audit.trust_score:g}/100)"
+        out.append(trust)
+        out.append("")
+
+
+def _append_bridges(out: list[str], finding: Finding) -> None:
+    """Render the paid-platform upgrade bridges for a finding as links."""
+    for bridge in finding.bridges:
+        label = _sanitise_inline(bridge.label, max_len=120)
+        out.append(f"[Validate at runtime: {label} →]({bridge.url})")
+        out.append("")
 
 
 def _append_risk_summary(out: list[str], report: Report) -> None:
@@ -183,3 +325,12 @@ def _append_footer(out: list[str], report: Report) -> None:
         f"[apisec.ai/ai-validation]({upgrade_url})"
     )
     out.append("")
+
+    # Runtime validation routes available from this scan (report.summary).
+    summary = report.summary or report.build_summary()
+    if summary.bridges_available:
+        out.append("### Validate at runtime in APIsec")
+        out.append("")
+        skus = ", ".join(f"`{_sanitise_inline(s, max_len=40)}`" for s in summary.bridges_available)
+        out.append(f"Runtime validation routes available from this scan: {skus}")
+        out.append("")
