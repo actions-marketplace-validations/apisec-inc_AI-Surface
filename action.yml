@@ -15,9 +15,13 @@ inputs:
     required: false
     default: 'true'
   fail-on-risk:
-    description: 'Exit non-zero if any risk indicators are detected (useful for blocking PRs that introduce broad-permission AI surfaces).'
+    description: 'Exit non-zero if any risk indicators are detected. Aggressive; prefer fail-on for a severity threshold.'
     required: false
     default: 'false'
+  fail-on:
+    description: 'Severity-threshold gate: fail the build if a finding is at or above this severity (critical|high|medium|low). On PRs with a base ref, gates only on NEWLY introduced findings. Recommended: high.'
+    required: false
+    default: ''
   write-inventory:
     description: 'Write .ai-inventory.md back to the workspace.'
     required: false
@@ -42,5 +46,6 @@ runs:
     AI_SURFACE_INPUT_PATH: ${{ inputs.path }}
     AI_SURFACE_COMMENT_ON_PR: ${{ inputs.comment-on-pr }}
     AI_SURFACE_FAIL_ON_RISK: ${{ inputs.fail-on-risk }}
+    AI_SURFACE_FAIL_ON: ${{ inputs.fail-on }}
     AI_SURFACE_WRITE_INVENTORY: ${{ inputs.write-inventory }}
     AI_SURFACE_GITHUB_TOKEN: ${{ inputs.github-token }}

@@ -57,6 +57,7 @@ def _read_inputs() -> Dict[str, Any]:
         "path": (os.environ.get("AI_SURFACE_INPUT_PATH") or ".").strip(),
         "comment_on_pr": _bool_input("AI_SURFACE_COMMENT_ON_PR", True),
         "fail_on_risk": _bool_input("AI_SURFACE_FAIL_ON_RISK", False),
+        "fail_on": ((os.environ.get("AI_SURFACE_FAIL_ON") or "").strip().lower() or None),
         "write_inventory": _bool_input("AI_SURFACE_WRITE_INVENTORY", False),
         "github_token": (
             os.environ.get("AI_SURFACE_GITHUB_TOKEN")
@@ -305,6 +306,23 @@ def _post_pr_comment(token: str, body: str) -> None:
 # ---------------------------------------------------------------------------
 
 
+_SEVERITY_ORDER = ("critical", "high", "medium", "low", "info")
+_FAIL_ON_CHOICES = ("critical", "high", "medium", "low")
+
+
+def _findings_at_or_above(findings: list, threshold: str) -> list:
+    """Findings (dicts from the JSON report) whose assessed severity is at or
+    above `threshold`. Severity-free inventory findings are excluded."""
+    def rank(sev: object) -> int:
+        return _SEVERITY_ORDER.index(sev) if sev in _SEVERITY_ORDER else 99
+
+    limit = rank(threshold)
+    return [
+        f for f in findings
+        if f.get("severity") and rank(f.get("severity")) <= limit
+    ]
+
+
 def _severity_banner(report: Dict[str, Any]) -> str:
     """Render an assessed-severity breakdown from the schema-1.0 summary.
 
@@ -451,6 +469,7 @@ def main() -> int:
 
     # Diff path: only on PR events with a usable base ref.
     diff_md: Optional[str] = None
+    base_report: Optional[Dict[str, Any]] = None
     if inputs["comment_on_pr"] and _is_pull_request():
         print("::group::ai-surface diff vs base")
         base_path = _setup_base_checkout(workspace)
@@ -483,6 +502,39 @@ def main() -> int:
         else:
             body = _format_inventory_comment(head_report, head_markdown_body)
         _post_pr_comment(inputs["github_token"], body)
+
+    # Severity-threshold gate (the painkiller). When a base ref is available we
+    # gate only on NEW findings (the same "block new, not pre-existing debt"
+    # semantics as the CLI's --baseline --fail-on); otherwise on current state.
+    fail_on = inputs["fail_on"]
+    if fail_on:
+        if fail_on not in _FAIL_ON_CHOICES:
+            print(
+                f"::warning::ignoring invalid fail-on value {fail_on!r} "
+                f"(expected one of {', '.join(_FAIL_ON_CHOICES)})"
+            )
+        else:
+            head_findings = head_report.get("findings", []) or []
+            if base_report is not None:
+                base_surfaces = {
+                    f.get("surface") for f in (base_report.get("findings", []) or [])
+                }
+                candidates = [
+                    f for f in head_findings if f.get("surface") not in base_surfaces
+                ]
+                scope = "new "
+            else:
+                candidates = head_findings
+                scope = ""
+            offending = _findings_at_or_above(candidates, fail_on)
+            if offending:
+                print(
+                    f"::error::fail-on {fail_on}: {len(offending)} {scope}finding(s) "
+                    f"at or above {fail_on}"
+                )
+                for f in offending[:20]:
+                    print(f"::error::[{f.get('severity')}] {f.get('surface')}")
+                return 1
 
     if inputs["fail_on_risk"] and risks > 0:
         print(f"::error::fail-on-risk is set and {risks} risk indicators were detected")

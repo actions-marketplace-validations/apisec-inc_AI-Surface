@@ -88,7 +88,7 @@ Validate which surfaces are exploitable: apisec.ai/ai-validation
 
 > Prefer to click around instead of read a wall of text? Run `ai-surface scan . --ui` to open the **interactive AI Attack Surface map** in your browser: severity-colored nodes, per-finding detail, the MCP deep-dive audit, and the paid upgrade bridges, all served on loopback so nothing leaves your machine. Or [try the hosted demo](#) to see the UI on sample data without installing anything.
 >
-> Full captured output for every format is in [`examples/sample-outputs/`](examples/sample-outputs/). Add `--fail-on-risk` to exit non-zero (and fail the build) whenever any risk indicator is present.
+> Full captured output for every format is in [`examples/sample-outputs/`](examples/sample-outputs/). Add `--fail-on high` to fail the build when a finding is at or above a severity (the recommended gate), or `--output cyclonedx` to emit an AI-BOM.
 
 <br>
 
@@ -198,9 +198,13 @@ ai-surface scan . --update-baseline
 ai-surface scan . --baseline
 # → shows ONLY new / modified / removed surfaces since the snapshot
 
-# 3. In CI, gate only on NEWLY introduced risks (not pre-existing ones).
-ai-surface scan . --baseline --fail-on-risk
+# 3. In CI, fail the build only when a PR introduces a NEW high-or-critical
+#    AI risk. This is the gate that survives: it never blocks on pre-existing
+#    debt, and inventory (severity-free findings) never trips it.
+ai-surface scan . --baseline --fail-on high
 ```
+
+This `--baseline --fail-on high` combination is the recommended PR gate: low-noise (assessed severity only), non-blocking on existing surfaces, and actionable (it prints the offending finding, file, and fix). Use `--fail-on critical` for the strictest gate, or `--fail-on-risk` for the aggressive "any indicator" mode.
 
 The `.ai-surface-baseline.json` file is plain JSON. Commit it to track your team's accepted inventory in git, or add it to `.gitignore` if you prefer to regenerate locally.
 
@@ -228,8 +232,10 @@ jobs:
         with:
           path: '.'
           comment-on-pr: 'true'
-          fail-on-risk: 'false'
+          fail-on: 'high'        # fail the PR only on NEW high-or-critical findings
 ```
+
+`fail-on` is the recommended gate: it comments on every PR for visibility, but only **fails the build when a PR introduces a new finding at or above the given severity** (`critical`/`high`/`medium`/`low`), gating on assessed severity so inventory never trips it. Omit it (or set `comment-on-pr` only) to run in report-only mode. Use `fail-on-risk: 'true'` for the aggressive "any risk indicator" gate.
 
 Every PR gets a **sticky comment** showing what changed in this PR, not just current state.
 
@@ -388,14 +394,20 @@ ai-surface scan . --categories api               # HTTP / REST / OpenAPI endpoin
 ai-surface scan . --categories infra             # AI infrastructure only
 # Aliases: mcp, agents, llm, gateway, infra, keys, api
 
-# CI gate: exit non-zero (code 1) if any risk indicator is present
+# CI gate (recommended): severity threshold, exit code 1 at or above it
+ai-surface scan . --fail-on high                 # fail on any critical/high finding
+ai-surface scan . --fail-on critical             # strictest: fail only on critical
+ai-surface scan . --fail-on high --quiet         # gate + one-line summary
+# Gates on ASSESSED severity only, so the inventory never trips it. Prints the
+# offending finding, file, and remediation so the CI log is actionable.
+
+# Aggressive legacy gate: exit 1 if ANY risk indicator is present
 ai-surface scan . --fail-on-risk                 # works in any CI, not just the GitHub Action
-ai-surface scan . --fail-on-risk --quiet         # gate + one-line summary
 
 # Baseline mode: snapshot the current inventory, then later show only what is NEW
 ai-surface scan . --update-baseline              # writes .ai-surface-baseline.json
 ai-surface scan . --baseline                     # diff vs the snapshot
-ai-surface scan . --baseline --fail-on-risk      # CI gate fires only on NEWLY added risks
+ai-surface scan . --baseline --fail-on high      # the recommended PR gate: fail only on NEW high+ findings
 ai-surface scan . --baseline --baseline-file ci/baseline.json   # custom path
 
 # CI / scripted use

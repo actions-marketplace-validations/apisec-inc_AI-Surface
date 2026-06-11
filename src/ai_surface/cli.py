@@ -149,6 +149,71 @@ def _maybe_fail_on_risk(report, enabled: bool) -> None:
         raise typer.Exit(code=1)
 
 
+# Severity-threshold gate (the painkiller). Gates on ASSESSED severity only, so
+# the large inventory of severity-free discovery findings never trips it. Pair
+# with --baseline to fire only on NEWLY introduced findings.
+FAIL_ON_CHOICES = ("critical", "high", "medium", "low")
+
+
+def _findings_at_or_above(findings, threshold: str) -> list:
+    """Findings whose assessed severity is at or above `threshold`.
+
+    Discovery findings (severity is None) are never included: they are
+    inventory, not assessed risk.
+    """
+    from .types import SEVERITY_ORDER  # noqa: PLC0415
+
+    def rank(sev: str) -> int:
+        return SEVERITY_ORDER.index(sev) if sev in SEVERITY_ORDER else 99
+
+    limit = rank(threshold)
+    return [f for f in findings if f.severity and rank(f.severity) <= limit]
+
+
+def _print_gate_offenders(offending: list) -> None:
+    """Show exactly what tripped the gate: severity, surface, file, and the
+    top remediation, so a CI log is actionable, not just a count."""
+    for f in offending:
+        file = f.evidence.files[0] if f.evidence and f.evidence.files else ""
+        fix = ""
+        if f.audit and f.audit.risk_flags:
+            rem = f.audit.risk_flags[0].remediation
+            if rem:
+                fix = f"  fix: {rem}"
+        loc = f"  ({file})" if file else ""
+        err_console.print(f"  [{f.severity}] {f.surface}{loc}{fix}")
+
+
+def _maybe_fail_on_severity(report, threshold: str | None) -> None:
+    """Exit non-zero when --fail-on <severity> is set and any finding is at or
+    above that severity. The low-noise painkiller gate."""
+    if not threshold:
+        return
+    offending = _findings_at_or_above(report.findings, threshold)
+    if offending:
+        err_console.print(
+            f"[red]fail-on {threshold}[/red]: {len(offending)} finding(s) at or "
+            f"above {threshold}:"
+        )
+        _print_gate_offenders(offending)
+        raise typer.Exit(code=1)
+
+
+def _maybe_fail_on_diff_severity(diff, threshold: str | None) -> None:
+    """In --baseline mode, exit non-zero only when a NEWLY added finding is at
+    or above `threshold`. Never blocks on pre-existing surfaces."""
+    if not threshold:
+        return
+    offending = _findings_at_or_above(diff.added, threshold)
+    if offending:
+        err_console.print(
+            f"[red]fail-on {threshold}[/red]: {len(offending)} NEW finding(s) at "
+            f"or above {threshold} introduced since the baseline:"
+        )
+        _print_gate_offenders(offending)
+        raise typer.Exit(code=1)
+
+
 def _write_baseline_file(report, bp: Path) -> None:
     """Serialize the current scan as the baseline snapshot at `bp`.
 
@@ -291,7 +356,18 @@ def scan(
         help=(
             "Exit non-zero (code 1) if any risk indicators are detected. "
             "In --baseline mode, gates only on risks introduced since the baseline. "
-            "Use to gate PRs in any CI, not just the GitHub Action."
+            "Aggressive: gates on any indicator. Prefer --fail-on for a "
+            "severity-threshold gate."
+        ),
+    ),
+    fail_on: Optional[str] = typer.Option(
+        None,
+        "--fail-on",
+        help=(
+            "Severity-threshold gate: exit non-zero (code 1) if any finding is at "
+            "or above this severity (critical|high|medium|low). Gates on assessed "
+            "severity only, so inventory does not trip it. With --baseline, fires "
+            "only on NEW findings. Recommended PR gate: --baseline --fail-on high."
         ),
     ),
     baseline: bool = typer.Option(
@@ -369,6 +445,15 @@ def scan(
             "mutually exclusive"
         )
         raise typer.Exit(code=2)
+
+    if fail_on is not None and fail_on.lower() not in FAIL_ON_CHOICES:
+        err_console.print(
+            f"[red]error[/red]: --fail-on must be one of "
+            f"{', '.join(FAIL_ON_CHOICES)} (got {fail_on!r})"
+        )
+        raise typer.Exit(code=2)
+    if fail_on is not None:
+        fail_on = fail_on.lower()
 
     # --repo: clone the remote repo locally and scan that instead of PATH.
     # Baseline modes operate on a committed snapshot file, which a throwaway
@@ -456,12 +541,14 @@ def scan(
     if baseline:
         diff = _load_and_diff_baseline(report, bp, allowed_categories)
         _render_diff(diff, output, quiet)
+        _maybe_fail_on_diff_severity(diff, fail_on)
         _maybe_fail_on_diff_risk(diff, fail_on_risk)
         return
 
     # Quiet mode short-circuits all reporters and prints a single line.
     if quiet:
         _print_quiet_summary(report)
+        _maybe_fail_on_severity(report, fail_on)
         _maybe_fail_on_risk(report, fail_on_risk)
         return
 
@@ -521,6 +608,7 @@ def scan(
                 "markdown reporter not yet implemented."
             )
 
+    _maybe_fail_on_severity(report, fail_on)
     _maybe_fail_on_risk(report, fail_on_risk)
 
 
