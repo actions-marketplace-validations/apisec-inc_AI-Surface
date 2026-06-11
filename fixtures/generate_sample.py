@@ -155,7 +155,11 @@ def build() -> Report:
             "api_endpoints",
         ],
     )
-    # Bridges come from the real funnel layer so the fixture equals engine output.
+    # Classify dispositions then attach bridges, so the fixture equals real
+    # engine output (resolve-here vs validate-runtime, capability-aware bridges).
+    from ai_surface.dispositions import attach_dispositions  # noqa: PLC0415
+
+    attach_dispositions(report.findings)
     attach_bridges(report.findings)
     report.summary = report.build_summary()
     return report

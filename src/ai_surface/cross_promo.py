@@ -275,22 +275,29 @@ def specialists_for_report(findings: list[Finding]) -> list[SpecialistTool]:
 #: existing API security capability). Reads ?path= for context.
 API_BASE_URL = "https://apisec.ai/api-validation"
 
-#: Category -> paid SKU routing. env-key is intentionally absent: a key NAME is
-#: inventory, not a validation target, so it gets no bridge.
+#: Category -> paid SKU routing. ONLY the runtime-validatable attack surface
+#: gets a bridge (the validate-runtime disposition). LLM/gateway/infra/env-key
+#: are resolve-here posture and get no bridge: there is no runtime journey for
+#: them (and LLM/model behaviour is out of scope by design).
 CATEGORY_TO_SKU: dict[str, str] = {
-    CATEGORY_MCP_SERVER: SKU_MCP_RUNTIME,
     CATEGORY_API: SKU_API_RUNTIME,
+    CATEGORY_MCP_SERVER: SKU_MCP_RUNTIME,
     CATEGORY_AGENT_FRAMEWORK: SKU_AGENT_VALIDATION,
-    CATEGORY_LLM_SDK: SKU_AGENT_VALIDATION,
-    CATEGORY_MODEL_GATEWAY: SKU_AGENT_VALIDATION,
-    CATEGORY_AI_INFRA: SKU_AGENT_VALIDATION,
 }
 
-#: User-facing CTA text per SKU. Clear, not heavy-handed.
+#: Runtime-validation availability per SKU. Honest: API is live, others coming.
+SKU_STATUS: dict[str, str] = {
+    SKU_API_RUNTIME: "live",
+    SKU_MCP_RUNTIME: "coming",
+    SKU_AGENT_VALIDATION: "coming",
+}
+
+#: User-facing CTA text per SKU, by status. Clear, not heavy-handed; honest
+#: about what the platform can do today.
 SKU_LABELS: dict[str, str] = {
-    SKU_AGENT_VALIDATION: "Validate this AI surface's exploitability in APIsec",
-    SKU_MCP_RUNTIME: "Run MCP runtime validation in APIsec",
     SKU_API_RUNTIME: "Onboard this API for outside-in runtime testing in APIsec",
+    SKU_MCP_RUNTIME: "Coming soon: MCP runtime validation in APIsec",
+    SKU_AGENT_VALIDATION: "Coming soon: agent validation in APIsec",
 }
 
 
@@ -347,7 +354,7 @@ def build_bridges(
         params.extend(base_utm)
         url = f"{APISEC_BASE_URL}?{urlencode(params)}"
 
-    return [Bridge(sku=sku, label=SKU_LABELS[sku], url=url)]
+    return [Bridge(sku=sku, label=SKU_LABELS[sku], url=url, status=SKU_STATUS.get(sku, "live"))]
 
 
 def attach_bridges(findings: list[Finding], medium: str = "ui") -> None:

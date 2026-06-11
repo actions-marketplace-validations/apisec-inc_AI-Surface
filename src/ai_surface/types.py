@@ -58,6 +58,19 @@ SKU_AGENT_VALIDATION = "agent-validation"  # AI/agent surface -> agent-native AE
 SKU_MCP_RUNTIME = "mcp-runtime"  # MCP findings -> MCP runtime validation
 SKU_API_RUNTIME = "api-runtime"  # discovered APIs -> API outside-in runtime testing
 
+# Disposition: the boundary between independent DevOps value and the platform
+# journey. resolve-here = statically fixable now (no platform needed).
+# validate-runtime = a candidate; only runtime can prove exploitability.
+DISPOSITION_RESOLVE = "resolve-here"
+DISPOSITION_VALIDATE = "validate-runtime"
+
+# Runtime-validation availability for a validate-runtime finding. Honest about
+# what the platform can do today: API is live, others are on the way. "n/a" is
+# used for resolve-here findings (no runtime journey).
+RUNTIME_LIVE = "live"
+RUNTIME_COMING = "coming"
+RUNTIME_NA = "n/a"
+
 
 @dataclass
 class Evidence:
@@ -165,6 +178,10 @@ class Bridge:
     url: str
     """UTM-tagged deep link into the APIsec platform."""
 
+    status: str = "live"
+    """Runtime-validation availability for this bridge: live or coming. "coming"
+    means the platform validates this category soon, not today (honest funnel)."""
+
 
 @dataclass
 class Finding:
@@ -216,6 +233,18 @@ class Finding:
     """Paid-platform upgrade paths for this finding. Filled in by the funnel
     layer (cross_promo) based on category and audit results."""
 
+    disposition: str | None = None
+    """resolve-here (independent DevOps value) or validate-runtime (platform
+    candidate). Filled in by the dispositions layer. None until classified."""
+
+    runtime_status: str | None = None
+    """For validate-runtime findings: live / coming / n/a. Honest about whether
+    the platform can validate this category today."""
+
+    runtime_question: str | None = None
+    """For validate-runtime findings: the exact exploitability question only
+    runtime can answer (e.g. 'Can user A read user B's object?')."""
+
 
 @dataclass
 class Summary:
@@ -232,6 +261,11 @@ class Summary:
     """Up to ~10 "surface: risk" phrases, severity-ordered, for the UI banner."""
     bridges_available: list[str] = field(default_factory=list)
     """Distinct SKU_* values reachable from this scan. Drives the upgrade CTAs."""
+
+    resolve_here_count: int = 0
+    """Findings you can act on now without the platform (independent value)."""
+    validate_runtime_count: int = 0
+    """Candidates whose exploitability only runtime can prove (the journey)."""
 
 
 @dataclass
@@ -301,12 +335,17 @@ class Report:
         if not top:
             top = self.all_risk_indicators()[:10]
 
+        resolve_here = sum(1 for f in self.findings if f.disposition == DISPOSITION_RESOLVE)
+        validate_rt = sum(1 for f in self.findings if f.disposition == DISPOSITION_VALIDATE)
+
         return Summary(
             total_findings=len(self.findings),
             by_category=by_category,
             by_severity=by_severity,
             top_risks=top,
             bridges_available=bridges,
+            resolve_here_count=resolve_here,
+            validate_runtime_count=validate_rt,
         )
 
 

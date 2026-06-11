@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "tool_version": "0.5.3",
+  "tool_version": "1.0.0",
   "scan_root": "/example/acme-payments",
   "scan_timestamp": "2026-06-11T00:00:00+00:00",
   "detectors_run": [
@@ -30,8 +30,43 @@
       "agent-validation",
       "mcp-runtime",
       "api-runtime"
-    ]
+    ],
+    "resolve_here_count": 1,
+    "validate_runtime_count": 3
   },
+  "frameworks": [
+    {
+      "id": "eu-ai-act",
+      "name": "EU AI Act",
+      "provides": [
+        "Technical documentation and record-keeping (Art. 11-12)",
+        "Risk management of AI systems (Art. 9)"
+      ]
+    },
+    {
+      "id": "nist-ai-rmf",
+      "name": "NIST AI RMF",
+      "provides": [
+        "Map: inventory and context of AI systems",
+        "Measure: identify and assess AI risks"
+      ]
+    },
+    {
+      "id": "iso-42001",
+      "name": "ISO/IEC 42001",
+      "provides": [
+        "AI system inventory (Annex A)",
+        "AI risk assessment"
+      ]
+    },
+    {
+      "id": "owasp-llm",
+      "name": "OWASP LLM Top 10",
+      "provides": [
+        "Mapping of findings to LLM Top 10 categories"
+      ]
+    }
+  ],
   "findings": [
     {
       "surface": "Anthropic SDK",
@@ -60,13 +95,10 @@
       "detector_name": "llm_sdks",
       "severity": null,
       "audit": null,
-      "bridges": [
-        {
-          "sku": "agent-validation",
-          "label": "Validate this AI surface's exploitability in APIsec",
-          "url": "https://apisec.ai/ai-validation?category=llm-sdk&risk=user-input-flows-into-prompt&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel"
-        }
-      ]
+      "bridges": [],
+      "disposition": "resolve-here",
+      "runtime_status": "n/a",
+      "runtime_question": null
     },
     {
       "surface": "LangChain Agent: refund_agent",
@@ -99,10 +131,14 @@
       "bridges": [
         {
           "sku": "agent-validation",
-          "label": "Validate this AI surface's exploitability in APIsec",
-          "url": "https://apisec.ai/ai-validation?category=agent-framework&risk=financial-action&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel"
+          "label": "Coming soon: agent validation in APIsec",
+          "url": "https://apisec.ai/ai-validation?category=agent-framework&risk=financial-action&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel",
+          "status": "coming"
         }
-      ]
+      ],
+      "disposition": "validate-runtime",
+      "runtime_status": "coming",
+      "runtime_question": "Can this agent be driven to an unauthorized action (agent-to-tool authorization abuse, agent-exposed API)?"
     },
     {
       "surface": "MCP Server: stripe-mcp",
@@ -185,10 +221,14 @@
       "bridges": [
         {
           "sku": "mcp-runtime",
-          "label": "Run MCP runtime validation in APIsec",
-          "url": "https://apisec.ai/ai-validation?category=mcp-server&risk=secrets-in-env&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel"
+          "label": "Coming soon: MCP runtime validation in APIsec",
+          "url": "https://apisec.ai/ai-validation?category=mcp-server&risk=secrets-in-env&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel",
+          "status": "coming"
         }
-      ]
+      ],
+      "disposition": "validate-runtime",
+      "runtime_status": "coming",
+      "runtime_question": "Can this MCP server's tools be abused at runtime (tool abuse, agent-to-tool BOLA/BFLA, over-provisioned permissions)?"
     },
     {
       "surface": "REST API: POST /v1/orders/{id}/refund",
@@ -223,9 +263,13 @@
         {
           "sku": "api-runtime",
           "label": "Onboard this API for outside-in runtime testing in APIsec",
-          "url": "https://apisec.ai/api-validation?path=%2Fv1%2Forders%2F%7Bid%7D%2Frefund&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel"
+          "url": "https://apisec.ai/api-validation?path=%2Fv1%2Forders%2F%7Bid%7D%2Frefund&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel",
+          "status": "live"
         }
-      ]
+      ],
+      "disposition": "validate-runtime",
+      "runtime_status": "live",
+      "runtime_question": "Is this endpoint actually exploitable (BOLA, broken auth, business-logic abuse) against the running application?"
     }
   ],
   "errors": []

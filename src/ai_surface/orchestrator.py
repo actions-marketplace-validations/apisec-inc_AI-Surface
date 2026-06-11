@@ -60,8 +60,17 @@ class Orchestrator:
                 errors.append(msg)
                 log.warning(msg)
 
-        # Attach paid-platform bridges (the funnel) to findings. Defensive:
-        # a funnel failure must never abort a scan.
+        # Classify dispositions (resolve-here vs validate-runtime), then attach
+        # paid-platform bridges. Defensive: neither must abort a scan.
+        try:
+            from .dispositions import attach_dispositions  # noqa: PLC0415
+
+            attach_dispositions(all_findings)
+        except Exception as exc:  # noqa: BLE001
+            msg = f"disposition classification failed: {exc.__class__.__name__}: {exc}"
+            errors.append(msg)
+            log.warning(msg)
+
         try:
             from .cross_promo import attach_bridges  # noqa: PLC0415
 

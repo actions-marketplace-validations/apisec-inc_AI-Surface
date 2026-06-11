@@ -67,10 +67,6 @@
         {
           "name": "ai-surface:file",
           "value": "src/llm/claude.py"
-        },
-        {
-          "name": "ai-surface:validate",
-          "value": "agent-validation"
         }
       ]
     },
@@ -94,10 +90,6 @@
         {
           "name": "ai-surface:file",
           "value": "src/llm/openai_client.py"
-        },
-        {
-          "name": "ai-surface:validate",
-          "value": "agent-validation"
         }
       ]
     },
@@ -117,10 +109,6 @@
         {
           "name": "ai-surface:file",
           "value": "src/llm/bedrock.py"
-        },
-        {
-          "name": "ai-surface:validate",
-          "value": "agent-validation"
         }
       ]
     },
@@ -441,10 +429,6 @@
         {
           "name": "ai-surface:file",
           "value": "deploy/litellm.config.yaml"
-        },
-        {
-          "name": "ai-surface:validate",
-          "value": "agent-validation"
         }
       ]
     },
@@ -464,10 +448,6 @@
         {
           "name": "ai-surface:file",
           "value": "src/llm/portkey.py"
-        },
-        {
-          "name": "ai-surface:validate",
-          "value": "agent-validation"
         }
       ]
     },
@@ -491,10 +471,6 @@
         {
           "name": "ai-surface:file",
           "value": "deploy/k8s/vllm-deployment.yaml"
-        },
-        {
-          "name": "ai-surface:validate",
-          "value": "agent-validation"
         }
       ]
     },
@@ -518,10 +494,6 @@
         {
           "name": "ai-surface:file",
           "value": "infra/terraform/bedrock.tf"
-        },
-        {
-          "name": "ai-surface:validate",
-          "value": "agent-validation"
         }
       ]
     },

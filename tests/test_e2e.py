@@ -32,12 +32,27 @@ def test_e2e_covers_multiple_categories_and_bridges() -> None:
     cats = {f["category"] for f in d["findings"]}
     assert {"mcp-server", "llm-sdk", "api"}.issubset(cats)
     assert d["findings_count"] >= 4
-    # All three paid SKUs are reachable from this one scan.
-    assert set(d["summary"]["bridges_available"]) == {
-        "mcp-runtime",
-        "agent-validation",
-        "api-runtime",
-    }
+    # Only the runtime-validatable categories present here bridge (API + MCP).
+    # llm-sdk is resolve-here posture and correctly gets no bridge.
+    assert set(d["summary"]["bridges_available"]) == {"mcp-runtime", "api-runtime"}
+
+
+def test_e2e_dispositions_split_value_from_journey() -> None:
+    d = json.loads(render_json(_scan()))
+    by_disp = {}
+    for f in d["findings"]:
+        by_disp.setdefault(f["disposition"], []).append(f["category"])
+    # API and MCP are validate-runtime candidates; LLM is resolve-here.
+    assert "api" in by_disp["validate-runtime"]
+    assert "mcp-server" in by_disp["validate-runtime"]
+    assert "llm-sdk" in by_disp["resolve-here"]
+    # The summary makes the split explicit.
+    assert d["summary"]["validate_runtime_count"] >= 1
+    assert d["summary"]["resolve_here_count"] >= 1
+    # A validate-runtime finding carries its runtime question.
+    api = next(f for f in d["findings"] if f["category"] == "api")
+    assert api["runtime_question"]
+    assert api["runtime_status"] == "live"
 
 
 def test_e2e_mcp_deep_dive_audit_flows_through() -> None:

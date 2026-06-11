@@ -44,7 +44,9 @@
       "agent-validation",
       "mcp-runtime",
       "api-runtime"
-    ]
+    ],
+    "resolve_here_count": 9,
+    "validate_runtime_count": 19
   },
   "frameworks": [
     {
@@ -104,13 +106,10 @@
       "detector_name": "llm_sdks",
       "severity": null,
       "audit": null,
-      "bridges": [
-        {
-          "sku": "agent-validation",
-          "label": "Validate this AI surface's exploitability in APIsec",
-          "url": "https://apisec.ai/ai-validation?category=llm-sdk&risk=user-input-flows-into-prompt&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel"
-        }
-      ]
+      "bridges": [],
+      "disposition": "resolve-here",
+      "runtime_status": "n/a",
+      "runtime_question": null
     },
     {
       "surface": "OpenAI SDK",
@@ -136,13 +135,10 @@
       "detector_name": "llm_sdks",
       "severity": null,
       "audit": null,
-      "bridges": [
-        {
-          "sku": "agent-validation",
-          "label": "Validate this AI surface's exploitability in APIsec",
-          "url": "https://apisec.ai/ai-validation?category=llm-sdk&risk=user-input-flows-into-prompt&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel"
-        }
-      ]
+      "bridges": [],
+      "disposition": "resolve-here",
+      "runtime_status": "n/a",
+      "runtime_question": null
     },
     {
       "surface": "AWS Bedrock",
@@ -165,13 +161,10 @@
       "detector_name": "llm_sdks",
       "severity": null,
       "audit": null,
-      "bridges": [
-        {
-          "sku": "agent-validation",
-          "label": "Validate this AI surface's exploitability in APIsec",
-          "url": "https://apisec.ai/ai-validation?category=llm-sdk&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel"
-        }
-      ]
+      "bridges": [],
+      "disposition": "resolve-here",
+      "runtime_status": "n/a",
+      "runtime_question": null
     },
     {
       "surface": "LangChain Agent: refund_agent",
@@ -205,10 +198,14 @@
       "bridges": [
         {
           "sku": "agent-validation",
-          "label": "Validate this AI surface's exploitability in APIsec",
-          "url": "https://apisec.ai/ai-validation?category=agent-framework&risk=financial-action&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel"
+          "label": "Coming soon: agent validation in APIsec",
+          "url": "https://apisec.ai/ai-validation?category=agent-framework&risk=financial-action&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel",
+          "status": "coming"
         }
-      ]
+      ],
+      "disposition": "validate-runtime",
+      "runtime_status": "coming",
+      "runtime_question": "Can this agent be driven to an unauthorized action (agent-to-tool authorization abuse, agent-exposed API)?"
     },
     {
       "surface": "CrewAI Crew: support_crew",
@@ -239,10 +236,14 @@
       "bridges": [
         {
           "sku": "agent-validation",
-          "label": "Validate this AI surface's exploitability in APIsec",
-          "url": "https://apisec.ai/ai-validation?category=agent-framework&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel"
+          "label": "Coming soon: agent validation in APIsec",
+          "url": "https://apisec.ai/ai-validation?category=agent-framework&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel",
+          "status": "coming"
         }
-      ]
+      ],
+      "disposition": "validate-runtime",
+      "runtime_status": "coming",
+      "runtime_question": "Can this agent be driven to an unauthorized action (agent-to-tool authorization abuse, agent-exposed API)?"
     },
     {
       "surface": "LangGraph Flow: onboarding_kyc",
@@ -276,10 +277,14 @@
       "bridges": [
         {
           "sku": "agent-validation",
-          "label": "Validate this AI surface's exploitability in APIsec",
-          "url": "https://apisec.ai/ai-validation?category=agent-framework&risk=pii-flows-into-llm-call&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel"
+          "label": "Coming soon: agent validation in APIsec",
+          "url": "https://apisec.ai/ai-validation?category=agent-framework&risk=pii-flows-into-llm-call&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel",
+          "status": "coming"
         }
-      ]
+      ],
+      "disposition": "validate-runtime",
+      "runtime_status": "coming",
+      "runtime_question": "Can this agent be driven to an unauthorized action (agent-to-tool authorization abuse, agent-exposed API)?"
     },
     {
       "surface": "MCP Server: stripe-mcp",
@@ -362,10 +367,14 @@
       "bridges": [
         {
           "sku": "mcp-runtime",
-          "label": "Run MCP runtime validation in APIsec",
-          "url": "https://apisec.ai/ai-validation?category=mcp-server&risk=secrets-detected&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel"
+          "label": "Coming soon: MCP runtime validation in APIsec",
+          "url": "https://apisec.ai/ai-validation?category=mcp-server&risk=secrets-detected&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel",
+          "status": "coming"
         }
-      ]
+      ],
+      "disposition": "validate-runtime",
+      "runtime_status": "coming",
+      "runtime_question": "Can this MCP server's tools be abused at runtime (tool abuse, agent-to-tool BOLA/BFLA, over-provisioned permissions)?"
     },
     {
       "surface": "MCP Server: github-mcp",
@@ -428,10 +437,14 @@
       "bridges": [
         {
           "sku": "mcp-runtime",
-          "label": "Run MCP runtime validation in APIsec",
-          "url": "https://apisec.ai/ai-validation?category=mcp-server&risk=broad-permissions&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel"
+          "label": "Coming soon: MCP runtime validation in APIsec",
+          "url": "https://apisec.ai/ai-validation?category=mcp-server&risk=broad-permissions&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel",
+          "status": "coming"
         }
-      ]
+      ],
+      "disposition": "validate-runtime",
+      "runtime_status": "coming",
+      "runtime_question": "Can this MCP server's tools be abused at runtime (tool abuse, agent-to-tool BOLA/BFLA, over-provisioned permissions)?"
     },
     {
       "surface": "MCP Server: ledger-mcp",
@@ -494,10 +507,14 @@
       "bridges": [
         {
           "sku": "mcp-runtime",
-          "label": "Run MCP runtime validation in APIsec",
-          "url": "https://apisec.ai/ai-validation?category=mcp-server&risk=unverified-source&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel"
+          "label": "Coming soon: MCP runtime validation in APIsec",
+          "url": "https://apisec.ai/ai-validation?category=mcp-server&risk=unverified-source&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel",
+          "status": "coming"
         }
-      ]
+      ],
+      "disposition": "validate-runtime",
+      "runtime_status": "coming",
+      "runtime_question": "Can this MCP server's tools be abused at runtime (tool abuse, agent-to-tool BOLA/BFLA, over-provisioned permissions)?"
     },
     {
       "surface": "MCP Server: weather-mcp",
@@ -545,10 +562,14 @@
       "bridges": [
         {
           "sku": "mcp-runtime",
-          "label": "Run MCP runtime validation in APIsec",
-          "url": "https://apisec.ai/ai-validation?category=mcp-server&risk=remote-mcp&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel"
+          "label": "Coming soon: MCP runtime validation in APIsec",
+          "url": "https://apisec.ai/ai-validation?category=mcp-server&risk=remote-mcp&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel",
+          "status": "coming"
         }
-      ]
+      ],
+      "disposition": "validate-runtime",
+      "runtime_status": "coming",
+      "runtime_question": "Can this MCP server's tools be abused at runtime (tool abuse, agent-to-tool BOLA/BFLA, over-provisioned permissions)?"
     },
     {
       "surface": "LiteLLM Proxy",
@@ -572,13 +593,10 @@
       "detector_name": "model_gateways",
       "severity": null,
       "audit": null,
-      "bridges": [
-        {
-          "sku": "agent-validation",
-          "label": "Validate this AI surface's exploitability in APIsec",
-          "url": "https://apisec.ai/ai-validation?category=model-gateway&risk=multi-model-routing&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel"
-        }
-      ]
+      "bridges": [],
+      "disposition": "resolve-here",
+      "runtime_status": "n/a",
+      "runtime_question": null
     },
     {
       "surface": "Portkey Gateway",
@@ -598,13 +616,10 @@
       "detector_name": "model_gateways",
       "severity": null,
       "audit": null,
-      "bridges": [
-        {
-          "sku": "agent-validation",
-          "label": "Validate this AI surface's exploitability in APIsec",
-          "url": "https://apisec.ai/ai-validation?category=model-gateway&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel"
-        }
-      ]
+      "bridges": [],
+      "disposition": "resolve-here",
+      "runtime_status": "n/a",
+      "runtime_question": null
     },
     {
       "surface": "Self-hosted vLLM",
@@ -628,13 +643,10 @@
       "detector_name": "ai_infra",
       "severity": null,
       "audit": null,
-      "bridges": [
-        {
-          "sku": "agent-validation",
-          "label": "Validate this AI surface's exploitability in APIsec",
-          "url": "https://apisec.ai/ai-validation?category=ai-infra&risk=self-hosted-llm&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel"
-        }
-      ]
+      "bridges": [],
+      "disposition": "resolve-here",
+      "runtime_status": "n/a",
+      "runtime_question": null
     },
     {
       "surface": "AWS Bedrock endpoint",
@@ -658,13 +670,10 @@
       "detector_name": "ai_infra",
       "severity": null,
       "audit": null,
-      "bridges": [
-        {
-          "sku": "agent-validation",
-          "label": "Validate this AI surface's exploitability in APIsec",
-          "url": "https://apisec.ai/ai-validation?category=ai-infra&risk=high-cost-ai-infra&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel"
-        }
-      ]
+      "bridges": [],
+      "disposition": "resolve-here",
+      "runtime_status": "n/a",
+      "runtime_question": null
     },
     {
       "surface": "AI provider keys (.env)",
@@ -692,7 +701,10 @@
       "detector_name": "env_keys",
       "severity": null,
       "audit": null,
-      "bridges": []
+      "bridges": [],
+      "disposition": "resolve-here",
+      "runtime_status": "n/a",
+      "runtime_question": null
     },
     {
       "surface": "Observability key (.env)",
@@ -718,7 +730,10 @@
       "detector_name": "env_keys",
       "severity": null,
       "audit": null,
-      "bridges": []
+      "bridges": [],
+      "disposition": "resolve-here",
+      "runtime_status": "n/a",
+      "runtime_question": null
     },
     {
       "surface": "REST API: POST /v1/orders/{id}/refund",
@@ -750,9 +765,13 @@
         {
           "sku": "api-runtime",
           "label": "Onboard this API for outside-in runtime testing in APIsec",
-          "url": "https://apisec.ai/api-validation?path=%2Fv1%2Forders%2F%7Bid%7D%2Frefund&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel"
+          "url": "https://apisec.ai/api-validation?path=%2Fv1%2Forders%2F%7Bid%7D%2Frefund&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel",
+          "status": "live"
         }
-      ]
+      ],
+      "disposition": "validate-runtime",
+      "runtime_status": "live",
+      "runtime_question": "Is this endpoint actually exploitable (BOLA, broken auth, business-logic abuse) against the running application?"
     },
     {
       "surface": "REST API: GET /v1/orders/{id}",
@@ -784,9 +803,13 @@
         {
           "sku": "api-runtime",
           "label": "Onboard this API for outside-in runtime testing in APIsec",
-          "url": "https://apisec.ai/api-validation?path=%2Fv1%2Forders%2F%7Bid%7D&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel"
+          "url": "https://apisec.ai/api-validation?path=%2Fv1%2Forders%2F%7Bid%7D&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel",
+          "status": "live"
         }
-      ]
+      ],
+      "disposition": "validate-runtime",
+      "runtime_status": "live",
+      "runtime_question": "Is this endpoint actually exploitable (BOLA, broken auth, business-logic abuse) against the running application?"
     },
     {
       "surface": "REST API: POST /v1/payments",
@@ -816,9 +839,13 @@
         {
           "sku": "api-runtime",
           "label": "Onboard this API for outside-in runtime testing in APIsec",
-          "url": "https://apisec.ai/api-validation?path=%2Fv1%2Fpayments&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel"
+          "url": "https://apisec.ai/api-validation?path=%2Fv1%2Fpayments&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel",
+          "status": "live"
         }
-      ]
+      ],
+      "disposition": "validate-runtime",
+      "runtime_status": "live",
+      "runtime_question": "Is this endpoint actually exploitable (BOLA, broken auth, business-logic abuse) against the running application?"
     },
     {
       "surface": "REST API: GET /v1/customers/{id}",
@@ -850,9 +877,13 @@
         {
           "sku": "api-runtime",
           "label": "Onboard this API for outside-in runtime testing in APIsec",
-          "url": "https://apisec.ai/api-validation?path=%2Fv1%2Fcustomers%2F%7Bid%7D&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel"
+          "url": "https://apisec.ai/api-validation?path=%2Fv1%2Fcustomers%2F%7Bid%7D&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel",
+          "status": "live"
         }
-      ]
+      ],
+      "disposition": "validate-runtime",
+      "runtime_status": "live",
+      "runtime_question": "Is this endpoint actually exploitable (BOLA, broken auth, business-logic abuse) against the running application?"
     },
     {
       "surface": "REST API: PUT /v1/customers/{id}",
@@ -884,9 +915,13 @@
         {
           "sku": "api-runtime",
           "label": "Onboard this API for outside-in runtime testing in APIsec",
-          "url": "https://apisec.ai/api-validation?path=%2Fv1%2Fcustomers%2F%7Bid%7D&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel"
+          "url": "https://apisec.ai/api-validation?path=%2Fv1%2Fcustomers%2F%7Bid%7D&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel",
+          "status": "live"
         }
-      ]
+      ],
+      "disposition": "validate-runtime",
+      "runtime_status": "live",
+      "runtime_question": "Is this endpoint actually exploitable (BOLA, broken auth, business-logic abuse) against the running application?"
     },
     {
       "surface": "REST API: POST /v1/auth/token",
@@ -916,9 +951,13 @@
         {
           "sku": "api-runtime",
           "label": "Onboard this API for outside-in runtime testing in APIsec",
-          "url": "https://apisec.ai/api-validation?path=%2Fv1%2Fauth%2Ftoken&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel"
+          "url": "https://apisec.ai/api-validation?path=%2Fv1%2Fauth%2Ftoken&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel",
+          "status": "live"
         }
-      ]
+      ],
+      "disposition": "validate-runtime",
+      "runtime_status": "live",
+      "runtime_question": "Is this endpoint actually exploitable (BOLA, broken auth, business-logic abuse) against the running application?"
     },
     {
       "surface": "REST API: GET /v1/accounts/{account_id}/balance",
@@ -950,9 +989,13 @@
         {
           "sku": "api-runtime",
           "label": "Onboard this API for outside-in runtime testing in APIsec",
-          "url": "https://apisec.ai/api-validation?path=%2Fv1%2Faccounts%2F%7Baccount_id%7D%2Fbalance&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel"
+          "url": "https://apisec.ai/api-validation?path=%2Fv1%2Faccounts%2F%7Baccount_id%7D%2Fbalance&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel",
+          "status": "live"
         }
-      ]
+      ],
+      "disposition": "validate-runtime",
+      "runtime_status": "live",
+      "runtime_question": "Is this endpoint actually exploitable (BOLA, broken auth, business-logic abuse) against the running application?"
     },
     {
       "surface": "REST API: POST /v1/transfers",
@@ -982,9 +1025,13 @@
         {
           "sku": "api-runtime",
           "label": "Onboard this API for outside-in runtime testing in APIsec",
-          "url": "https://apisec.ai/api-validation?path=%2Fv1%2Ftransfers&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel"
+          "url": "https://apisec.ai/api-validation?path=%2Fv1%2Ftransfers&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel",
+          "status": "live"
         }
-      ]
+      ],
+      "disposition": "validate-runtime",
+      "runtime_status": "live",
+      "runtime_question": "Is this endpoint actually exploitable (BOLA, broken auth, business-logic abuse) against the running application?"
     },
     {
       "surface": "REST API: DELETE /v1/cards/{card_id}",
@@ -1016,9 +1063,13 @@
         {
           "sku": "api-runtime",
           "label": "Onboard this API for outside-in runtime testing in APIsec",
-          "url": "https://apisec.ai/api-validation?path=%2Fv1%2Fcards%2F%7Bcard_id%7D&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel"
+          "url": "https://apisec.ai/api-validation?path=%2Fv1%2Fcards%2F%7Bcard_id%7D&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel",
+          "status": "live"
         }
-      ]
+      ],
+      "disposition": "validate-runtime",
+      "runtime_status": "live",
+      "runtime_question": "Is this endpoint actually exploitable (BOLA, broken auth, business-logic abuse) against the running application?"
     },
     {
       "surface": "REST API: GET /v1/transactions",
@@ -1048,9 +1099,13 @@
         {
           "sku": "api-runtime",
           "label": "Onboard this API for outside-in runtime testing in APIsec",
-          "url": "https://apisec.ai/api-validation?path=%2Fv1%2Ftransactions&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel"
+          "url": "https://apisec.ai/api-validation?path=%2Fv1%2Ftransactions&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel",
+          "status": "live"
         }
-      ]
+      ],
+      "disposition": "validate-runtime",
+      "runtime_status": "live",
+      "runtime_question": "Is this endpoint actually exploitable (BOLA, broken auth, business-logic abuse) against the running application?"
     },
     {
       "surface": "REST API: POST /internal/ledger/post",
@@ -1080,9 +1135,13 @@
         {
           "sku": "api-runtime",
           "label": "Onboard this API for outside-in runtime testing in APIsec",
-          "url": "https://apisec.ai/api-validation?path=%2Finternal%2Fledger%2Fpost&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel"
+          "url": "https://apisec.ai/api-validation?path=%2Finternal%2Fledger%2Fpost&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel",
+          "status": "live"
         }
-      ]
+      ],
+      "disposition": "validate-runtime",
+      "runtime_status": "live",
+      "runtime_question": "Is this endpoint actually exploitable (BOLA, broken auth, business-logic abuse) against the running application?"
     },
     {
       "surface": "REST API: GET /v1/invoices/{id}",
@@ -1114,9 +1173,13 @@
         {
           "sku": "api-runtime",
           "label": "Onboard this API for outside-in runtime testing in APIsec",
-          "url": "https://apisec.ai/api-validation?path=%2Fv1%2Finvoices%2F%7Bid%7D&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel"
+          "url": "https://apisec.ai/api-validation?path=%2Fv1%2Finvoices%2F%7Bid%7D&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel",
+          "status": "live"
         }
-      ]
+      ],
+      "disposition": "validate-runtime",
+      "runtime_status": "live",
+      "runtime_question": "Is this endpoint actually exploitable (BOLA, broken auth, business-logic abuse) against the running application?"
     }
   ],
   "errors": []
