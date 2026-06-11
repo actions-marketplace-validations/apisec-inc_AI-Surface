@@ -21,6 +21,7 @@ from pathlib import Path
 # Allow running from repo root without install.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
+from ai_surface.cross_promo import attach_bridges  # noqa: E402
 from ai_surface.reporters.json_reporter import render_json  # noqa: E402
 from ai_surface.types import (  # noqa: E402
     CATEGORY_AGENT_FRAMEWORK,
@@ -30,11 +31,7 @@ from ai_surface.types import (  # noqa: E402
     SEVERITY_CRITICAL,
     SEVERITY_HIGH,
     SEVERITY_MEDIUM,
-    SKU_AGENT_VALIDATION,
-    SKU_API_RUNTIME,
-    SKU_MCP_RUNTIME,
     Audit,
-    Bridge,
     Evidence,
     Finding,
     Report,
@@ -70,15 +67,8 @@ def build() -> Report:
                 metadata={"tools": ["query_customer_db", "refund_payment"]},
             ),
             permissions=["query_customer_db", "refund_payment"],
-            risk_indicators=["financial action exposed to agent"],
+            risk_indicators=["financial action exposed"],
             detector_name="agent_frameworks",
-            bridges=[
-                Bridge(
-                    sku=SKU_AGENT_VALIDATION,
-                    label="Validate this agent's exploitability in APIsec",
-                    url="https://apisec.ai/ai-validation?category=agent-framework&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel",
-                )
-            ],
         ),
         # 3. MCP discovery WITH deep-dive audit (the merged mcp-audit layer).
         Finding(
@@ -131,13 +121,6 @@ def build() -> Report:
                 registry_match="unknown",
                 owasp_mappings=["LLM02", "LLM06", "LLM03"],
             ),
-            bridges=[
-                Bridge(
-                    sku=SKU_MCP_RUNTIME,
-                    label="Run MCP runtime validation in APIsec",
-                    url="https://apisec.ai/ai-validation?category=mcp-server&risk=secrets-in-env&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel",
-                )
-            ],
         ),
         # 4. API discovery (NEW) feeding the API outside-in runtime SKU.
         Finding(
@@ -158,13 +141,6 @@ def build() -> Report:
             permissions=["mutates order state", "financial"],
             risk_indicators=["object-id in path (BOLA candidate)"],
             detector_name="api_endpoints",
-            bridges=[
-                Bridge(
-                    sku=SKU_API_RUNTIME,
-                    label="Onboard this API for outside-in runtime testing in APIsec",
-                    url="https://apisec.ai/api-validation?path=/v1/orders/{id}/refund&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel",
-                )
-            ],
         ),
     ]
 
@@ -179,6 +155,8 @@ def build() -> Report:
             "api_endpoints",
         ],
     )
+    # Bridges come from the real funnel layer so the fixture equals engine output.
+    attach_bridges(report.findings)
     report.summary = report.build_summary()
     return report
 

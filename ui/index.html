@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ai-surface report</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header / Hero -->
+        <header class="hero">
+            <div class="hero-brand">
+                <span class="brand-mark">ai-surface</span>
+                <span class="brand-by">by APIsec</span>
+            </div>
+            <h1>AI Attack Surface Report</h1>
+            <p class="subtitle">Static discovery of the AI surface in your codebase. 100% offline. No values ever leave this machine.</p>
+            <div id="scan-meta" class="scan-meta"><!-- populated --></div>
+        </header>
+
+        <!-- App shell: everything below is rendered from report.json -->
+        <main id="app">
+            <!-- Loading -->
+            <div id="loading" class="card center-state">
+                <div class="spinner"></div>
+                <p>Loading report…</p>
+            </div>
+
+            <!-- Load error -->
+            <div id="load-error" class="card center-state hidden">
+                <div class="state-icon">!</div>
+                <h2>Could not load report.json</h2>
+                <p class="text-muted">This viewer renders a <code>schema-1.0</code> report produced by the
+                ai-surface engine. Make sure <code>report.json</code> sits next to this page.</p>
+                <p class="text-muted">Run from this directory:</p>
+                <pre class="cmd">python3 -m http.server 8000</pre>
+                <p id="load-error-detail" class="text-muted mono"></p>
+            </div>
+
+            <!-- Rendered report -->
+            <div id="report" class="hidden">
+                <!-- Summary hero -->
+                <section id="summary" class="summary"></section>
+
+                <!-- Top risks banner -->
+                <section id="top-risks"></section>
+
+                <!-- Bridges (paid funnel) -->
+                <section id="bridges"></section>
+
+                <!-- Findings by category -->
+                <section id="findings"></section>
+
+                <!-- Errors (non-fatal detector errors) -->
+                <section id="errors"></section>
+            </div>
+        </main>
+
+        <footer>
+            <p><strong>Privacy:</strong> ai-surface is static and fully offline. Secrets are reported by
+            <em>name and type only</em> &mdash; no secret value is ever read into the report.</p>
+            <p>Runtime validation is the paid APIsec platform. This free tool routes to it via the upgrade paths above.</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

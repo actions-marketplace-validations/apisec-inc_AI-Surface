@@ -30,10 +30,16 @@ from urllib.parse import urlencode
 from .types import (
     CATEGORY_AGENT_FRAMEWORK,
     CATEGORY_AI_INFRA,
+    CATEGORY_API,
     CATEGORY_ENV_KEY,
     CATEGORY_LLM_SDK,
     CATEGORY_MCP_SERVER,
     CATEGORY_MODEL_GATEWAY,
+    SEVERITY_ORDER,
+    SKU_AGENT_VALIDATION,
+    SKU_API_RUNTIME,
+    SKU_MCP_RUNTIME,
+    Bridge,
     Finding,
 )
 
@@ -254,3 +260,99 @@ def specialists_for_report(findings: list[Finding]) -> list[SpecialistTool]:
         if spec is not None:
             out.append(spec)
     return out
+
+
+# ---------------------------------------------------------------------------
+# Paid-platform bridges (the funnel) — schema 1.0
+# ---------------------------------------------------------------------------
+#
+# One free scan routes findings to one of three paid SKUs. The disconnect
+# between free discovery and paid runtime validation is intentional; bridges
+# are the upgrade path, not an integration. Each finding gets at most one
+# bridge, chosen by category.
+
+#: Landing page for the API outside-in runtime testing SKU (the NG platform's
+#: existing API security capability). Reads ?path= for context.
+API_BASE_URL = "https://apisec.ai/api-validation"
+
+#: Category -> paid SKU routing. env-key is intentionally absent: a key NAME is
+#: inventory, not a validation target, so it gets no bridge.
+CATEGORY_TO_SKU: dict[str, str] = {
+    CATEGORY_MCP_SERVER: SKU_MCP_RUNTIME,
+    CATEGORY_API: SKU_API_RUNTIME,
+    CATEGORY_AGENT_FRAMEWORK: SKU_AGENT_VALIDATION,
+    CATEGORY_LLM_SDK: SKU_AGENT_VALIDATION,
+    CATEGORY_MODEL_GATEWAY: SKU_AGENT_VALIDATION,
+    CATEGORY_AI_INFRA: SKU_AGENT_VALIDATION,
+}
+
+#: User-facing CTA text per SKU. Clear, not heavy-handed.
+SKU_LABELS: dict[str, str] = {
+    SKU_AGENT_VALIDATION: "Validate this AI surface's exploitability in APIsec",
+    SKU_MCP_RUNTIME: "Run MCP runtime validation in APIsec",
+    SKU_API_RUNTIME: "Onboard this API for outside-in runtime testing in APIsec",
+}
+
+
+def _risk_param(finding: Finding) -> str | None:
+    """Pick the risk slug for an upgrade URL.
+
+    Prefers the highest-severity audit risk flag's machine id (so MCP deep-dive
+    findings deep-link to the specific risk, e.g. ?risk=secrets-in-env). Falls
+    back to the slugified first discovery risk indicator.
+    """
+    if finding.audit and finding.audit.risk_flags:
+        rank = {s: i for i, s in enumerate(SEVERITY_ORDER)}
+        top = min(finding.audit.risk_flags, key=lambda rf: rank.get(rf.severity, 99))
+        return top.flag
+    if finding.risk_indicators:
+        return slugify_risk(finding.risk_indicators[0])
+    return None
+
+
+def build_bridges(
+    finding: Finding,
+    medium: str = "ui",
+    campaign: str = DEFAULT_UTM_CAMPAIGN,
+) -> list[Bridge]:
+    """Return the paid-platform bridge(s) for a finding, per schema 1.0.
+
+    At most one bridge today, routed by category. API findings go to the API
+    runtime SKU with the route path embedded; everything else routes to the
+    ai-validation landing page with category + risk context. Returns [] for
+    categories with no bridge (e.g. env-key).
+    """
+    sku = CATEGORY_TO_SKU.get(finding.category)
+    if sku is None:
+        return []
+
+    base_utm = [
+        ("utm_source", "ai-surface"),
+        ("utm_medium", medium),
+        ("utm_campaign", campaign),
+    ]
+
+    if sku == SKU_API_RUNTIME:
+        params: list[tuple[str, str]] = []
+        path = finding.evidence.metadata.get("path") if finding.evidence else None
+        if isinstance(path, str) and path:
+            params.append(("path", path))
+        params.extend(base_utm)
+        url = f"{API_BASE_URL}?{urlencode(params)}"
+    else:
+        params = [("category", finding.category)]
+        risk = _risk_param(finding)
+        if risk:
+            params.append(("risk", risk))
+        params.extend(base_utm)
+        url = f"{APISEC_BASE_URL}?{urlencode(params)}"
+
+    return [Bridge(sku=sku, label=SKU_LABELS[sku], url=url)]
+
+
+def attach_bridges(findings: list[Finding], medium: str = "ui") -> None:
+    """Populate finding.bridges in place for a whole report. Idempotent: skips
+    findings that already have bridges set by a detector."""
+    for f in findings:
+        if not f.bridges:
+            f.bridges = build_bridges(f, medium=medium)

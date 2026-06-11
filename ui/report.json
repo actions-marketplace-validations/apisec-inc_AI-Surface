@@ -60,13 +60,7 @@
       "detector_name": "llm_sdks",
       "severity": null,
       "audit": null,
-      "bridges": [
-        {
-          "sku": "agent-validation",
-          "label": "Validate this AI surface's exploitability in APIsec",
-          "url": "https://apisec.ai/ai-validation?category=llm-sdk&risk=user-input-flows-into-prompt&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel"
-        }
-      ]
+      "bridges": []
     },
     {
       "surface": "LangChain Agent: refund_agent",
@@ -91,7 +85,7 @@
         "refund_payment"
       ],
       "risk_indicators": [
-        "financial action exposed"
+        "financial action exposed to agent"
       ],
       "detector_name": "agent_frameworks",
       "severity": null,
@@ -99,8 +93,8 @@
       "bridges": [
         {
           "sku": "agent-validation",
-          "label": "Validate this AI surface's exploitability in APIsec",
-          "url": "https://apisec.ai/ai-validation?category=agent-framework&risk=financial-action&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel"
+          "label": "Validate this agent's exploitability in APIsec",
+          "url": "https://apisec.ai/ai-validation?category=agent-framework&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel"
         }
       ]
     },
@@ -223,7 +217,7 @@
         {
           "sku": "api-runtime",
           "label": "Onboard this API for outside-in runtime testing in APIsec",
-          "url": "https://apisec.ai/api-validation?path=%2Fv1%2Forders%2F%7Bid%7D%2Frefund&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel"
+          "url": "https://apisec.ai/api-validation?path=/v1/orders/{id}/refund&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel"
         }
       ]
     }

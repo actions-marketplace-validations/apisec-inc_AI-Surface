@@ -60,19 +60,32 @@ class Orchestrator:
                 errors.append(msg)
                 log.warning(msg)
 
+        # Attach paid-platform bridges (the funnel) to findings. Defensive:
+        # a funnel failure must never abort a scan.
+        try:
+            from .cross_promo import attach_bridges  # noqa: PLC0415
+
+            attach_bridges(all_findings)
+        except Exception as exc:  # noqa: BLE001
+            msg = f"bridge attachment failed: {exc.__class__.__name__}: {exc}"
+            errors.append(msg)
+            log.warning(msg)
+
         # Privacy-safe scan_root: use the basename only (e.g., "demo-app"),
         # falling back to "." for an empty basename (which happens when the
         # user scans the filesystem root). This is what gets embedded in
         # JSON / markdown / terminal output.
         safe_root = root.name or "."
 
-        return Report(
+        report = Report(
             findings=all_findings,
             scan_root=safe_root,
             scan_timestamp=Report.now(),
             detectors_run=detector_names,
             errors=errors,
         )
+        report.summary = report.build_summary()
+        return report
 
 
 def default_detectors() -> list[Detector]:
