@@ -273,6 +273,8 @@ python3 -m http.server 8000
   function renderApp() {
     FINDINGS = (REPORT.findings || []).map((f, i) => ({ ...f, _id: i }));
     if (!TABS.includes(state.tab)) state.tab = "overview";
+    const tm = /(?:#|&)tab=([a-z-]+)/.exec(location.hash);
+    if (tm && TABS.includes(tm[1])) state.tab = tm[1];
     const app = $("#app");
     app.removeAttribute("aria-busy");
     app.innerHTML = `
@@ -831,21 +833,17 @@ python3 -m http.server 8000
   function governancePanelHTML() {
     const fws = REPORT.frameworks || [];
     const bom = `<a class="gov-bom" href="./ai-bom.json" download="ai-bom.json">${icon("download")}<span>Download AI-BOM</span><span class="gov-bom-sub">CycloneDX</span></a>`;
-    const head = `<div class="panel-head"><h2>${icon("gov")}Governance evidence</h2><span class="grow"></span><span class="sub">produces evidence for, not a compliance claim</span></div>`;
-    if (!fws.length) {
-      return `<div class="panel gov-panel">${head}<div class="ov-pad"><div class="sev-empty">No framework evidence in this scan.</div></div></div>`;
-    }
-    const cards = fws.map((fw) => `
-      <div class="gov-fw">
-        <div class="gov-fw-name">${esc(fw.name)}</div>
-        <ul class="gov-fw-reqs">${(fw.provides || []).map((p) => `<li>${esc(p)}</li>`).join("")}</ul>
-      </div>`).join("");
+    const head = `<div class="panel-head"><h2>${icon("gov")}Governance evidence</h2><span class="grow"></span><span class="sub">evidence for, not a compliance claim</span></div>`;
+    const badges = fws.length
+      ? `<div class="gov-badges">${fws.map((fw) =>
+          `<span class="gov-badge" title="${esc((fw.provides || []).join("  •  "))}">${esc(fw.name)}</span>`).join("")}</div>`
+      : `<div class="sev-empty">No framework evidence in this scan.</div>`;
     return `
       <div class="panel gov-panel">
         ${head}
-        <div class="ov-pad">
-          <div class="gov-grid">${cards}</div>
-          <div class="gov-foot">${bom}<span class="gov-note">The AI-BOM is the inventory and documentation artifact, generated in CI like an SBOM.</span></div>
+        <div class="ov-pad gov-compact">
+          ${badges}
+          ${bom}
         </div>
       </div>`;
   }
@@ -1139,11 +1137,17 @@ python3 -m http.server 8000
 
     root.innerHTML = cats.map((c) => groupHTML(c, byCat[c])).join("");
 
-    // wire group toggles
-    root.querySelectorAll(".cat-group-head").forEach((h) => h.addEventListener("click", () => {
-      const grp = h.closest(".cat-group");
-      grp.dataset.open = grp.dataset.open === "false" ? "true" : "false";
-    }));
+    // wire group toggles (collapsed by default; click/Enter to drill in)
+    root.querySelectorAll(".cat-group-head").forEach((h) => {
+      const toggle = () => {
+        const grp = h.closest(".cat-group");
+        const next = grp.dataset.open === "false" ? "true" : "false";
+        grp.dataset.open = next;
+        h.setAttribute("aria-expanded", next);
+      };
+      h.addEventListener("click", toggle);
+      h.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } });
+    });
     // wire card -> drawer
     root.querySelectorAll(".card").forEach((c) => {
       c.addEventListener("click", (e) => {
@@ -1156,9 +1160,12 @@ python3 -m http.server 8000
   function groupHTML(cat, items) {
     const m = catMeta(cat);
     const assessed = items.filter((f) => f.severity).length;
+    // Collapsed by default so the list is scannable. Open only the focused
+    // category, so a node/bubble click lands on that section already expanded.
+    const open = state.cat !== "all" && state.cat === cat;
     return `
-      <div class="cat-group" data-open="true">
-        <div class="cat-group-head">
+      <div class="cat-group" data-open="${open ? "true" : "false"}">
+        <div class="cat-group-head" role="button" tabindex="0" aria-expanded="${open ? "true" : "false"}">
           <span class="ic">${icon(m.icon)}</span>
           <span class="meta"><b>${esc(m.label)}</b><span class="d">${esc(m.desc)}</span></span>
           ${assessed ? `<span class="count" title="${assessed} assessed">${assessed} assessed</span>` : ""}

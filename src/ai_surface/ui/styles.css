@@ -493,7 +493,7 @@ code, pre, .mono { font-family: var(--font-mono); }
   opacity: 0; transition: opacity var(--med); backdrop-filter: blur(2px); }
 .drawer[aria-hidden="false"] .drawer-scrim { opacity: 1; }
 .drawer-panel {
-  position: absolute; top: 0; right: 0; height: 100%; width: min(640px, 96vw);
+  position: absolute; top: 0; right: 0; height: 100%; width: min(1080px, 96vw);
   background: var(--surface-solid); border-left: 1px solid var(--line-2);
   box-shadow: -30px 0 80px -30px rgba(0,0,0,.7);
   transform: translateX(102%); transition: transform var(--slow) var(--ease);
@@ -513,13 +513,16 @@ code, pre, .mono { font-family: var(--font-mono); }
 .dr-close:hover { color: var(--text); border-color: var(--line-2); }
 .dr-close svg { width: 15px; height: 15px; }
 
-.dr-body { padding: 6px 26px 40px; }
-.dr-block h4, .dr-block h4 svg { /* legacy, kept harmless */ }
+/* 4-part drawer, laid out horizontally to cut vertical scroll: the wide panel
+   shows the sections as cards in a 2-column grid. */
+.dr-body { padding: 18px 26px 40px; display: grid; grid-template-columns: 1fr 1fr;
+  gap: 16px; align-items: start; }
+@media (max-width: 760px) { .dr-body { grid-template-columns: 1fr; } }
 .dr-block h4 svg { width: 15px; height: 15px; flex: none; }
 
 /* 4-part drawer sections: Information / Risks / Remediation / Validate */
-.dr-sec { padding: 22px 0; border-top: 1px solid var(--line); }
-.dr-sec:first-child { border-top: 0; padding-top: 10px; }
+.dr-sec { padding: 18px 20px; border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--surface-2); }
 .dr-sec-h { display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
   font-size: 14px; font-weight: 700; letter-spacing: -.01em; color: var(--text); }
 .dr-sec-n { width: 22px; height: 22px; border-radius: 6px; flex: none;
@@ -845,3 +848,10 @@ a.topbar-btn { text-decoration: none; }
 .rt-q { display: flex; gap: 8px; align-items: flex-start; background: var(--bg-2); border: 1px solid var(--line); border-radius: 6px; padding: 9px 11px; margin-bottom: 10px; font-size: 11.5px; color: var(--text-2); line-height: 1.45; }
 .rt-q svg { width: 14px; height: 14px; flex-shrink: 0; margin-top: 1px; color: #9b7ad6; }
 .rt-q b { color: var(--text); }
+
+/* ---- compact governance strip (Overview) ---------------------------------- */
+.gov-compact { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.gov-badges { display: flex; gap: 8px; flex-wrap: wrap; flex: 1; min-width: 200px; }
+.gov-badge { font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 99px;
+  background: var(--bg-2); border: 1px solid var(--line); color: var(--text); cursor: help; }
+.gov-badge:hover { border-color: var(--brand-2); }
