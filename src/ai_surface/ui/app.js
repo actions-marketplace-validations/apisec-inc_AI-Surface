@@ -1,7 +1,12 @@
 /* ============================================================================
  * ai-surface · "AI Attack Surface Map"
  * Renders a schema-1.0 report (docs/SCHEMA_v1.md). It does ZERO scanning.
- * Exactly one network call: fetch("./report.json").
+ * App-shaped layout: a welcome/input front door, then a hero (map + rail)
+ * with a tabbed workspace (Overview / Findings / MCP Audit / Validate) and a
+ * slide-in detail drawer.
+ * Network calls allowed: fetch("./report.json") and POST "/api/scan". Scanning
+ * is done by the endpoint, never in JS; the endpoint may be absent (static
+ * hosted demo) and that is handled gracefully.
  * Vanilla JS, no framework, no CDN, works fully offline.
  * ========================================================================== */
 
@@ -76,16 +81,21 @@
   /* ---- state -------------------------------------------------------------- */
   let REPORT = null;
   let FINDINGS = [];           // augmented with stable index id
-  const state = { q: "", cat: "all", sev: "all" };
+  const TABS = ["overview", "findings", "mcp-audit", "validate"];
+  const state = { q: "", cat: "all", sev: "all", tab: "overview" };
 
   /* ======================================================================== *
-   * BOOT
+   * BOOT  ·  show the welcome / input front door first.
+   * No report is loaded until the user picks "View demo" or runs a scan.
+   * Exception: ?demo (used by the hosted demo) auto-loads the sample report
+   * so visitors land on the populated map, not a form they cannot act on.
    * ======================================================================== */
   initTheme();
-  fetch("./report.json", { cache: "no-store" })
-    .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status} ${r.statusText}`); return r.json(); })
-    .then((data) => { REPORT = data; renderApp(); })
-    .catch((err) => renderFatal(err));
+  if (/(\?|&)demo\b/.test(location.search) || location.hash === "#demo") {
+    loadDemo();
+  } else {
+    renderWelcome();
+  }
 
   /* ---- theme -------------------------------------------------------------- */
   function initTheme() {
@@ -132,34 +142,159 @@ python3 -m http.server 8000
   }
 
   /* ======================================================================== *
-   * RENDER APP
-   * ======================================================================== */
-  function renderApp() {
-    FINDINGS = (REPORT.findings || []).map((f, i) => ({ ...f, _id: i }));
+   * WELCOME · the front door (no report loaded yet)
+   * ======================================================================== *
+   * Input options: scan a GitHub repo URL, or a local path; primary "Scan"
+   * (POSTs to /api/scan) and secondary "View demo" (fetches ./report.json).
+   * Scanning is NEVER done in JS. If /api/scan is unavailable (static hosted
+   * demo with no local server), we degrade gracefully to a clear message.
+   */
+  function renderWelcome() {
     const app = $("#app");
     app.removeAttribute("aria-busy");
     app.innerHTML = `
       <div class="shell">
         ${topbarHTML()}
+        <section class="welcome">
+          <div class="welcome-inner reveal">
+            <span class="eyebrow"><span class="dot"></span>Static AI Surface Discovery</span>
+            <h1 class="welcome-title">Map your codebase's<br><span class="grad">AI attack surface</span></h1>
+            <p class="welcome-lede">Every LLM call, agent, MCP server, gateway, key, and API in your repo, drawn
+               as one map. Discovery runs fully offline and is severity-free by design. Runtime exploitability is
+               validated in APIsec.</p>
+
+            <form class="scan-form reveal d1" id="scan-form" novalidate>
+              <label class="scan-field">
+                <span class="fl">Scan a GitHub repo URL</span>
+                <input id="scan-repo" type="url" name="repo_url" inputmode="url" autocomplete="off"
+                       placeholder="https://github.com/org/repo" />
+              </label>
+              <label class="scan-field">
+                <span class="fl">or scan a local path</span>
+                <input id="scan-path" type="text" name="path" autocomplete="off" value="." placeholder="." />
+              </label>
+              <div class="scan-actions">
+                <button type="submit" class="btn btn-primary" id="scan-go">
+                  ${icon("search")}<span>Scan</span>
+                </button>
+                <button type="button" class="btn btn-ghost" id="scan-demo">View demo</button>
+              </div>
+              <p class="scan-status" id="scan-status" role="status" aria-live="polite"></p>
+              <p class="scan-hint">Terminal user? Run <code>ai-surface scan . --ui</code></p>
+            </form>
+          </div>
+        </section>
+        ${footerHTML(true)}
+      </div>`;
+    wireTopbar();
+    wireWelcome();
+  }
+
+  function wireWelcome() {
+    const form = $("#scan-form");
+    const demo = $("#scan-demo");
+    if (demo) demo.addEventListener("click", loadDemo);
+    if (form) form.addEventListener("submit", (e) => { e.preventDefault(); runScan(); });
+  }
+
+  function setScanStatus(html, kind) {
+    const el = $("#scan-status");
+    if (!el) return;
+    el.className = "scan-status" + (kind ? " " + kind : "");
+    el.innerHTML = html;
+  }
+  function setScanBusy(busy) {
+    const go = $("#scan-go"), demo = $("#scan-demo");
+    [go, demo].forEach((b) => { if (b) b.disabled = !!busy; });
+    if (go) go.classList.toggle("loading", !!busy);
+  }
+
+  // "View demo" · always works, even on a static host (just fetch the bundled report).
+  function loadDemo() {
+    setScanBusy(true);
+    setScanStatus("Loading demo report&hellip;", "");
+    fetch("./report.json", { cache: "no-store" })
+      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status} ${r.statusText}`); return r.json(); })
+      .then((data) => { REPORT = data; renderApp(); })
+      .catch((err) => { setScanBusy(false); setScanStatus(
+        `Could not load <code>report.json</code>: ${esc(err && err.message ? err.message : String(err))}. ` +
+        `Serve this folder over HTTP (<code>python3 -m http.server</code>); <code>file://</code> blocks fetch.`, "err"); });
+  }
+
+  // "Scan" · POST to /api/scan. The endpoint does the scanning (it may not
+  // exist yet). On absence/failure we degrade gracefully with instructions.
+  function runScan() {
+    const repo = ($("#scan-repo") && $("#scan-repo").value || "").trim();
+    const path = ($("#scan-path") && $("#scan-path").value || "").trim();
+    if (!repo && !path) {
+      setScanStatus("Enter a GitHub repo URL or a local path, or use View demo.", "err");
+      return;
+    }
+    const body = {};
+    if (repo) body.repo_url = repo;
+    if (path) body.path = path;
+
+    setScanBusy(true);
+    setScanStatus("Scanning&hellip; this runs the local tool against your code.", "");
+
+    fetch("/api/scan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+      .then((r) => {
+        if (r.status === 404) throw new Error("__NO_ENDPOINT__");
+        if (!r.ok) return r.text().then((t) => { throw new Error(`HTTP ${r.status}${t ? ": " + t.slice(0, 200) : ""}`); });
+        return r.json();
+      })
+      .then((data) => {
+        if (!data || !data.schema_version) throw new Error("Response was not a schema-1.0 report.");
+        REPORT = data; renderApp();
+      })
+      .catch((err) => {
+        setScanBusy(false);
+        const noEndpoint = err && (err.message === "__NO_ENDPOINT__" ||
+          err.message === "Failed to fetch" || /NetworkError|load failed/i.test(err.message || ""));
+        if (noEndpoint) {
+          setScanStatus(
+            `Live scanning needs the local tool. Install ai-surface and run ` +
+            `<code>ai-surface scan . --ui</code>, or use View demo.`, "warn");
+        } else {
+          setScanStatus(`Scan failed: ${esc(err && err.message ? err.message : String(err))}`, "err");
+        }
+      });
+  }
+
+  /* ======================================================================== *
+   * RENDER APP  (a report is loaded)
+   * ======================================================================== */
+  function renderApp() {
+    FINDINGS = (REPORT.findings || []).map((f, i) => ({ ...f, _id: i }));
+    if (!TABS.includes(state.tab)) state.tab = "overview";
+    const app = $("#app");
+    app.removeAttribute("aria-busy");
+    app.innerHTML = `
+      <div class="shell">
+        ${topbarHTML(true)}
         ${heroHTML()}
-        ${risksHTML()}
-        ${bridgesHTML()}
-        ${explorerHTML()}
+        ${tabsHTML()}
+        <div class="tab-panels" id="tab-panels"></div>
         ${errorsHTML()}
         ${footerHTML()}
       </div>`;
     wireTopbar();
     drawMap();
     wireMapInteraction();
-    wireExplorer();
     wireDrawer();
     wireTooltips();
+    wireTabs();
+    renderActiveTab();
   }
 
   /* ---- topbar ------------------------------------------------------------- */
-  function topbarHTML() {
-    const root = REPORT && REPORT.scan_root ? REPORT.scan_root : "";
-    const ver = REPORT && REPORT.tool_version ? REPORT.tool_version : "";
+  function topbarHTML(loaded) {
+    const root = loaded && REPORT && REPORT.scan_root ? REPORT.scan_root : "";
+    const ver = loaded && REPORT && REPORT.tool_version ? REPORT.tool_version : "";
     return `
       <header class="topbar">
         <div class="logo">
@@ -170,6 +305,7 @@ python3 -m http.server 8000
         <span class="topbar-spacer"></span>
         ${root ? `<span class="chip-mono">${esc(root)}</span>` : ""}
         ${ver ? `<span class="chip-mono">v${esc(ver)}</span>` : ""}
+        ${loaded ? `<button class="topbar-btn" id="new-scan" title="Scan another target">${icon("search")}<span>New scan</span></button>` : ""}
         <button class="theme-toggle" id="theme-toggle" aria-label="Toggle color theme" title="Toggle theme">
           <span class="ic-sun">${icon("sun")}</span><span class="ic-moon">${icon("moon")}</span>
         </button>
@@ -178,6 +314,8 @@ python3 -m http.server 8000
   function wireTopbar() {
     const t = $("#theme-toggle");
     if (t) t.addEventListener("click", toggleTheme);
+    const ns = $("#new-scan");
+    if (ns) ns.addEventListener("click", () => { closeDrawer(); REPORT = null; FINDINGS = []; state.tab = "overview"; renderWelcome(); });
   }
 
   /* ======================================================================== *
@@ -199,7 +337,7 @@ python3 -m http.server 8000
         <span class="eyebrow reveal"><span class="dot"></span>Static AI Surface Discovery${ts ? " &middot; " + esc(ts) : ""}</span>
         <h1 class="reveal d1">The <span class="grad">AI Attack Surface</span><br>of your codebase, mapped.</h1>
         <p class="lede reveal d2">Every LLM call, agent, MCP server, gateway, key, and API we found, drawn as one map.
-           <b>Discovery is severity-free by design</b> &mdash; most surfaces are inventoried; a subset is assessed
+           <b>Discovery is severity-free by design</b>: most surfaces are inventoried; a subset is assessed
            for risk. Runtime exploitability is validated in APIsec.</p>
 
         <div class="stage reveal d3">
@@ -234,17 +372,11 @@ python3 -m http.server 8000
 
             <div class="panel metric-card">
               <div class="panel-head" style="margin:-18px -20px 14px;border-radius:var(--radius) var(--radius) 0 0;">
-                <h2>Assessed severity</h2>
+                <h2>By category</h2>
                 <span class="grow"></span>
-                <span class="sub">${assessed} of ${total}</span>
+                <span class="sub">${catCount} present</span>
               </div>
-              ${severityDistHTML(bySev, assessed)}
-              <div style="margin-top:18px;">
-                <div class="panel-head" style="margin:0 -20px 12px;padding-left:0;border:0;border-bottom:1px solid var(--line);">
-                  <h2>By category</h2>
-                </div>
-                ${categoryChipsHTML(byCat)}
-              </div>
+              ${categoryChipsHTML(byCat)}
             </div>
           </div>
         </div>
@@ -288,6 +420,93 @@ python3 -m http.server 8000
       const m = catMeta(c);
       return `<span class="cat-pill"><span class="ic">${icon(m.icon)}</span>${esc(m.label)}<span class="n">${n}</span></span>`;
     }).join("") + `</div>`;
+  }
+
+  /* ======================================================================== *
+   * TABBED WORKSPACE  ·  Overview / Findings / MCP Audit / Validate
+   * ======================================================================== *
+   * The core reorganization: instead of one long scroll, the detail surfaces
+   * are split into keyboard-accessible tabs. Drawer is shared across all tabs.
+   */
+  function tabsHTML() {
+    const mcpCount = FINDINGS.filter((f) => f.audit).length;
+    const validateCount = countBridges();
+    const defs = [
+      { id: "overview",  label: "Overview" },
+      { id: "findings",  label: "Findings",  n: FINDINGS.length },
+      { id: "mcp-audit", label: "MCP Audit", n: mcpCount },
+      { id: "validate",  label: "Validate",  n: validateCount },
+    ];
+    const tabs = defs.map((t) => {
+      const active = state.tab === t.id;
+      return `<button role="tab" class="tab" id="tab-${t.id}" data-tab="${t.id}"
+        aria-selected="${active}" aria-controls="tab-panels" tabindex="${active ? "0" : "-1"}">
+        ${esc(t.label)}${t.n != null ? `<span class="n">${t.n}</span>` : ""}</button>`;
+    }).join("");
+    return `<div class="tabs" role="tablist" aria-label="Workspace">${tabs}</div>`;
+  }
+
+  function wireTabs() {
+    const list = $(".tabs");
+    if (!list) return;
+    const tabs = [...list.querySelectorAll(".tab")];
+    tabs.forEach((t) => t.addEventListener("click", () => setTab(t.dataset.tab)));
+    list.addEventListener("keydown", (e) => {
+      const i = tabs.findIndex((t) => t.dataset.tab === state.tab);
+      let ni = -1;
+      if (e.key === "ArrowRight" || e.key === "ArrowDown") ni = (i + 1) % tabs.length;
+      else if (e.key === "ArrowLeft" || e.key === "ArrowUp") ni = (i - 1 + tabs.length) % tabs.length;
+      else if (e.key === "Home") ni = 0;
+      else if (e.key === "End") ni = tabs.length - 1;
+      if (ni < 0) return;
+      e.preventDefault();
+      setTab(tabs[ni].dataset.tab);
+      tabs[ni].focus();
+    });
+  }
+
+  function setTab(id) {
+    if (!TABS.includes(id)) id = "overview";
+    state.tab = id;
+    document.querySelectorAll(".tabs .tab").forEach((t) => {
+      const active = t.dataset.tab === id;
+      t.setAttribute("aria-selected", String(active));
+      t.tabIndex = active ? 0 : -1;
+    });
+    renderActiveTab();
+  }
+
+  function renderActiveTab() {
+    const root = $("#tab-panels");
+    if (!root) return;
+    if (state.tab === "overview")       root.innerHTML = overviewHTML();
+    else if (state.tab === "findings")  { root.innerHTML = findingsTabHTML(); wireExplorer(); }
+    else if (state.tab === "mcp-audit") root.innerHTML = mcpAuditHTML();
+    else if (state.tab === "validate")  root.innerHTML = validateHTML();
+    root.setAttribute("role", "tabpanel");
+    root.setAttribute("aria-labelledby", "tab-" + state.tab);
+    // wire any finding rows / cards in this panel to the drawer
+    wirePanelRows(root);
+  }
+
+  // any element with [data-open-id] opens that finding in the drawer
+  function wirePanelRows(root) {
+    root.querySelectorAll("[data-open-id]").forEach((el) => {
+      const open = (e) => {
+        if (e.target.closest("a")) return;
+        if (e.type === "keydown" && e.key !== "Enter" && e.key !== " ") return;
+        if (e.type === "keydown") e.preventDefault();
+        openDrawer(Number(el.dataset.openId));
+      };
+      el.addEventListener("click", open);
+      if (el.hasAttribute("tabindex")) el.addEventListener("keydown", open);
+    });
+  }
+
+  function countBridges() {
+    const set = new Set();
+    FINDINGS.forEach((f) => (f.bridges || []).forEach((b) => { if (b && b.sku) set.add(b.sku); }));
+    return set.size;
   }
 
   /* ======================================================================== *
@@ -507,9 +726,10 @@ python3 -m http.server 8000
       node.addEventListener("mouseleave", () => unfocus(g));
       node.addEventListener("click", () => {
         if (node.classList.contains("node-leaf")) openDrawer(Number(node.dataset.id));
-        else { // hub click -> jump to that category in explorer
-          state.cat = node.dataset.cat; syncFilterUI(); applyFilters();
-          const exp = $("#explorer"); if (exp) exp.scrollIntoView({ behavior: "smooth", block: "start" });
+        else { // hub click -> jump to that category in the Findings tab
+          state.cat = node.dataset.cat;
+          setTab("findings");
+          const exp = $("#tab-panels"); if (exp) exp.scrollIntoView({ behavior: "smooth", block: "start" });
         }
       });
     });
@@ -526,34 +746,96 @@ python3 -m http.server 8000
   }
 
   /* ======================================================================== *
-   * TOP RISKS
+   * OVERVIEW TAB  ·  "where do I start"
+   * summary stats + severity distribution + top-risks triage list
    * ======================================================================== */
-  function risksHTML() {
-    const risks = (REPORT.summary && REPORT.summary.top_risks) || [];
-    if (!risks.length) return "";
-    const items = risks.slice(0, 10).map((r, i) => {
-      const idx = r.indexOf(":");
-      let src = "", rest = r;
-      if (idx > 0 && idx < 60) { src = r.slice(0, idx); rest = r.slice(idx + 1); }
-      return `<div class="risk-item">
-        <span class="rank">${String(i + 1).padStart(2, "0")}</span>
-        <span class="txt">${src ? `<span class="src">${esc(src)}:</span>` : ""}${esc(rest)}</span>
+  function overviewHTML() {
+    const s = REPORT.summary || {};
+    const total = s.total_findings != null ? s.total_findings : FINDINGS.length;
+    const bySev = s.by_severity || {};
+    const assessed = FINDINGS.filter((f) => f.severity).length;
+    const inventoried = Math.max(total - assessed, 0);
+    const owaspSet = new Set();
+    FINDINGS.forEach((f) => f.audit && (f.audit.owasp_mappings || []).forEach((o) => owaspSet.add(o)));
+
+    const stats = `
+      <div class="stat-row">
+        ${statCard(total, "Surfaces discovered")}
+        ${statCard(inventoried, "Inventoried", "neutral")}
+        ${statCard(assessed, "Assessed for risk", "accent")}
+        ${statCard(owaspSet.size, "OWASP LLM categories")}
       </div>`;
-    }).join("");
+
+    const sevPanel = `
+      <div class="panel ov-panel">
+        <div class="panel-head"><h2>Assessed severity</h2><span class="grow"></span><span class="sub">${assessed} of ${total}</span></div>
+        <div class="ov-pad">${severityDistHTML(bySev, assessed)}</div>
+      </div>`;
+
     return `
-      <section class="section risks">
-        <div class="section-head">
-          <h2>Top risks</h2>
-          <span class="sub">severity-ordered, from the assessed surface</span>
+      <section class="tab-section reveal">
+        ${stats}
+        <div class="ov-grid">
+          ${sevPanel}
+          ${topRisksPanelHTML()}
         </div>
-        <div class="risks-strip">${items}</div>
       </section>`;
   }
 
+  function statCard(n, label, kind) {
+    return `<div class="stat ${kind || ""}"><span class="num">${n}</span><span class="lbl">${esc(label)}</span></div>`;
+  }
+
+  // Top risks: the triage shortlist (severity-ordered). Distinct from the
+  // Findings tab (full inventory). Items resolve to their finding in the drawer.
+  function topRisksPanelHTML() {
+    const risks = (REPORT.summary && REPORT.summary.top_risks) || [];
+    const head = `<div class="panel-head"><h2>Top risks</h2><span class="grow"></span><span class="sub">severity-ordered triage</span></div>`;
+    if (!risks.length) {
+      return `<div class="panel ov-panel">${head}<div class="ov-pad"><div class="sev-empty">No risks to triage.
+        Discovery is severity-free; severity comes only from the deep-dive audit layer (MCP today),
+        and nothing in this scan was flagged.</div></div></div>`;
+    }
+    const items = risks.slice(0, 10).map((r, i) => {
+      // resolve to a finding so clicking opens its drawer; the surface is the
+      // longest finding-surface that the risk string starts with.
+      const fid = resolveRiskFinding(r);
+      const f = fid != null ? FINDINGS.find((x) => x._id === fid) : null;
+      const sev = f ? f.severity : null;
+      // label split: prefer the matched surface as the "source"
+      let src = "", rest = r;
+      if (f && r.startsWith(f.surface)) {
+        src = f.surface;
+        rest = r.slice(f.surface.length).replace(/^[:\s]+/, "");
+      } else {
+        const idx = r.indexOf(":");
+        if (idx > 0 && idx < 60) { src = r.slice(0, idx); rest = r.slice(idx + 1).trim(); }
+      }
+      const open = fid != null ? `data-open-id="${fid}" tabindex="0" role="button"` : "";
+      return `<div class="risk-item ${fid != null ? "clickable" : ""}" ${open}>
+        <span class="rank">${String(i + 1).padStart(2, "0")}</span>
+        ${sev ? `<span class="risk-dot" style="background:${sevColor(sev)}" title="${esc(sev)}"></span>` : ""}
+        <span class="txt">${src ? `<span class="src">${esc(src)}:</span> ` : ""}${esc(rest)}</span>
+        ${fid != null ? `<span class="risk-go">${icon("arrow")}</span>` : ""}
+      </div>`;
+    }).join("");
+    return `<div class="panel ov-panel">${head}<div class="ov-pad"><div class="risks-strip">${items}</div></div></div>`;
+  }
+
+  // best-effort: a top_risk line starts with the finding's surface ("Surface: reason")
+  function resolveRiskFinding(r) {
+    if (!r) return null;
+    let best = null;
+    FINDINGS.forEach((f) => {
+      if (f.surface && r.startsWith(f.surface) && (!best || f.surface.length > best.surface.length)) best = f;
+    });
+    return best ? best._id : null;
+  }
+
   /* ======================================================================== *
-   * BRIDGES (paid funnel · confident, not naggy)
+   * VALIDATE TAB  ·  the three paid bridges, deduped by sku
    * ======================================================================== */
-  function bridgesHTML() {
+  function validateHTML() {
     // de-dup by sku across all findings; preserve summary order if given
     const map = new Map();
     FINDINGS.forEach((f) => (f.bridges || []).forEach((b) => { if (b && b.sku && !map.has(b.sku)) map.set(b.sku, b); }));
@@ -561,22 +843,33 @@ python3 -m http.server 8000
     const ordered = [];
     order.forEach((sku) => { if (map.has(sku)) { ordered.push(map.get(sku)); map.delete(sku); } });
     map.forEach((b) => ordered.push(b));
-    if (!ordered.length) return "";
 
-    const cards = ordered.map((b) => `
+    if (!ordered.length) {
+      return `<section class="tab-section reveal"><div class="empty-tab">
+        <div class="big">No validation paths yet</div>
+        <div>Bridges to runtime validation attach to findings as you discover AI and API surface.
+        Nothing in this scan has a bridge.</div></div></section>`;
+    }
+
+    const cards = ordered.map((b) => {
+      const n = FINDINGS.filter((f) => (f.bridges || []).some((x) => x.sku === b.sku)).length;
+      return `
       <a class="bridge" href="${esc(b.url)}" target="_blank" rel="noopener noreferrer">
         <span class="sku">${esc(b.sku)}</span>
         <span class="lbl">${esc(b.label)}</span>
+        <span class="cnt">${n} surface${n === 1 ? "" : "s"} route here</span>
         <span class="go">Open in APIsec ${icon("arrow")}</span>
-      </a>`).join("");
+      </a>`;
+    }).join("");
 
     return `
-      <section class="section">
+      <section class="tab-section reveal">
         <div class="bridges-band">
           <div class="lead">
             <h3>Validate exploitability at runtime in APIsec</h3>
             <p>ai-surface maps what exists, statically. APIsec proves what's actually exploitable against your
-               running system. These are the upgrade paths for what we found here.</p>
+               running system. These are the next steps for what we found here. Per-finding bridges also appear
+               in each finding's drawer.</p>
           </div>
           <div class="bridge-grid">${cards}</div>
         </div>
@@ -584,32 +877,28 @@ python3 -m http.server 8000
   }
 
   /* ======================================================================== *
-   * FINDINGS EXPLORER
+   * FINDINGS TAB  ·  full inventory explorer (search + filter by cat/sev)
    * ======================================================================== */
-  function explorerHTML() {
+  function findingsTabHTML() {
     const sevPresent = SEV_ORDER.filter((s) => FINDINGS.some((f) => f.severity === s));
     const cats = uniqueCats();
 
-    const catFilters = [`<button class="filter-chip" data-cat="all" aria-pressed="true">All categories <span class="n">${FINDINGS.length}</span></button>`]
+    const catFilters = [`<button class="filter-chip" data-cat="all" aria-pressed="${state.cat === "all"}">All categories <span class="n">${FINDINGS.length}</span></button>`]
       .concat(cats.map((c) => {
         const n = FINDINGS.filter((f) => f.category === c).length;
-        return `<button class="filter-chip" data-cat="${esc(c)}" aria-pressed="false">${esc(catMeta(c).label)} <span class="n">${n}</span></button>`;
+        return `<button class="filter-chip" data-cat="${esc(c)}" aria-pressed="${state.cat === c}">${esc(catMeta(c).label)} <span class="n">${n}</span></button>`;
       })).join("");
 
     const sevFilters = sevPresent.length ? (
-      `<button class="filter-chip" data-sev="all" aria-pressed="true">Any severity</button>` +
+      `<button class="filter-chip" data-sev="all" aria-pressed="${state.sev === "all"}">Any severity</button>` +
       sevPresent.map((s) => {
         const n = FINDINGS.filter((f) => f.severity === s).length;
-        return `<button class="filter-chip" data-sev="${s}" aria-pressed="false"><span class="swatch" style="background:var(--sev-${s})"></span>${s} <span class="n">${n}</span></button>`;
+        return `<button class="filter-chip" data-sev="${s}" aria-pressed="${state.sev === s}"><span class="swatch" style="background:var(--sev-${s})"></span>${s} <span class="n">${n}</span></button>`;
       }).join("")
     ) : "";
 
     return `
-      <section class="section" id="explorer">
-        <div class="section-head">
-          <h2>Findings</h2>
-          <span class="sub">${FINDINGS.length} surface${FINDINGS.length === 1 ? "" : "s"} &middot; grouped by category</span>
-        </div>
+      <section class="tab-section reveal" id="explorer">
         <div class="explorer-controls">
           <label class="search">
             ${icon("search")}
@@ -624,6 +913,99 @@ python3 -m http.server 8000
       </section>`;
   }
 
+  /* ======================================================================== *
+   * MCP AUDIT TAB  ·  the differentiator. A dedicated home for every audited
+   * surface. Renders generically from finding.audit so future audited
+   * categories (not just MCP) show here automatically.
+   * ======================================================================== */
+  function mcpAuditHTML() {
+    const audited = FINDINGS.filter((f) => f.audit).sort((a, b) =>
+      (SEV_RANK[b.severity] || 0) - (SEV_RANK[a.severity] || 0));
+
+    const intro = `
+      <div class="mcp-intro">
+        <div class="ic">${icon("shield")}</div>
+        <div>
+          <h3>Deep-dive audit</h3>
+          <p>Discovery is severity-free. Severity comes only from this audit layer. Each audited surface is
+             scored against the OWASP LLM Top 10, checked for secrets (names and types only, never values),
+             and matched against known source registries for trust.</p>
+        </div>
+      </div>`;
+
+    if (!audited.length) {
+      return `<section class="tab-section reveal">${intro}
+        <div class="empty-tab"><div class="big">Nothing audited in this scan</div>
+        <div>No MCP servers (or other deep-divable surfaces) were found to assess.
+        Inventoried surfaces stay severity-free by design.</div></div></section>`;
+    }
+
+    const cards = audited.map(mcpCardHTML).join("");
+    return `<section class="tab-section reveal">${intro}<div class="mcp-grid">${cards}</div></section>`;
+  }
+
+  function mcpCardHTML(f) {
+    const a = f.audit || {};
+    const sev = f.severity;
+    const accent = sevColor(sev);
+    const sevTag = sev
+      ? `<span class="sev-tag" style="--accent:${accent}">${esc(sev)}</span>`
+      : `<span class="sev-tag none">audited</span>`;
+
+    const flags = (a.risk_flags || []).map((rf) => {
+      const fa = sevColor(rf.severity);
+      const owasp = (rf.owasp || []).map(owaspChip).join("");
+      return `
+        <div class="flag">
+          <div class="flag-top" style="--accent:${fa}">
+            <span class="sev-tag" style="--accent:${fa}">${esc(rf.severity || "info")}</span>
+            <span class="fid">${esc(rf.flag)}</span>
+          </div>
+          <div class="flag-body">
+            ${rf.description ? `<p class="desc">${esc(rf.description)}</p>` : ""}
+            ${owasp ? `<div class="owasp-row">${owasp}</div>` : ""}
+            ${rf.remediation ? `<div class="rem"><b>Fix:</b> ${esc(rf.remediation)}</div>` : ""}
+          </div>
+        </div>`;
+    }).join("") || `<div class="sev-empty">No risk flags raised.</div>`;
+
+    const secrets = (a.secrets || []).map((s) => `
+      <div class="secret-row">
+        <span class="lock">${icon("lock")}</span>
+        <span style="flex:1">
+          <span class="sname">${esc(s.name)}</span>
+          <span class="smeta">${esc(s.secret_type || "secret")}${s.confidence ? " &middot; " + esc(s.confidence) + " confidence" : ""}${s.location ? " &middot; " + esc(s.location) : ""}</span>
+        </span>
+        ${s.severity ? `<span class="sev-tag" style="--accent:${sevColor(s.severity)}">${esc(s.severity)}</span>` : ""}
+      </div>`).join("");
+
+    const trust = [];
+    if (a.trust_label) {
+      const cls = a.trust_label === "verified" ? "verified" : a.trust_label === "unknown" ? "unknown" : "";
+      trust.push(`<span class="trust-badge ${cls}">trust <b>${esc(a.trust_label)}</b></span>`);
+    }
+    if (a.trust_score != null) trust.push(`<span class="trust-badge">score <b>${esc(a.trust_score)}</b></span>`);
+    if (a.registry_match) trust.push(`<span class="trust-badge">registry <b>${esc(a.registry_match)}</b></span>`);
+
+    const tools = (f.permissions || ((f.evidence && f.evidence.metadata && f.evidence.metadata.tools)) || [])
+      .slice(0, 6).map((t) => `<span class="perm">${esc(t)}</span>`).join("");
+
+    return `
+      <article class="mcp-card" style="--accent:${accent}" data-open-id="${f._id}" tabindex="0" role="button">
+        <div class="mcp-head">
+          <span class="ic">${icon(catMeta(f.category).icon)}</span>
+          <span class="title">${esc(f.surface)}</span>
+          ${sevTag}
+        </div>
+        ${tools ? `<div class="mcp-tools tag-list">${tools}</div>` : ""}
+        <div class="mcp-flags">${flags}</div>
+        ${secrets ? `<div class="mcp-sub"><h5>Secrets <span class="ct">${(a.secrets || []).length}</span></h5>${secrets}
+          <div class="secret-note">${icon("lock")}<span>Names and types only. ai-surface never reads a secret value.</span></div></div>` : ""}
+        ${trust.length ? `<div class="mcp-sub"><h5>Source trust</h5><div class="trust-row">${trust.join("")}</div></div>` : ""}
+        <div class="mcp-foot"><span class="open">Open full detail ${icon("arrow")}</span></div>
+      </article>`;
+  }
+
   function uniqueCats() {
     const present = [...new Set(FINDINGS.map((f) => f.category))];
     present.sort((a, b) => {
@@ -635,7 +1017,10 @@ python3 -m http.server 8000
 
   function wireExplorer() {
     const search = $("#search");
-    if (search) search.addEventListener("input", (e) => { state.q = e.target.value.trim().toLowerCase(); applyFilters(); });
+    if (search) {
+      if (state.q) search.value = state.q;
+      search.addEventListener("input", (e) => { state.q = e.target.value.trim().toLowerCase(); applyFilters(); });
+    }
     document.querySelectorAll("#cat-filters .filter-chip").forEach((b) =>
       b.addEventListener("click", () => { state.cat = b.dataset.cat; syncFilterUI(); applyFilters(); }));
     document.querySelectorAll("#sev-filters .filter-chip").forEach((b) =>
@@ -939,7 +1324,7 @@ python3 -m http.server 8000
     if (flags) html += flags;
     if (secrets) {
       html += `<h4 style="margin-top:20px">Detected secrets <span class="ct">${(a.secrets || []).length}</span></h4>${secrets}
-        <div class="secret-note">${icon("lock")}<span>Names and types only. ai-surface never reads or stores a secret value &mdash; it stays on your machine.</span></div>`;
+        <div class="secret-note">${icon("lock")}<span>Names and types only. ai-surface never reads or stores a secret value; it stays on your machine.</span></div>`;
     }
     if (trust.length) html += `<h4 style="margin-top:20px">Source trust</h4><div class="trust-row">${trust.join("")}</div>`;
     html += `</div>`;
@@ -985,12 +1370,20 @@ python3 -m http.server 8000
       </section>`;
   }
 
-  function footerHTML() {
+  function footerHTML(minimal) {
+    if (minimal || !REPORT) {
+      return `
+        <footer>
+          <div class="row"><b>Privacy</b> ai-surface is static and fully offline. Secrets are reported by name and type only: no value is ever read.</div>
+          <div class="row"><b>Scope</b> Static discovery only. Runtime exploitability is the paid APIsec platform; this free tool routes to it via bridges.</div>
+          <div class="row" style="margin-top:6px;color:var(--text-3)">ai-surface by APIsec</div>
+        </footer>`;
+    }
     const detectors = (REPORT.detectors_run || []).map((d) => `<span class="chip-mono">${esc(d)}</span>`).join(" ");
     return `
       <footer>
-        <div class="row"><b>Privacy</b> ai-surface is static and fully offline. Secrets are reported by name and type only &mdash; no value is ever read into the report.</div>
-        <div class="row"><b>Scope</b> Static discovery only. Runtime exploitability is the paid APIsec platform; this free tool routes to it via the bridges above.</div>
+        <div class="row"><b>Privacy</b> ai-surface is static and fully offline. Secrets are reported by name and type only: no value is ever read into the report.</div>
+        <div class="row"><b>Scope</b> Static discovery only. Runtime exploitability is the paid APIsec platform; this free tool routes to it via the Validate bridges.</div>
         ${detectors ? `<div class="row" style="margin-top:6px;"><b>Detectors run</b> ${detectors}</div>` : ""}
         <div class="row" style="margin-top:6px;color:var(--text-3)">schema ${esc(REPORT.schema_version || "1.0")} &middot; ai-surface by APIsec</div>
       </footer>`;
