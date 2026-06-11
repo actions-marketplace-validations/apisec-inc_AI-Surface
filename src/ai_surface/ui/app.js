@@ -275,6 +275,8 @@ python3 -m http.server 8000
     if (!TABS.includes(state.tab)) state.tab = "overview";
     const tm = /(?:#|&)tab=([a-z-]+)/.exec(location.hash);
     if (tm && TABS.includes(tm[1])) state.tab = tm[1];
+    const cm = /(?:#|&)cat=([a-z-]+)/.exec(location.hash);
+    if (cm) state.cat = cm[1];
     const app = $("#app");
     app.removeAttribute("aria-busy");
     app.innerHTML = `
@@ -1129,6 +1131,12 @@ python3 -m http.server 8000
         openDrawer(Number(c.dataset.id));
       });
     });
+    // API table rows open the same drawer
+    root.querySelectorAll(".api-row").forEach((r) => {
+      const open = () => openDrawer(Number(r.dataset.openId));
+      r.addEventListener("click", open);
+      r.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } });
+    });
   }
 
   function groupHTML(cat, items) {
@@ -1146,8 +1154,36 @@ python3 -m http.server 8000
           <span class="count">${items.length}</span>
           <span class="caret">${icon("caret")}</span>
         </div>
-        <div class="cards">${items.map(cardHTML).join("")}</div>
+        ${cat === "api"
+          ? apiTableHTML(items)
+          : `<div class="cards">${items.map(cardHTML).join("")}</div>`}
       </div>`;
+  }
+
+  // APIs are tabular and high-volume: a dense table scales to hundreds of
+  // endpoints where cards do not. Rows open the same drawer.
+  function apiTableHTML(items) {
+    const meth = (m) => {
+      const v = String(m || "*");
+      const cls = ["GET", "POST", "PUT", "PATCH", "DELETE"].includes(v.toUpperCase()) ? v.toLowerCase() : "any";
+      return `<span class="chip method ${cls}">${esc(v)}</span>`;
+    };
+    const rows = items.map((f) => {
+      const md = (f.evidence && f.evidence.metadata) || {};
+      const path = md.path || f.surface;
+      const bola = (f.risk_indicators || []).some((r) => /bola/i.test(r));
+      return `<tr class="api-row" data-open-id="${f._id}" tabindex="0" role="button">
+        <td class="c-meth">${meth(md.method)}</td>
+        <td class="c-path mono">${esc(path)}</td>
+        <td class="c-auth">${esc(md.auth || "·")}</td>
+        <td class="c-fw">${esc(md.framework || "·")}</td>
+        <td class="c-risk">${bola ? `<span class="bola-dot">BOLA candidate</span>` : `<span class="t3">·</span>`}</td>
+        <td class="c-go">${icon("arrow")}</td>
+      </tr>`;
+    }).join("");
+    return `<div class="api-table-wrap"><table class="api-table">
+      <thead><tr><th>Method</th><th>Path</th><th>Auth</th><th>Framework</th><th>Risk</th><th></th></tr></thead>
+      <tbody>${rows}</tbody></table></div>`;
   }
 
   function cardHTML(f) {

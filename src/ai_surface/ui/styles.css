@@ -860,3 +860,21 @@ a.topbar-btn { text-decoration: none; }
 .gov-badge { font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 99px;
   background: var(--bg-2); border: 1px solid var(--line); color: var(--text); cursor: help; }
 .gov-badge:hover { border-color: var(--brand-2); }
+
+/* ---- API table (dense, scales to hundreds of endpoints) ------------------- */
+.api-table-wrap { margin-top: 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); overflow: hidden; }
+.api-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.api-table th { text-align: left; padding: 9px 14px; font-size: 10px; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--text-3); background: var(--bg-2); font-weight: 600; }
+.api-table td { padding: 8px 14px; border-top: 1px solid var(--line); vertical-align: middle; white-space: nowrap; }
+.api-table .c-path { width: 99%; color: var(--text); white-space: normal; word-break: break-all; }
+.api-table .c-auth, .api-table .c-fw { color: var(--text-3); }
+.api-row { cursor: pointer; transition: background var(--fast) var(--ease); }
+.api-row:hover { background: var(--surface-2); }
+.api-row:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+.api-table .c-go svg { width: 15px; height: 15px; color: var(--text-3); transition: var(--fast); }
+.api-row:hover .c-go svg { color: var(--brand); transform: translateX(2px); }
+.bola-dot { font-size: 11px; color: var(--sev-high); padding: 2px 8px; border-radius: 99px;
+  background: color-mix(in srgb, var(--sev-high) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--sev-high) 34%, transparent); }
+.api-table .t3 { color: var(--text-3); }
