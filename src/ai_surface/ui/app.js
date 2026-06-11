@@ -1,5 +1,5 @@
 /* ============================================================================
- * ai-surface — "AI Attack Surface Map"
+ * ai-surface · "AI Attack Surface Map"
  * Renders a schema-1.0 report (docs/SCHEMA_v1.md). It does ZERO scanning.
  * Exactly one network call: fetch("./report.json").
  * Vanilla JS, no framework, no CDN, works fully offline.
@@ -25,7 +25,7 @@
   };
   const CAT_ORDER = ["mcp-server", "agent-framework", "llm-sdk", "model-gateway", "ai-infra", "env-key", "api"];
 
-  // OWASP LLM Top 10 (2025) — for badge tooltips.
+  // OWASP LLM Top 10 (2025) · for badge tooltips.
   const OWASP = {
     LLM01: "Prompt Injection",
     LLM02: "Sensitive Information Disclosure",
@@ -291,7 +291,7 @@ python3 -m http.server 8000
   }
 
   /* ======================================================================== *
-   * MAP — hand-rolled radial cluster layout in SVG
+   * MAP · hand-rolled radial cluster layout in SVG
    * ======================================================================== *
    * Layout algorithm:
    *  - Center node = scan root (the app/repo).
@@ -442,7 +442,7 @@ python3 -m http.server 8000
           node.appendChild(tl);
         }
         const title = mk(NS, "title");
-        title.textContent = `${f.surface}${sev ? " — " + sev : " — inventoried"}`;
+        title.textContent = `${f.surface}${sev ? " · " + sev : " · inventoried"}`;
         node.appendChild(title);
 
         nodeLayer.appendChild(node);
@@ -551,7 +551,7 @@ python3 -m http.server 8000
   }
 
   /* ======================================================================== *
-   * BRIDGES (paid funnel — confident, not naggy)
+   * BRIDGES (paid funnel · confident, not naggy)
    * ======================================================================== */
   function bridgesHTML() {
     // de-dup by sku across all findings; preserve summary order if given
@@ -851,7 +851,7 @@ python3 -m http.server 8000
 
     // metadata kv (generic, so any category renders)
     const mdRows = Object.entries(md).map(([k, v]) => {
-      const val = Array.isArray(v) ? v.join(", ") : (v === null ? "—" : String(v));
+      const val = Array.isArray(v) ? v.join(", ") : (v === null ? "·" : String(v));
       return `<dt>${esc(k)}</dt><dd class="mono">${esc(val)}</dd>`;
     }).join("");
 
@@ -863,7 +863,7 @@ python3 -m http.server 8000
     // header summary kv
     const kv = [];
     kv.push(`<dt>category</dt><dd class="mono">${esc(f.category)}</dd>`);
-    kv.push(`<dt>detector</dt><dd class="mono">${esc(f.detector_name || "—")}</dd>`);
+    kv.push(`<dt>detector</dt><dd class="mono">${esc(f.detector_name || "·")}</dd>`);
     if (lines) kv.push(`<dt>lines</dt><dd class="mono">${esc(lines)}</dd>`);
     if (mdRows) kv.push(mdRows);
     blocks.push(`<div class="dr-block"><h4>Detail</h4><dl class="kv">${kv.join("")}</dl></div>`);
