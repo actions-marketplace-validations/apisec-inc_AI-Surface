@@ -10,13 +10,14 @@ egress, no telemetry.
 """
 from __future__ import annotations
 
+import json
 import shutil
 import tempfile
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from .reporters.json_reporter import render_json
+from .reporters.json_reporter import render_json, report_to_dict
 from .types import Report
 
 #: Static asset files the viewer needs alongside report.json.
@@ -64,13 +65,90 @@ def prepare_ui_dir(report: Report, dest: Path | None = None) -> Path:
     return dest
 
 
+def scan_for_request(
+    repo_url: str | None = None,
+    path: str | None = None,
+    token: str | None = None,
+) -> Report:
+    """Run a scan for a UI /api/scan request and return the Report.
+
+    A repo_url is cloned locally (and discarded); otherwise a local path is
+    scanned (default "."). Raises RepoError or FileNotFoundError on bad input.
+    """
+    from .orchestrator import Orchestrator, default_detectors  # noqa: PLC0415
+
+    if repo_url:
+        from .repo import clone_repo  # noqa: PLC0415
+
+        with clone_repo(repo_url, token) as cloned:
+            return Orchestrator(default_detectors()).run(str(cloned))
+
+    target = Path(path or ".").resolve()
+    if not target.is_dir():
+        raise FileNotFoundError(f"not a directory: {path or '.'}")
+    return Orchestrator(default_detectors()).run(str(target))
+
+
+class _UIRequestHandler(SimpleHTTPRequestHandler):
+    """Serves the static UI (GET) and handles POST /api/scan (local scans).
+
+    Bound to loopback only, so only local processes can trigger a scan. A token
+    in the request body is used for the clone and never persisted or logged.
+    """
+
+    def do_POST(self) -> None:  # noqa: N802 - stdlib naming
+        if self.path.split("?", 1)[0].rstrip("/") != "/api/scan":
+            self.send_error(404, "not found")
+            return
+        try:
+            length = int(self.headers.get("Content-Length", 0) or 0)
+        except ValueError:
+            length = 0
+        raw = self.rfile.read(length) if length else b"{}"
+        try:
+            req = json.loads(raw or b"{}")
+        except (ValueError, TypeError):
+            self._send_json(400, {"error": "invalid JSON body"})
+            return
+
+        from .repo import RepoError  # noqa: PLC0415
+
+        try:
+            report = scan_for_request(
+                repo_url=req.get("repo_url"),
+                path=req.get("path"),
+                token=req.get("token"),
+            )
+        except (RepoError, FileNotFoundError) as exc:
+            self._send_json(400, {"error": str(exc)})
+            return
+        except Exception as exc:  # noqa: BLE001 - never crash the server
+            self._send_json(500, {"error": f"scan failed: {exc.__class__.__name__}"})
+            return
+
+        self._send_json(200, report_to_dict(report))
+
+    def _send_json(self, code: int, obj: dict) -> None:
+        body = json.dumps(obj).encode("utf-8")
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, *args: object) -> None:  # noqa: A002 - silence access log
+        pass
+
+
 def serve_ui(report: Report, port: int = 0, open_browser: bool = True) -> None:
     """Serve the UI for a report on loopback and (optionally) open a browser.
 
     Blocks until interrupted (Ctrl-C). port=0 lets the OS pick a free port.
+    The server also answers POST /api/scan so the UI can run further local
+    scans (a path or a remote repo) without restarting.
     """
     serve_dir = prepare_ui_dir(report)
-    handler = partial(SimpleHTTPRequestHandler, directory=str(serve_dir))
+    handler = partial(_UIRequestHandler, directory=str(serve_dir))
     httpd = ThreadingHTTPServer(("127.0.0.1", port), handler)
     actual_port = httpd.server_address[1]
     url = f"http://localhost:{actual_port}/index.html"

@@ -341,8 +341,26 @@ def scan(
             "Serves on loopback only; nothing leaves your machine."
         ),
     ),
+    repo: Optional[str] = typer.Option(
+        None,
+        "--repo",
+        help=(
+            "Scan a remote git repo by https URL instead of PATH. The repo is "
+            "cloned locally, scanned, then discarded. e.g. "
+            "https://github.com/org/repo"
+        ),
+    ),
+    token: Optional[str] = typer.Option(
+        None,
+        "--token",
+        envvar="AI_SURFACE_GIT_TOKEN",
+        help=(
+            "Token to clone a private --repo. Read from AI_SURFACE_GIT_TOKEN if "
+            "unset. Used only for the clone; never stored, logged, or reported."
+        ),
+    ),
 ) -> None:
-    """Scan PATH for production AI surfaces and report what's there."""
+    """Scan PATH (or a remote --repo) for production AI surfaces."""
     _setup_logging(verbose)
 
     if baseline and update_baseline:
@@ -352,8 +370,30 @@ def scan(
         )
         raise typer.Exit(code=2)
 
+    # --repo: clone the remote repo locally and scan that instead of PATH.
+    # Baseline modes operate on a committed snapshot file, which a throwaway
+    # clone does not have, so they are not supported together.
+    _repo_cleanup = None
+    if repo:
+        if baseline or update_baseline:
+            err_console.print(
+                "[red]error[/red]: --baseline/--update-baseline are not "
+                "supported with --repo (the clone is transient)"
+            )
+            raise typer.Exit(code=2)
+        from .repo import RepoError, clone_repo_to_tmp  # noqa: PLC0415
+
+        try:
+            cloned, _repo_cleanup = clone_repo_to_tmp(repo, token)
+        except RepoError as exc:
+            err_console.print(f"[red]error[/red]: {exc}")
+            raise typer.Exit(code=2) from exc
+        path = str(cloned)
+
     root = Path(path).resolve()
     if not root.is_dir():
+        if _repo_cleanup:
+            _repo_cleanup()
         err_console.print(f"[red]error[/red]: {path} is not a directory")
         raise typer.Exit(code=2)
 
@@ -374,7 +414,13 @@ def scan(
         )
 
     orch = Orchestrator(detectors=detectors)
-    report = orch.run(str(root))
+    try:
+        report = orch.run(str(root))
+    finally:
+        # The clone is only needed during the scan; the Report is in-memory,
+        # so discard the clone before rendering regardless of outcome.
+        if _repo_cleanup:
+            _repo_cleanup()
 
     # --ui: serve the full scan in the local visual viewer and block until
     # the user stops it. Takes precedence over text reporters and baseline diff.
