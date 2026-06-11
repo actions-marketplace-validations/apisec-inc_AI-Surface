@@ -102,6 +102,10 @@ def _component(finding: Finding, index: int) -> dict[str, Any]:
     props: list[dict[str, str]] = [
         {"name": "ai-surface:category", "value": finding.category},
     ]
+    if finding.disposition:
+        props.append({"name": "ai-surface:disposition", "value": finding.disposition})
+    if finding.runtime_status and finding.runtime_status != "n/a":
+        props.append({"name": "ai-surface:runtime-status", "value": finding.runtime_status})
     if finding.severity:
         props.append({"name": "ai-surface:severity", "value": finding.severity})
     if finding.detector_name:

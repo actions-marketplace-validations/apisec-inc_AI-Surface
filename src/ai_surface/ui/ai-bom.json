@@ -57,6 +57,10 @@
           "value": "llm-sdk"
         },
         {
+          "name": "ai-surface:disposition",
+          "value": "resolve-here"
+        },
+        {
           "name": "ai-surface:detector",
           "value": "llm_sdks"
         },
@@ -78,6 +82,10 @@
         {
           "name": "ai-surface:category",
           "value": "llm-sdk"
+        },
+        {
+          "name": "ai-surface:disposition",
+          "value": "resolve-here"
         },
         {
           "name": "ai-surface:detector",
@@ -103,6 +111,10 @@
           "value": "llm-sdk"
         },
         {
+          "name": "ai-surface:disposition",
+          "value": "resolve-here"
+        },
+        {
           "name": "ai-surface:detector",
           "value": "llm_sdks"
         },
@@ -120,6 +132,14 @@
         {
           "name": "ai-surface:category",
           "value": "agent-framework"
+        },
+        {
+          "name": "ai-surface:disposition",
+          "value": "validate-runtime"
+        },
+        {
+          "name": "ai-surface:runtime-status",
+          "value": "coming"
         },
         {
           "name": "ai-surface:detector",
@@ -153,6 +173,14 @@
           "value": "agent-framework"
         },
         {
+          "name": "ai-surface:disposition",
+          "value": "validate-runtime"
+        },
+        {
+          "name": "ai-surface:runtime-status",
+          "value": "coming"
+        },
+        {
           "name": "ai-surface:detector",
           "value": "agent_frameworks"
         },
@@ -174,6 +202,14 @@
         {
           "name": "ai-surface:category",
           "value": "agent-framework"
+        },
+        {
+          "name": "ai-surface:disposition",
+          "value": "validate-runtime"
+        },
+        {
+          "name": "ai-surface:runtime-status",
+          "value": "coming"
         },
         {
           "name": "ai-surface:detector",
@@ -205,6 +241,14 @@
         {
           "name": "ai-surface:category",
           "value": "mcp-server"
+        },
+        {
+          "name": "ai-surface:disposition",
+          "value": "validate-runtime"
+        },
+        {
+          "name": "ai-surface:runtime-status",
+          "value": "coming"
         },
         {
           "name": "ai-surface:severity",
@@ -274,6 +318,14 @@
           "value": "mcp-server"
         },
         {
+          "name": "ai-surface:disposition",
+          "value": "validate-runtime"
+        },
+        {
+          "name": "ai-surface:runtime-status",
+          "value": "coming"
+        },
+        {
           "name": "ai-surface:severity",
           "value": "high"
         },
@@ -323,6 +375,14 @@
         {
           "name": "ai-surface:category",
           "value": "mcp-server"
+        },
+        {
+          "name": "ai-surface:disposition",
+          "value": "validate-runtime"
+        },
+        {
+          "name": "ai-surface:runtime-status",
+          "value": "coming"
         },
         {
           "name": "ai-surface:severity",
@@ -380,6 +440,14 @@
           "value": "mcp-server"
         },
         {
+          "name": "ai-surface:disposition",
+          "value": "validate-runtime"
+        },
+        {
+          "name": "ai-surface:runtime-status",
+          "value": "coming"
+        },
+        {
           "name": "ai-surface:severity",
           "value": "low"
         },
@@ -419,6 +487,10 @@
           "value": "model-gateway"
         },
         {
+          "name": "ai-surface:disposition",
+          "value": "resolve-here"
+        },
+        {
           "name": "ai-surface:detector",
           "value": "model_gateways"
         },
@@ -442,6 +514,10 @@
           "value": "model-gateway"
         },
         {
+          "name": "ai-surface:disposition",
+          "value": "resolve-here"
+        },
+        {
           "name": "ai-surface:detector",
           "value": "model_gateways"
         },
@@ -459,6 +535,10 @@
         {
           "name": "ai-surface:category",
           "value": "ai-infra"
+        },
+        {
+          "name": "ai-surface:disposition",
+          "value": "resolve-here"
         },
         {
           "name": "ai-surface:detector",
@@ -484,6 +564,10 @@
           "value": "ai-infra"
         },
         {
+          "name": "ai-surface:disposition",
+          "value": "resolve-here"
+        },
+        {
           "name": "ai-surface:detector",
           "value": "ai_infra"
         },
@@ -505,6 +589,10 @@
         {
           "name": "ai-surface:category",
           "value": "env-key"
+        },
+        {
+          "name": "ai-surface:disposition",
+          "value": "resolve-here"
         },
         {
           "name": "ai-surface:detector",
@@ -530,6 +618,10 @@
           "value": "env-key"
         },
         {
+          "name": "ai-surface:disposition",
+          "value": "resolve-here"
+        },
+        {
           "name": "ai-surface:detector",
           "value": "env_keys"
         },
@@ -551,6 +643,14 @@
         {
           "name": "ai-surface:category",
           "value": "api"
+        },
+        {
+          "name": "ai-surface:disposition",
+          "value": "validate-runtime"
+        },
+        {
+          "name": "ai-surface:runtime-status",
+          "value": "live"
         },
         {
           "name": "ai-surface:detector",
@@ -596,6 +696,14 @@
           "value": "api"
         },
         {
+          "name": "ai-surface:disposition",
+          "value": "validate-runtime"
+        },
+        {
+          "name": "ai-surface:runtime-status",
+          "value": "live"
+        },
+        {
           "name": "ai-surface:detector",
           "value": "api_endpoints"
         },
@@ -639,6 +747,14 @@
           "value": "api"
         },
         {
+          "name": "ai-surface:disposition",
+          "value": "validate-runtime"
+        },
+        {
+          "name": "ai-surface:runtime-status",
+          "value": "live"
+        },
+        {
           "name": "ai-surface:detector",
           "value": "api_endpoints"
         },
@@ -676,6 +792,14 @@
         {
           "name": "ai-surface:category",
           "value": "api"
+        },
+        {
+          "name": "ai-surface:disposition",
+          "value": "validate-runtime"
+        },
+        {
+          "name": "ai-surface:runtime-status",
+          "value": "live"
         },
         {
           "name": "ai-surface:detector",
@@ -721,6 +845,14 @@
           "value": "api"
         },
         {
+          "name": "ai-surface:disposition",
+          "value": "validate-runtime"
+        },
+        {
+          "name": "ai-surface:runtime-status",
+          "value": "live"
+        },
+        {
           "name": "ai-surface:detector",
           "value": "api_endpoints"
         },
@@ -764,6 +896,14 @@
           "value": "api"
         },
         {
+          "name": "ai-surface:disposition",
+          "value": "validate-runtime"
+        },
+        {
+          "name": "ai-surface:runtime-status",
+          "value": "live"
+        },
+        {
           "name": "ai-surface:detector",
           "value": "api_endpoints"
         },
@@ -801,6 +941,14 @@
         {
           "name": "ai-surface:category",
           "value": "api"
+        },
+        {
+          "name": "ai-surface:disposition",
+          "value": "validate-runtime"
+        },
+        {
+          "name": "ai-surface:runtime-status",
+          "value": "live"
         },
         {
           "name": "ai-surface:detector",
@@ -846,6 +994,14 @@
           "value": "api"
         },
         {
+          "name": "ai-surface:disposition",
+          "value": "validate-runtime"
+        },
+        {
+          "name": "ai-surface:runtime-status",
+          "value": "live"
+        },
+        {
           "name": "ai-surface:detector",
           "value": "api_endpoints"
         },
@@ -883,6 +1039,14 @@
         {
           "name": "ai-surface:category",
           "value": "api"
+        },
+        {
+          "name": "ai-surface:disposition",
+          "value": "validate-runtime"
+        },
+        {
+          "name": "ai-surface:runtime-status",
+          "value": "live"
         },
         {
           "name": "ai-surface:detector",
@@ -928,6 +1092,14 @@
           "value": "api"
         },
         {
+          "name": "ai-surface:disposition",
+          "value": "validate-runtime"
+        },
+        {
+          "name": "ai-surface:runtime-status",
+          "value": "live"
+        },
+        {
           "name": "ai-surface:detector",
           "value": "api_endpoints"
         },
@@ -967,6 +1139,14 @@
           "value": "api"
         },
         {
+          "name": "ai-surface:disposition",
+          "value": "validate-runtime"
+        },
+        {
+          "name": "ai-surface:runtime-status",
+          "value": "live"
+        },
+        {
           "name": "ai-surface:detector",
           "value": "api_endpoints"
         },
@@ -1004,6 +1184,14 @@
         {
           "name": "ai-surface:category",
           "value": "api"
+        },
+        {
+          "name": "ai-surface:disposition",
+          "value": "validate-runtime"
+        },
+        {
+          "name": "ai-surface:runtime-status",
+          "value": "live"
         },
         {
           "name": "ai-surface:detector",

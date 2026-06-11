@@ -761,12 +761,17 @@ python3 -m http.server 8000
     const owaspSet = new Set();
     FINDINGS.forEach((f) => f.audit && (f.audit.owasp_mappings || []).forEach((o) => owaspSet.add(o)));
 
+    const resolveHere = s.resolve_here_count != null ? s.resolve_here_count
+      : FINDINGS.filter((f) => f.disposition === "resolve-here").length;
+    const validateRt = s.validate_runtime_count != null ? s.validate_runtime_count
+      : FINDINGS.filter((f) => f.disposition === "validate-runtime").length;
+
     const stats = `
       <div class="stat-row">
         ${statCard(total, "Surfaces discovered")}
-        ${statCard(inventoried, "Inventoried", "neutral")}
-        ${statCard(assessed, "Assessed for risk", "accent")}
-        ${statCard(owaspSet.size, "OWASP LLM categories")}
+        ${statCard(resolveHere, "Resolve here, fix now", "accent")}
+        ${statCard(validateRt, "Validate at runtime", "neutral")}
+        ${statCard(assessed, "Assessed for risk")}
       </div>`;
 
     const sevPanel = `
@@ -1299,13 +1304,29 @@ python3 -m http.server 8000
         <span class="sku">${esc(b.sku)}</span>
         <span class="lbl">${esc(b.label)} ${icon("arrow", "")}</span>
       </a>`).join("");
-    if (bridges) blocks.push(`<div class="dr-block"><h4>Validate at runtime</h4>${bridges}</div>`);
+    // ---- disposition: the value boundary ----
+    if (f.disposition === "validate-runtime") {
+      const st = f.runtime_status === "live" ? "live" : (f.runtime_status === "coming" ? "coming soon" : "");
+      const stPill = st ? `<span class="rt-status ${esc(f.runtime_status)}">${st}</span>` : "";
+      const q = f.runtime_question
+        ? `<div class="rt-q">${icon("info")}<span><b>Only runtime can answer:</b> ${esc(f.runtime_question)}</span></div>` : "";
+      blocks.push(`<div class="dr-block"><h4>Validate at runtime ${stPill}</h4>${q}${bridges}</div>`);
+    } else if (f.disposition === "resolve-here") {
+      blocks.push(`<div class="dr-block"><h4>Resolve here</h4><div class="secret-note">${icon("info")}<span>Statically resolvable: fix this in place. No runtime validation needed for this surface.</span></div></div>`);
+    } else if (bridges) {
+      blocks.push(`<div class="dr-block"><h4>Validate at runtime</h4>${bridges}</div>`);
+    }
+
+    const dispTag = f.disposition === "resolve-here"
+      ? `<span class="disp-pill resolve">resolve here</span>`
+      : f.disposition === "validate-runtime"
+      ? `<span class="disp-pill validate">validate at runtime</span>` : "";
 
     return `
       <div class="dr-head">
         <button class="dr-close" aria-label="Close">${icon("close")}</button>
         <div class="ey"><span class="ic" style="color:var(--brand-2)">${icon(m.icon)}</span>
-          <span class="cat">${esc(m.label)}</span>${sevTag}</div>
+          <span class="cat">${esc(m.label)}</span>${sevTag}${dispTag}</div>
         <h3>${esc(f.surface)}</h3>
       </div>
       <div class="dr-body">${blocks.join("")}</div>`;
