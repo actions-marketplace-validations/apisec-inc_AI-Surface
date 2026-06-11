@@ -268,7 +268,7 @@ def scan(
         "terminal",
         "--output",
         "-o",
-        help="Output format: terminal, json, markdown.",
+        help="Output format: terminal, json, markdown, cyclonedx (AI-BOM).",
     ),
     categories: Optional[str] = typer.Option(
         None,
@@ -474,6 +474,11 @@ def scan(
         from .reporters.markdown_reporter import render_markdown  # noqa: PLC0415
 
         console.print(render_markdown(report))
+    elif output in ("cyclonedx", "ai-bom"):
+        from .reporters.cyclonedx_reporter import render_cyclonedx  # noqa: PLC0415
+
+        # Print raw so the AI-BOM is valid CycloneDX JSON for piping to a file.
+        print(render_cyclonedx(report))
     else:
         # terminal is default
         try:
