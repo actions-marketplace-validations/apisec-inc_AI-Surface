@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "stripe-mcp": {
+      "command": "npx",
+      "args": ["stripe-mcp"],
+      "env": {
+        "STRIPE_SECRET_KEY": "sk_live_REDACTED_FIXTUREßleak"
+      }
+    }
+  }
+}
