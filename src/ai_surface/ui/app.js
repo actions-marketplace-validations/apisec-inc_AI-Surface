@@ -287,6 +287,7 @@ python3 -m http.server 8000
     wireTopbar();
     drawMap();
     wireMapInteraction();
+    wireHero();
     wireDrawer();
     wireTooltips();
     wireTabs();
@@ -334,14 +335,26 @@ python3 -m http.server 8000
     const inventoried = Math.max(total - assessed, 0);
     const assessedPct = total ? Math.round((assessed / total) * 100) : 0;
     const ts = fmtDate(REPORT.scan_timestamp);
+    const ver = REPORT.tool_version ? "v" + REPORT.tool_version : "";
+    const resolveHere = s.resolve_here_count != null ? s.resolve_here_count
+      : FINDINGS.filter((f) => f.disposition === "resolve-here").length;
+    const validateRt = s.validate_runtime_count != null ? s.validate_runtime_count
+      : FINDINGS.filter((f) => f.disposition === "validate-runtime").length;
 
     return `
       <section class="hero">
-        <span class="eyebrow reveal"><span class="dot"></span>Static AI Surface Discovery${ts ? " &middot; " + esc(ts) : ""}</span>
-        <h1 class="reveal d1">The <span class="grad">AI Attack Surface</span><br>of your codebase, mapped.</h1>
-        <p class="lede reveal d2">Every LLM call, agent, MCP server, gateway, key, and API we found, as one map
-           and an AI-BOM. <b>Discovery is severity-free by design</b>: most surfaces are inventoried; a subset is
-           assessed for risk. Exploitability is validated in APIsec.</p>
+        <div class="hero-head reveal">
+          <span class="eyebrow"><span class="dot"></span>ai-surface &middot; AI Attack Surface</span>
+          <h1 class="hero-target">${esc(rootName())}</h1>
+          <div class="hero-meta">
+            <span><b>${total}</b> AI surface${total === 1 ? "" : "s"}</span>
+            <span><b>${catCount}</b> categor${catCount === 1 ? "y" : "ies"}</span>
+            <span><b>${resolveHere}</b> resolve here</span>
+            <span><b>${validateRt}</b> validate at runtime</span>
+            ${ts ? `<span>scanned ${esc(ts)}</span>` : ""}
+            ${ver ? `<span class="mono">${esc(ver)}</span>` : ""}
+          </div>
+        </div>
 
         <div class="stage reveal d3">
           <div class="panel map-panel" id="map-panel">
@@ -421,7 +434,8 @@ python3 -m http.server 8000
     entries.sort((a, b) => catRank(a[0]) - catRank(b[0]));
     return `<div class="cat-grid">` + entries.map(([c, n]) => {
       const m = catMeta(c);
-      return `<span class="cat-pill"><span class="ic">${icon(m.icon)}</span>${esc(m.label)}<span class="n">${n}</span></span>`;
+      return `<button class="cat-pill clickable" data-cat="${esc(c)}" title="View ${esc(m.label)} in Findings">` +
+        `<span class="ic">${icon(m.icon)}</span>${esc(m.label)}<span class="n">${n}</span></button>`;
     }).join("") + `</div>`;
   }
 
@@ -649,6 +663,9 @@ python3 -m http.server 8000
         node.dataset.id = String(f._id);
         node.dataset.cat = cat;
 
+        // generous transparent hit target so small nodes are easy to click
+        node.appendChild(disc(NS, lx2, ly2, Math.max(r + 9, 17), "transparent", "none", 0, "hit"));
+
         if (assessed) {
           // glowing severity ring
           node.appendChild(ringEl(NS, lx2, ly2, r + 6, sevColor(sev), 2, .9, "ring"));
@@ -723,17 +740,32 @@ python3 -m http.server 8000
   function wireMapInteraction() {
     const g = $("#map-wrap .graph");
     if (!g) return;
-    const nodes = g.querySelectorAll(".node-leaf, .node-hub");
-    nodes.forEach((node) => {
+    g.querySelectorAll(".node-leaf, .node-hub").forEach((node) => {
       node.addEventListener("mouseenter", () => focusCategory(g, node.dataset.cat));
       node.addEventListener("mouseleave", () => unfocus(g));
-      node.addEventListener("click", () => {
-        if (node.classList.contains("node-leaf")) openDrawer(Number(node.dataset.id));
-        else { // hub click -> jump to that category in the Findings tab
-          state.cat = node.dataset.cat;
-          setTab("findings");
-          const exp = $("#tab-panels"); if (exp) exp.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
+    });
+    // Delegated click: robust to tiny SVG targets and re-renders. closest()
+    // walks from the clicked shape up to its node group.
+    g.addEventListener("click", (e) => {
+      const node = e.target.closest(".node-leaf, .node-hub");
+      if (!node) return;
+      if (node.classList.contains("node-leaf")) {
+        openDrawer(Number(node.dataset.id));
+      } else { // hub -> jump to that category in the Findings tab
+        state.cat = node.dataset.cat;
+        setTab("findings");
+        const exp = $("#tab-panels"); if (exp) exp.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+  }
+
+  // Hero category bubbles -> open that category in the Findings tab.
+  function wireHero() {
+    document.querySelectorAll(".cat-pill[data-cat]").forEach((el) => {
+      el.addEventListener("click", () => {
+        state.cat = el.dataset.cat;
+        setTab("findings");
+        const exp = $("#tab-panels"); if (exp) exp.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     });
   }

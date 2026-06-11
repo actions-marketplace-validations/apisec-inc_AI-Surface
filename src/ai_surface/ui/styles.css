@@ -173,7 +173,16 @@ code, pre, .mono { font-family: var(--font-mono); }
 [data-theme="light"] .theme-toggle .ic-moon { display: block; }
 
 /* ---- Hero ------------------------------------------------------------------ */
-.hero { padding: 40px 0 12px; }
+.hero { padding: 28px 0 12px; }
+.hero-head { margin-bottom: 4px; }
+.hero-head .eyebrow { margin-bottom: 10px; }
+.hero-target { margin: 0; font-size: clamp(26px, 3.6vw, 40px); line-height: 1.05;
+  letter-spacing: -.02em; font-weight: 720; color: var(--text); word-break: break-word; }
+.hero-meta { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 12px;
+  font-size: 12.5px; color: var(--text-3); align-items: center; }
+.hero-meta span { white-space: nowrap; }
+.hero-meta b { color: var(--text); font-weight: 700; }
+.hero-meta .mono { font-family: var(--font-mono); }
 .eyebrow {
   display: inline-flex; align-items: center; gap: 8px;
   font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
@@ -196,8 +205,8 @@ code, pre, .mono { font-family: var(--font-mono); }
 
 /* ---- Hero stage: map + rail ----------------------------------------------- */
 .stage {
-  display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(280px, .85fr);
-  gap: 20px; margin-top: 30px; align-items: stretch;
+  display: grid; grid-template-columns: minmax(0, 2.1fr) minmax(240px, .7fr);
+  gap: 20px; margin-top: 24px; align-items: stretch;
 }
 @media (max-width: 940px) { .stage { grid-template-columns: 1fr; } }
 
@@ -219,9 +228,8 @@ code, pre, .mono { font-family: var(--font-mono); }
 
 /* ---- The Map --------------------------------------------------------------- */
 .map-panel { overflow: hidden; }
-.map-wrap { position: relative; width: 100%; aspect-ratio: 16 / 11; min-height: 340px; }
-.map-wrap svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; }
-.map-wrap svg:active { cursor: grabbing; }
+.map-wrap { position: relative; width: 100%; aspect-ratio: 16 / 10; min-height: 480px; }
+.map-wrap svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
 .map-legend {
   position: absolute; left: 16px; bottom: 14px; z-index: 3;
@@ -307,9 +315,11 @@ code, pre, .mono { font-family: var(--font-mono); }
   display: inline-flex; align-items: center; gap: 8px;
   padding: 7px 11px; border-radius: 99px;
   background: var(--surface-2); border: 1px solid var(--line);
-  font-size: 12px; color: var(--text); cursor: default;
+  font-size: 12px; color: var(--text); cursor: pointer;
+  font-family: inherit; text-align: left;
   transition: var(--fast) var(--ease);
 }
+.cat-pill.clickable:hover { border-color: var(--brand); transform: translateY(-1px); }
 .cat-pill .ic { width: 16px; height: 16px; display: inline-grid; place-items: center; }
 .cat-pill .ic svg { width: 15px; height: 15px; }
 .cat-pill .n { font-family: var(--font-mono); font-size: 11px; color: var(--text-2);
