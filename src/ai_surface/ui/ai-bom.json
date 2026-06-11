@@ -1,0 +1,1071 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-06-11T00:00:00+00:00",
+    "tools": {
+      "components": [
+        {
+          "type": "application",
+          "name": "ai-surface",
+          "version": "1.0.0",
+          "publisher": "APIsec"
+        }
+      ]
+    },
+    "component": {
+      "type": "application",
+      "bom-ref": "root",
+      "name": "acme-payments"
+    },
+    "properties": [
+      {
+        "name": "ai-surface:schema_version",
+        "value": "1.0"
+      },
+      {
+        "name": "ai-surface:findings_count",
+        "value": "28"
+      },
+      {
+        "name": "ai-surface:framework-evidence:eu-ai-act",
+        "value": "EU AI Act: Technical documentation and record-keeping (Art. 11-12); Risk management of AI systems (Art. 9)"
+      },
+      {
+        "name": "ai-surface:framework-evidence:nist-ai-rmf",
+        "value": "NIST AI RMF: Map: inventory and context of AI systems; Measure: identify and assess AI risks"
+      },
+      {
+        "name": "ai-surface:framework-evidence:iso-42001",
+        "value": "ISO/IEC 42001: AI system inventory (Annex A); AI risk assessment"
+      },
+      {
+        "name": "ai-surface:framework-evidence:owasp-llm",
+        "value": "OWASP LLM Top 10: Mapping of findings to LLM Top 10 categories"
+      }
+    ]
+  },
+  "components": [
+    {
+      "type": "machine-learning-model",
+      "bom-ref": "llm-sdk/anthropic-sdk/0",
+      "name": "Anthropic SDK",
+      "properties": [
+        {
+          "name": "ai-surface:category",
+          "value": "llm-sdk"
+        },
+        {
+          "name": "ai-surface:detector",
+          "value": "llm_sdks"
+        },
+        {
+          "name": "ai-surface:risk",
+          "value": "user input flows into prompt"
+        },
+        {
+          "name": "ai-surface:file",
+          "value": "src/llm/claude.py"
+        },
+        {
+          "name": "ai-surface:validate",
+          "value": "agent-validation"
+        }
+      ]
+    },
+    {
+      "type": "machine-learning-model",
+      "bom-ref": "llm-sdk/openai-sdk/1",
+      "name": "OpenAI SDK",
+      "properties": [
+        {
+          "name": "ai-surface:category",
+          "value": "llm-sdk"
+        },
+        {
+          "name": "ai-surface:detector",
+          "value": "llm_sdks"
+        },
+        {
+          "name": "ai-surface:risk",
+          "value": "user input flows into prompt"
+        },
+        {
+          "name": "ai-surface:file",
+          "value": "src/llm/openai_client.py"
+        },
+        {
+          "name": "ai-surface:validate",
+          "value": "agent-validation"
+        }
+      ]
+    },
+    {
+      "type": "machine-learning-model",
+      "bom-ref": "llm-sdk/aws-bedrock/2",
+      "name": "AWS Bedrock",
+      "properties": [
+        {
+          "name": "ai-surface:category",
+          "value": "llm-sdk"
+        },
+        {
+          "name": "ai-surface:detector",
+          "value": "llm_sdks"
+        },
+        {
+          "name": "ai-surface:file",
+          "value": "src/llm/bedrock.py"
+        },
+        {
+          "name": "ai-surface:validate",
+          "value": "agent-validation"
+        }
+      ]
+    },
+    {
+      "type": "application",
+      "bom-ref": "agent-framework/langchain-agent-refund-agent/3",
+      "name": "LangChain Agent: refund_agent",
+      "properties": [
+        {
+          "name": "ai-surface:category",
+          "value": "agent-framework"
+        },
+        {
+          "name": "ai-surface:detector",
+          "value": "agent_frameworks"
+        },
+        {
+          "name": "ai-surface:risk",
+          "value": "financial action exposed"
+        },
+        {
+          "name": "ai-surface:risk",
+          "value": "high blast-radius combination"
+        },
+        {
+          "name": "ai-surface:file",
+          "value": "src/agents/refund.py"
+        },
+        {
+          "name": "ai-surface:validate",
+          "value": "agent-validation"
+        }
+      ]
+    },
+    {
+      "type": "application",
+      "bom-ref": "agent-framework/crewai-crew-support-crew/4",
+      "name": "CrewAI Crew: support_crew",
+      "properties": [
+        {
+          "name": "ai-surface:category",
+          "value": "agent-framework"
+        },
+        {
+          "name": "ai-surface:detector",
+          "value": "agent_frameworks"
+        },
+        {
+          "name": "ai-surface:file",
+          "value": "src/agents/support_crew.py"
+        },
+        {
+          "name": "ai-surface:validate",
+          "value": "agent-validation"
+        }
+      ]
+    },
+    {
+      "type": "application",
+      "bom-ref": "agent-framework/langgraph-flow-onboarding-kyc/5",
+      "name": "LangGraph Flow: onboarding_kyc",
+      "properties": [
+        {
+          "name": "ai-surface:category",
+          "value": "agent-framework"
+        },
+        {
+          "name": "ai-surface:detector",
+          "value": "agent_frameworks"
+        },
+        {
+          "name": "ai-surface:risk",
+          "value": "PII flows into LLM call"
+        },
+        {
+          "name": "ai-surface:risk",
+          "value": "approval action exposed"
+        },
+        {
+          "name": "ai-surface:file",
+          "value": "src/agents/onboarding.py"
+        },
+        {
+          "name": "ai-surface:validate",
+          "value": "agent-validation"
+        }
+      ]
+    },
+    {
+      "type": "application",
+      "bom-ref": "mcp-server/mcp-server-stripe-mcp/6",
+      "name": "MCP Server: stripe-mcp",
+      "properties": [
+        {
+          "name": "ai-surface:category",
+          "value": "mcp-server"
+        },
+        {
+          "name": "ai-surface:severity",
+          "value": "critical"
+        },
+        {
+          "name": "ai-surface:detector",
+          "value": "mcp_audit"
+        },
+        {
+          "name": "ai-surface:risk",
+          "value": "financial action exposed"
+        },
+        {
+          "name": "ai-surface:risk",
+          "value": "secret in env block"
+        },
+        {
+          "name": "ai-surface:file",
+          "value": ".mcp.json"
+        },
+        {
+          "name": "ai-surface:audit-flag",
+          "value": "critical:secrets-detected"
+        },
+        {
+          "name": "ai-surface:owasp",
+          "value": "LLM02"
+        },
+        {
+          "name": "ai-surface:audit-flag",
+          "value": "high:financial-action"
+        },
+        {
+          "name": "ai-surface:owasp",
+          "value": "LLM06"
+        },
+        {
+          "name": "ai-surface:audit-flag",
+          "value": "medium:unverified-source"
+        },
+        {
+          "name": "ai-surface:owasp",
+          "value": "LLM03"
+        },
+        {
+          "name": "ai-surface:secret",
+          "value": "STRIPE_SECRET_KEY (stripe-key)"
+        },
+        {
+          "name": "ai-surface:trust",
+          "value": "unknown"
+        },
+        {
+          "name": "ai-surface:validate",
+          "value": "mcp-runtime"
+        }
+      ]
+    },
+    {
+      "type": "application",
+      "bom-ref": "mcp-server/mcp-server-github-mcp/7",
+      "name": "MCP Server: github-mcp",
+      "properties": [
+        {
+          "name": "ai-surface:category",
+          "value": "mcp-server"
+        },
+        {
+          "name": "ai-surface:severity",
+          "value": "high"
+        },
+        {
+          "name": "ai-surface:detector",
+          "value": "mcp_audit"
+        },
+        {
+          "name": "ai-surface:risk",
+          "value": "broad permissions"
+        },
+        {
+          "name": "ai-surface:file",
+          "value": ".mcp.json"
+        },
+        {
+          "name": "ai-surface:audit-flag",
+          "value": "high:broad-permissions"
+        },
+        {
+          "name": "ai-surface:owasp",
+          "value": "LLM06"
+        },
+        {
+          "name": "ai-surface:audit-flag",
+          "value": "medium:shell-access"
+        },
+        {
+          "name": "ai-surface:owasp",
+          "value": "LLM06"
+        },
+        {
+          "name": "ai-surface:trust",
+          "value": "community"
+        },
+        {
+          "name": "ai-surface:validate",
+          "value": "mcp-runtime"
+        }
+      ]
+    },
+    {
+      "type": "application",
+      "bom-ref": "mcp-server/mcp-server-ledger-mcp/8",
+      "name": "MCP Server: ledger-mcp",
+      "properties": [
+        {
+          "name": "ai-surface:category",
+          "value": "mcp-server"
+        },
+        {
+          "name": "ai-surface:severity",
+          "value": "medium"
+        },
+        {
+          "name": "ai-surface:detector",
+          "value": "mcp_audit"
+        },
+        {
+          "name": "ai-surface:risk",
+          "value": "in-house MCP server (custom code, audit recommended)"
+        },
+        {
+          "name": "ai-surface:risk",
+          "value": "financial action exposed"
+        },
+        {
+          "name": "ai-surface:file",
+          "value": "services/ledger/mcp_server.py"
+        },
+        {
+          "name": "ai-surface:audit-flag",
+          "value": "medium:unverified-source"
+        },
+        {
+          "name": "ai-surface:owasp",
+          "value": "LLM03"
+        },
+        {
+          "name": "ai-surface:audit-flag",
+          "value": "medium:financial-action"
+        },
+        {
+          "name": "ai-surface:owasp",
+          "value": "LLM06"
+        },
+        {
+          "name": "ai-surface:trust",
+          "value": "unknown"
+        },
+        {
+          "name": "ai-surface:validate",
+          "value": "mcp-runtime"
+        }
+      ]
+    },
+    {
+      "type": "application",
+      "bom-ref": "mcp-server/mcp-server-weather-mcp/9",
+      "name": "MCP Server: weather-mcp",
+      "properties": [
+        {
+          "name": "ai-surface:category",
+          "value": "mcp-server"
+        },
+        {
+          "name": "ai-surface:severity",
+          "value": "low"
+        },
+        {
+          "name": "ai-surface:detector",
+          "value": "mcp_audit"
+        },
+        {
+          "name": "ai-surface:file",
+          "value": ".mcp.json"
+        },
+        {
+          "name": "ai-surface:audit-flag",
+          "value": "low:remote-mcp"
+        },
+        {
+          "name": "ai-surface:owasp",
+          "value": "LLM03"
+        },
+        {
+          "name": "ai-surface:trust",
+          "value": "verified"
+        },
+        {
+          "name": "ai-surface:validate",
+          "value": "mcp-runtime"
+        }
+      ]
+    },
+    {
+      "type": "service",
+      "bom-ref": "model-gateway/litellm-proxy/10",
+      "name": "LiteLLM Proxy",
+      "properties": [
+        {
+          "name": "ai-surface:category",
+          "value": "model-gateway"
+        },
+        {
+          "name": "ai-surface:detector",
+          "value": "model_gateways"
+        },
+        {
+          "name": "ai-surface:risk",
+          "value": "multi-model routing layer (production traffic flows through this)"
+        },
+        {
+          "name": "ai-surface:file",
+          "value": "deploy/litellm.config.yaml"
+        },
+        {
+          "name": "ai-surface:validate",
+          "value": "agent-validation"
+        }
+      ]
+    },
+    {
+      "type": "service",
+      "bom-ref": "model-gateway/portkey-gateway/11",
+      "name": "Portkey Gateway",
+      "properties": [
+        {
+          "name": "ai-surface:category",
+          "value": "model-gateway"
+        },
+        {
+          "name": "ai-surface:detector",
+          "value": "model_gateways"
+        },
+        {
+          "name": "ai-surface:file",
+          "value": "src/llm/portkey.py"
+        },
+        {
+          "name": "ai-surface:validate",
+          "value": "agent-validation"
+        }
+      ]
+    },
+    {
+      "type": "machine-learning-model",
+      "bom-ref": "ai-infra/self-hosted-vllm/12",
+      "name": "Self-hosted vLLM",
+      "properties": [
+        {
+          "name": "ai-surface:category",
+          "value": "ai-infra"
+        },
+        {
+          "name": "ai-surface:detector",
+          "value": "ai_infra"
+        },
+        {
+          "name": "ai-surface:risk",
+          "value": "self-hosted LLM runtime (operational responsibility on the team)"
+        },
+        {
+          "name": "ai-surface:file",
+          "value": "deploy/k8s/vllm-deployment.yaml"
+        },
+        {
+          "name": "ai-surface:validate",
+          "value": "agent-validation"
+        }
+      ]
+    },
+    {
+      "type": "machine-learning-model",
+      "bom-ref": "ai-infra/aws-bedrock-endpoint/13",
+      "name": "AWS Bedrock endpoint",
+      "properties": [
+        {
+          "name": "ai-surface:category",
+          "value": "ai-infra"
+        },
+        {
+          "name": "ai-surface:detector",
+          "value": "ai_infra"
+        },
+        {
+          "name": "ai-surface:risk",
+          "value": "high-cost AI infrastructure (billing exposure)"
+        },
+        {
+          "name": "ai-surface:file",
+          "value": "infra/terraform/bedrock.tf"
+        },
+        {
+          "name": "ai-surface:validate",
+          "value": "agent-validation"
+        }
+      ]
+    },
+    {
+      "type": "data",
+      "bom-ref": "env-key/ai-provider-keys-env/14",
+      "name": "AI provider keys (.env)",
+      "properties": [
+        {
+          "name": "ai-surface:category",
+          "value": "env-key"
+        },
+        {
+          "name": "ai-surface:detector",
+          "value": "env_keys"
+        },
+        {
+          "name": "ai-surface:risk",
+          "value": "multiple AI provider keys present"
+        },
+        {
+          "name": "ai-surface:file",
+          "value": ".env.example"
+        }
+      ]
+    },
+    {
+      "type": "data",
+      "bom-ref": "env-key/observability-key-env/15",
+      "name": "Observability key (.env)",
+      "properties": [
+        {
+          "name": "ai-surface:category",
+          "value": "env-key"
+        },
+        {
+          "name": "ai-surface:detector",
+          "value": "env_keys"
+        },
+        {
+          "name": "ai-surface:risk",
+          "value": "observability/tracing key present (production telemetry to third party)"
+        },
+        {
+          "name": "ai-surface:file",
+          "value": ".env.example"
+        }
+      ]
+    },
+    {
+      "type": "service",
+      "bom-ref": "api/rest-api-post-v1-orders-id-refund/16",
+      "name": "REST API: POST /v1/orders/{id}/refund",
+      "properties": [
+        {
+          "name": "ai-surface:category",
+          "value": "api"
+        },
+        {
+          "name": "ai-surface:detector",
+          "value": "api_endpoints"
+        },
+        {
+          "name": "ai-surface:risk",
+          "value": "object-id in path (BOLA candidate)"
+        },
+        {
+          "name": "ai-surface:file",
+          "value": "openapi.yaml"
+        },
+        {
+          "name": "ai-surface:api-method",
+          "value": "POST"
+        },
+        {
+          "name": "ai-surface:api-path",
+          "value": "/v1/orders/{id}/refund"
+        },
+        {
+          "name": "ai-surface:api-framework",
+          "value": "fastapi"
+        },
+        {
+          "name": "ai-surface:api-auth",
+          "value": "bearer"
+        },
+        {
+          "name": "ai-surface:validate",
+          "value": "api-runtime"
+        }
+      ]
+    },
+    {
+      "type": "service",
+      "bom-ref": "api/rest-api-get-v1-orders-id/17",
+      "name": "REST API: GET /v1/orders/{id}",
+      "properties": [
+        {
+          "name": "ai-surface:category",
+          "value": "api"
+        },
+        {
+          "name": "ai-surface:detector",
+          "value": "api_endpoints"
+        },
+        {
+          "name": "ai-surface:risk",
+          "value": "object-id in path (BOLA candidate)"
+        },
+        {
+          "name": "ai-surface:file",
+          "value": "openapi.yaml"
+        },
+        {
+          "name": "ai-surface:api-method",
+          "value": "GET"
+        },
+        {
+          "name": "ai-surface:api-path",
+          "value": "/v1/orders/{id}"
+        },
+        {
+          "name": "ai-surface:api-framework",
+          "value": "fastapi"
+        },
+        {
+          "name": "ai-surface:api-auth",
+          "value": "bearer"
+        },
+        {
+          "name": "ai-surface:validate",
+          "value": "api-runtime"
+        }
+      ]
+    },
+    {
+      "type": "service",
+      "bom-ref": "api/rest-api-post-v1-payments/18",
+      "name": "REST API: POST /v1/payments",
+      "properties": [
+        {
+          "name": "ai-surface:category",
+          "value": "api"
+        },
+        {
+          "name": "ai-surface:detector",
+          "value": "api_endpoints"
+        },
+        {
+          "name": "ai-surface:file",
+          "value": "openapi.yaml"
+        },
+        {
+          "name": "ai-surface:api-method",
+          "value": "POST"
+        },
+        {
+          "name": "ai-surface:api-path",
+          "value": "/v1/payments"
+        },
+        {
+          "name": "ai-surface:api-framework",
+          "value": "fastapi"
+        },
+        {
+          "name": "ai-surface:api-auth",
+          "value": "bearer"
+        },
+        {
+          "name": "ai-surface:validate",
+          "value": "api-runtime"
+        }
+      ]
+    },
+    {
+      "type": "service",
+      "bom-ref": "api/rest-api-get-v1-customers-id/19",
+      "name": "REST API: GET /v1/customers/{id}",
+      "properties": [
+        {
+          "name": "ai-surface:category",
+          "value": "api"
+        },
+        {
+          "name": "ai-surface:detector",
+          "value": "api_endpoints"
+        },
+        {
+          "name": "ai-surface:risk",
+          "value": "object-id in path (BOLA candidate)"
+        },
+        {
+          "name": "ai-surface:file",
+          "value": "openapi.yaml"
+        },
+        {
+          "name": "ai-surface:api-method",
+          "value": "GET"
+        },
+        {
+          "name": "ai-surface:api-path",
+          "value": "/v1/customers/{id}"
+        },
+        {
+          "name": "ai-surface:api-framework",
+          "value": "fastapi"
+        },
+        {
+          "name": "ai-surface:api-auth",
+          "value": "bearer"
+        },
+        {
+          "name": "ai-surface:validate",
+          "value": "api-runtime"
+        }
+      ]
+    },
+    {
+      "type": "service",
+      "bom-ref": "api/rest-api-put-v1-customers-id/20",
+      "name": "REST API: PUT /v1/customers/{id}",
+      "properties": [
+        {
+          "name": "ai-surface:category",
+          "value": "api"
+        },
+        {
+          "name": "ai-surface:detector",
+          "value": "api_endpoints"
+        },
+        {
+          "name": "ai-surface:risk",
+          "value": "object-id in path (BOLA candidate)"
+        },
+        {
+          "name": "ai-surface:file",
+          "value": "openapi.yaml"
+        },
+        {
+          "name": "ai-surface:api-method",
+          "value": "PUT"
+        },
+        {
+          "name": "ai-surface:api-path",
+          "value": "/v1/customers/{id}"
+        },
+        {
+          "name": "ai-surface:api-framework",
+          "value": "fastapi"
+        },
+        {
+          "name": "ai-surface:api-auth",
+          "value": "bearer"
+        },
+        {
+          "name": "ai-surface:validate",
+          "value": "api-runtime"
+        }
+      ]
+    },
+    {
+      "type": "service",
+      "bom-ref": "api/rest-api-post-v1-auth-token/21",
+      "name": "REST API: POST /v1/auth/token",
+      "properties": [
+        {
+          "name": "ai-surface:category",
+          "value": "api"
+        },
+        {
+          "name": "ai-surface:detector",
+          "value": "api_endpoints"
+        },
+        {
+          "name": "ai-surface:file",
+          "value": "openapi.yaml"
+        },
+        {
+          "name": "ai-surface:api-method",
+          "value": "POST"
+        },
+        {
+          "name": "ai-surface:api-path",
+          "value": "/v1/auth/token"
+        },
+        {
+          "name": "ai-surface:api-framework",
+          "value": "fastapi"
+        },
+        {
+          "name": "ai-surface:api-auth",
+          "value": "bearer"
+        },
+        {
+          "name": "ai-surface:validate",
+          "value": "api-runtime"
+        }
+      ]
+    },
+    {
+      "type": "service",
+      "bom-ref": "api/rest-api-get-v1-accounts-account-id-balance/22",
+      "name": "REST API: GET /v1/accounts/{account_id}/balance",
+      "properties": [
+        {
+          "name": "ai-surface:category",
+          "value": "api"
+        },
+        {
+          "name": "ai-surface:detector",
+          "value": "api_endpoints"
+        },
+        {
+          "name": "ai-surface:risk",
+          "value": "object-id in path (BOLA candidate)"
+        },
+        {
+          "name": "ai-surface:file",
+          "value": "openapi.yaml"
+        },
+        {
+          "name": "ai-surface:api-method",
+          "value": "GET"
+        },
+        {
+          "name": "ai-surface:api-path",
+          "value": "/v1/accounts/{account_id}/balance"
+        },
+        {
+          "name": "ai-surface:api-framework",
+          "value": "fastapi"
+        },
+        {
+          "name": "ai-surface:api-auth",
+          "value": "bearer"
+        },
+        {
+          "name": "ai-surface:validate",
+          "value": "api-runtime"
+        }
+      ]
+    },
+    {
+      "type": "service",
+      "bom-ref": "api/rest-api-post-v1-transfers/23",
+      "name": "REST API: POST /v1/transfers",
+      "properties": [
+        {
+          "name": "ai-surface:category",
+          "value": "api"
+        },
+        {
+          "name": "ai-surface:detector",
+          "value": "api_endpoints"
+        },
+        {
+          "name": "ai-surface:file",
+          "value": "openapi.yaml"
+        },
+        {
+          "name": "ai-surface:api-method",
+          "value": "POST"
+        },
+        {
+          "name": "ai-surface:api-path",
+          "value": "/v1/transfers"
+        },
+        {
+          "name": "ai-surface:api-framework",
+          "value": "fastapi"
+        },
+        {
+          "name": "ai-surface:api-auth",
+          "value": "bearer"
+        },
+        {
+          "name": "ai-surface:validate",
+          "value": "api-runtime"
+        }
+      ]
+    },
+    {
+      "type": "service",
+      "bom-ref": "api/rest-api-delete-v1-cards-card-id/24",
+      "name": "REST API: DELETE /v1/cards/{card_id}",
+      "properties": [
+        {
+          "name": "ai-surface:category",
+          "value": "api"
+        },
+        {
+          "name": "ai-surface:detector",
+          "value": "api_endpoints"
+        },
+        {
+          "name": "ai-surface:risk",
+          "value": "object-id in path (BOLA candidate)"
+        },
+        {
+          "name": "ai-surface:file",
+          "value": "openapi.yaml"
+        },
+        {
+          "name": "ai-surface:api-method",
+          "value": "DELETE"
+        },
+        {
+          "name": "ai-surface:api-path",
+          "value": "/v1/cards/{card_id}"
+        },
+        {
+          "name": "ai-surface:api-framework",
+          "value": "fastapi"
+        },
+        {
+          "name": "ai-surface:api-auth",
+          "value": "bearer"
+        },
+        {
+          "name": "ai-surface:validate",
+          "value": "api-runtime"
+        }
+      ]
+    },
+    {
+      "type": "service",
+      "bom-ref": "api/rest-api-get-v1-transactions/25",
+      "name": "REST API: GET /v1/transactions",
+      "properties": [
+        {
+          "name": "ai-surface:category",
+          "value": "api"
+        },
+        {
+          "name": "ai-surface:detector",
+          "value": "api_endpoints"
+        },
+        {
+          "name": "ai-surface:file",
+          "value": "openapi.yaml"
+        },
+        {
+          "name": "ai-surface:api-method",
+          "value": "GET"
+        },
+        {
+          "name": "ai-surface:api-path",
+          "value": "/v1/transactions"
+        },
+        {
+          "name": "ai-surface:api-framework",
+          "value": "fastapi"
+        },
+        {
+          "name": "ai-surface:api-auth",
+          "value": "bearer"
+        },
+        {
+          "name": "ai-surface:validate",
+          "value": "api-runtime"
+        }
+      ]
+    },
+    {
+      "type": "service",
+      "bom-ref": "api/rest-api-post-internal-ledger-post/26",
+      "name": "REST API: POST /internal/ledger/post",
+      "properties": [
+        {
+          "name": "ai-surface:category",
+          "value": "api"
+        },
+        {
+          "name": "ai-surface:detector",
+          "value": "api_endpoints"
+        },
+        {
+          "name": "ai-surface:file",
+          "value": "openapi.yaml"
+        },
+        {
+          "name": "ai-surface:api-method",
+          "value": "POST"
+        },
+        {
+          "name": "ai-surface:api-path",
+          "value": "/internal/ledger/post"
+        },
+        {
+          "name": "ai-surface:api-framework",
+          "value": "fastapi"
+        },
+        {
+          "name": "ai-surface:api-auth",
+          "value": "bearer"
+        },
+        {
+          "name": "ai-surface:validate",
+          "value": "api-runtime"
+        }
+      ]
+    },
+    {
+      "type": "service",
+      "bom-ref": "api/rest-api-get-v1-invoices-id/27",
+      "name": "REST API: GET /v1/invoices/{id}",
+      "properties": [
+        {
+          "name": "ai-surface:category",
+          "value": "api"
+        },
+        {
+          "name": "ai-surface:detector",
+          "value": "api_endpoints"
+        },
+        {
+          "name": "ai-surface:risk",
+          "value": "object-id in path (BOLA candidate)"
+        },
+        {
+          "name": "ai-surface:file",
+          "value": "openapi.yaml"
+        },
+        {
+          "name": "ai-surface:api-method",
+          "value": "GET"
+        },
+        {
+          "name": "ai-surface:api-path",
+          "value": "/v1/invoices/{id}"
+        },
+        {
+          "name": "ai-surface:api-framework",
+          "value": "fastapi"
+        },
+        {
+          "name": "ai-surface:api-auth",
+          "value": "bearer"
+        },
+        {
+          "name": "ai-surface:validate",
+          "value": "api-runtime"
+        }
+      ]
+    }
+  ]
+}

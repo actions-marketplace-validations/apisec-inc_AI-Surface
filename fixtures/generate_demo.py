@@ -254,12 +254,17 @@ def build() -> Report:
 
 
 def main() -> None:
+    from ai_surface.reporters.cyclonedx_reporter import render_cyclonedx  # noqa: PLC0415
+
     report = build()
     text = render_json(report) + "\n"
+    bom = render_cyclonedx(report) + "\n"
     repo = Path(__file__).resolve().parent.parent
+    ui = repo / "src" / "ai_surface" / "ui"
     (repo / "fixtures" / "demo_report.json").write_text(text, encoding="utf-8")
-    (repo / "src" / "ai_surface" / "ui" / "report.json").write_text(text, encoding="utf-8")
-    print(f"wrote demo report: {len(report.findings)} findings across "
+    (ui / "report.json").write_text(text, encoding="utf-8")
+    (ui / "ai-bom.json").write_text(bom, encoding="utf-8")
+    print(f"wrote demo report + AI-BOM: {len(report.findings)} findings across "
           f"{len(report.summary.by_category)} categories")
 
 

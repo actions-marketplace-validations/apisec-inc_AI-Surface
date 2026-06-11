@@ -64,6 +64,8 @@
     info:   '<circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M12 11v5M12 8h.01" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
     sun:    '<circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="1.7"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
     moon:   '<path d="M21 12.8A8.5 8.5 0 1111.2 3a6.5 6.5 0 009.8 9.8z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" fill="none"/>',
+    download: '<path d="M12 3v12M7 10l5 5 5-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M4 19h16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
+    gov:    '<path d="M4 9l8-5 8 5M5 9v8m4-8v8m6-8v8m4-8v8M3 21h18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
   };
 
   /* ---- tiny helpers ------------------------------------------------------- */
@@ -305,6 +307,7 @@ python3 -m http.server 8000
         <span class="topbar-spacer"></span>
         ${root ? `<span class="chip-mono">${esc(root)}</span>` : ""}
         ${ver ? `<span class="chip-mono">v${esc(ver)}</span>` : ""}
+        ${loaded ? `<a class="topbar-btn" href="./ai-bom.json" download="ai-bom.json" title="Download the CycloneDX AI-BOM">${icon("download")}<span>AI-BOM</span></a>` : ""}
         ${loaded ? `<button class="topbar-btn" id="new-scan" title="Scan another target">${icon("search")}<span>New scan</span></button>` : ""}
         <button class="theme-toggle" id="theme-toggle" aria-label="Toggle color theme" title="Toggle theme">
           <span class="ic-sun">${icon("sun")}</span><span class="ic-moon">${icon("moon")}</span>
@@ -775,11 +778,36 @@ python3 -m http.server 8000
     return `
       <section class="tab-section reveal">
         ${stats}
+        ${governancePanelHTML()}
         <div class="ov-grid">
           ${sevPanel}
           ${topRisksPanelHTML()}
         </div>
       </section>`;
+  }
+
+  // Governance evidence: which AI-governance frameworks this scan produces
+  // evidence for. Honest framing: "produces evidence for", not "compliant".
+  function governancePanelHTML() {
+    const fws = REPORT.frameworks || [];
+    const bom = `<a class="gov-bom" href="./ai-bom.json" download="ai-bom.json">${icon("download")}<span>Download AI-BOM</span><span class="gov-bom-sub">CycloneDX</span></a>`;
+    const head = `<div class="panel-head"><h2>${icon("gov")}Governance evidence</h2><span class="grow"></span><span class="sub">produces evidence for, not a compliance claim</span></div>`;
+    if (!fws.length) {
+      return `<div class="panel gov-panel">${head}<div class="ov-pad"><div class="sev-empty">No framework evidence in this scan.</div></div></div>`;
+    }
+    const cards = fws.map((fw) => `
+      <div class="gov-fw">
+        <div class="gov-fw-name">${esc(fw.name)}</div>
+        <ul class="gov-fw-reqs">${(fw.provides || []).map((p) => `<li>${esc(p)}</li>`).join("")}</ul>
+      </div>`).join("");
+    return `
+      <div class="panel gov-panel">
+        ${head}
+        <div class="ov-pad">
+          <div class="gov-grid">${cards}</div>
+          <div class="gov-foot">${bom}<span class="gov-note">The AI-BOM is the inventory and documentation artifact, generated in CI like an SBOM.</span></div>
+        </div>
+      </div>`;
   }
 
   function statCard(n, label, kind) {

@@ -46,6 +46,39 @@
       "api-runtime"
     ]
   },
+  "frameworks": [
+    {
+      "id": "eu-ai-act",
+      "name": "EU AI Act",
+      "provides": [
+        "Technical documentation and record-keeping (Art. 11-12)",
+        "Risk management of AI systems (Art. 9)"
+      ]
+    },
+    {
+      "id": "nist-ai-rmf",
+      "name": "NIST AI RMF",
+      "provides": [
+        "Map: inventory and context of AI systems",
+        "Measure: identify and assess AI risks"
+      ]
+    },
+    {
+      "id": "iso-42001",
+      "name": "ISO/IEC 42001",
+      "provides": [
+        "AI system inventory (Annex A)",
+        "AI risk assessment"
+      ]
+    },
+    {
+      "id": "owasp-llm",
+      "name": "OWASP LLM Top 10",
+      "provides": [
+        "Mapping of findings to LLM Top 10 categories"
+      ]
+    }
+  ],
   "findings": [
     {
       "surface": "Anthropic SDK",

@@ -62,6 +62,11 @@ def prepare_ui_dir(report: Report, dest: Path | None = None) -> Path:
         if src.is_file():
             shutil.copy2(src, dest / name)
     (dest / "report.json").write_text(render_json(report) + "\n", encoding="utf-8")
+    # Also emit the AI-BOM so the UI can offer a one-click download (and the
+    # hosted demo can ship it as a static file).
+    from .reporters.cyclonedx_reporter import render_cyclonedx  # noqa: PLC0415
+
+    (dest / "ai-bom.json").write_text(render_cyclonedx(report) + "\n", encoding="utf-8")
     return dest
 
 

@@ -29,6 +29,8 @@ def report_to_dict(report: Report) -> dict[str, Any]:
     the emitted JSON: null/[] when not applicable, so consumers need no guards.
     """
     summary = report.summary or report.build_summary()
+    from ..frameworks import framework_evidence  # noqa: PLC0415
+
     return {
         "schema_version": report.schema_version,
         "tool_version": report.tool_version,
@@ -37,6 +39,9 @@ def report_to_dict(report: Report) -> dict[str, Any]:
         "detectors_run": list(report.detectors_run),
         "findings_count": len(report.findings),
         "summary": asdict(summary),
+        # Governance-framework evidence this scan produces (honest evidence-for,
+        # not a compliance claim). Lets the UI and reporters surface it.
+        "frameworks": framework_evidence(report),
         "findings": [_finding_to_dict(f) for f in report.findings],
         "errors": list(report.errors),
     }
