@@ -19,7 +19,16 @@ def render_json(report: Report, indent: int = 2) -> str:
 
 
 def report_to_dict(report: Report) -> dict[str, Any]:
-    """Convert Report to a plain dict (JSON-friendly)."""
+    """Convert Report to a plain dict (JSON-friendly).
+
+    Schema 1.0 contract. This dict is the single source of truth consumed by:
+      - the CI/PR diff in the GitHub Action
+      - the local UI viewer (renders this directly, does NOT re-scan)
+      - the funnel/cross-promo bridge links
+    Optional fields (severity, audit, bridges, summary) are always present in
+    the emitted JSON: null/[] when not applicable, so consumers need no guards.
+    """
+    summary = report.summary or report.build_summary()
     return {
         "schema_version": report.schema_version,
         "tool_version": report.tool_version,
@@ -27,6 +36,7 @@ def report_to_dict(report: Report) -> dict[str, Any]:
         "scan_timestamp": report.scan_timestamp,
         "detectors_run": list(report.detectors_run),
         "findings_count": len(report.findings),
+        "summary": asdict(summary),
         "findings": [_finding_to_dict(f) for f in report.findings],
         "errors": list(report.errors),
     }

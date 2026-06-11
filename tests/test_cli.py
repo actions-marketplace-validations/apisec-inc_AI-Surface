@@ -215,7 +215,7 @@ def test_update_baseline_writes_file_and_exits_zero(tmp_path) -> None:
 
     data = _json.loads(baseline_path.read_text(encoding="utf-8"))
     assert data["findings_count"] == 1
-    assert data["schema_version"] == "0.5"
+    assert data["schema_version"] == "1.0"
 
 
 def test_baseline_with_no_file_errors_helpfully(tmp_path) -> None:

@@ -84,7 +84,7 @@ def test_json_reporter_produces_valid_json() -> None:
     report = _sample_report()
     rendered = render_json(report)
     parsed = json.loads(rendered)
-    assert parsed["schema_version"] == "0.5"
+    assert parsed["schema_version"] == "1.0"
     assert parsed["findings_count"] == 3
     assert len(parsed["findings"]) == 3
     surfaces = [f["surface"] for f in parsed["findings"]]

@@ -1,0 +1,226 @@
+{
+  "schema_version": "1.0",
+  "tool_version": "0.5.3",
+  "scan_root": "/example/acme-payments",
+  "scan_timestamp": "2026-06-11T00:00:00+00:00",
+  "detectors_run": [
+    "llm_sdks",
+    "agent_frameworks",
+    "mcp_audit",
+    "api_endpoints"
+  ],
+  "findings_count": 4,
+  "summary": {
+    "total_findings": 4,
+    "by_category": {
+      "llm-sdk": 1,
+      "agent-framework": 1,
+      "mcp-server": 1,
+      "api": 1
+    },
+    "by_severity": {
+      "critical": 1
+    },
+    "top_risks": [
+      "MCP Server: stripe-mcp: Live Stripe secret key present in MCP env block",
+      "MCP Server: stripe-mcp: MCP exposes refund and charge tools to the model",
+      "MCP Server: stripe-mcp: MCP server not found in known registry"
+    ],
+    "bridges_available": [
+      "agent-validation",
+      "mcp-runtime",
+      "api-runtime"
+    ]
+  },
+  "findings": [
+    {
+      "surface": "Anthropic SDK",
+      "category": "llm-sdk",
+      "evidence": {
+        "files": [
+          "src/agents/refund.py",
+          "src/agents/support.py"
+        ],
+        "snippet": "client = anthropic.Anthropic()\nclient.messages.create(model=...)",
+        "line_numbers": [
+          12,
+          48
+        ],
+        "metadata": {
+          "model": "claude-opus-4-8",
+          "non_literal_input": true
+        }
+      },
+      "permissions": [
+        "network: api.anthropic.com"
+      ],
+      "risk_indicators": [
+        "user input flows into prompt"
+      ],
+      "detector_name": "llm_sdks",
+      "severity": null,
+      "audit": null,
+      "bridges": []
+    },
+    {
+      "surface": "LangChain Agent: refund_agent",
+      "category": "agent-framework",
+      "evidence": {
+        "files": [
+          "src/agents/refund.py"
+        ],
+        "snippet": "AgentExecutor(tools=[query_customer_db, refund_payment])",
+        "line_numbers": [
+          60
+        ],
+        "metadata": {
+          "tools": [
+            "query_customer_db",
+            "refund_payment"
+          ]
+        }
+      },
+      "permissions": [
+        "query_customer_db",
+        "refund_payment"
+      ],
+      "risk_indicators": [
+        "financial action exposed to agent"
+      ],
+      "detector_name": "agent_frameworks",
+      "severity": null,
+      "audit": null,
+      "bridges": [
+        {
+          "sku": "agent-validation",
+          "label": "Validate this agent's exploitability in APIsec",
+          "url": "https://apisec.ai/ai-validation?category=agent-framework&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel"
+        }
+      ]
+    },
+    {
+      "surface": "MCP Server: stripe-mcp",
+      "category": "mcp-server",
+      "evidence": {
+        "files": [
+          ".mcp.json"
+        ],
+        "snippet": "\"stripe-mcp\": {\"command\": \"npx\", \"args\": [\"stripe-mcp\"], \"env\": {...}}",
+        "line_numbers": [
+          4
+        ],
+        "metadata": {
+          "tools": [
+            "create_charge",
+            "refund",
+            "list_customers"
+          ]
+        }
+      },
+      "permissions": [
+        "create_charge",
+        "refund",
+        "list_customers"
+      ],
+      "risk_indicators": [
+        "financial action exposed",
+        "secrets in env block"
+      ],
+      "detector_name": "mcp_audit",
+      "severity": "critical",
+      "audit": {
+        "risk_flags": [
+          {
+            "flag": "secrets-in-env",
+            "severity": "critical",
+            "description": "Live Stripe secret key present in MCP env block",
+            "owasp": [
+              "LLM02"
+            ],
+            "remediation": "Move the key to a secrets manager; reference by name only."
+          },
+          {
+            "flag": "financial-action",
+            "severity": "high",
+            "description": "MCP exposes refund and charge tools to the model",
+            "owasp": [
+              "LLM06"
+            ],
+            "remediation": "Gate financial tools behind human approval."
+          },
+          {
+            "flag": "unverified-source",
+            "severity": "medium",
+            "description": "MCP server not found in known registry",
+            "owasp": [
+              "LLM03"
+            ],
+            "remediation": ""
+          }
+        ],
+        "secrets": [
+          {
+            "name": "STRIPE_SECRET_KEY",
+            "secret_type": "stripe-key",
+            "confidence": "high",
+            "severity": "critical",
+            "location": ".mcp.json:env"
+          }
+        ],
+        "trust_score": null,
+        "trust_label": "unknown",
+        "registry_match": "unknown",
+        "owasp_mappings": [
+          "LLM02",
+          "LLM06",
+          "LLM03"
+        ]
+      },
+      "bridges": [
+        {
+          "sku": "mcp-runtime",
+          "label": "Run MCP runtime validation in APIsec",
+          "url": "https://apisec.ai/ai-validation?category=mcp-server&risk=secrets-in-env&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel"
+        }
+      ]
+    },
+    {
+      "surface": "REST API: POST /v1/orders/{id}/refund",
+      "category": "api",
+      "evidence": {
+        "files": [
+          "openapi.yaml"
+        ],
+        "snippet": "paths:\n  /v1/orders/{id}/refund:\n    post:",
+        "line_numbers": [
+          142
+        ],
+        "metadata": {
+          "method": "POST",
+          "path": "/v1/orders/{id}/refund",
+          "source_spec": "openapi.yaml",
+          "auth": "bearer",
+          "framework": "fastapi"
+        }
+      },
+      "permissions": [
+        "mutates order state",
+        "financial"
+      ],
+      "risk_indicators": [
+        "object-id in path (BOLA candidate)"
+      ],
+      "detector_name": "api_endpoints",
+      "severity": null,
+      "audit": null,
+      "bridges": [
+        {
+          "sku": "api-runtime",
+          "label": "Onboard this API for outside-in runtime testing in APIsec",
+          "url": "https://apisec.ai/api-validation?path=/v1/orders/{id}/refund&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel"
+        }
+      ]
+    }
+  ],
+  "errors": []
+}
