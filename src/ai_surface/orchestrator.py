@@ -134,4 +134,10 @@ def default_detectors() -> list[Detector]:
     except ImportError as e:
         log.debug("AI infra detector unavailable: %s", e)
 
+    try:
+        from .detectors.api_endpoints import ApiEndpointDetector  # noqa: PLC0415
+        detectors.append(ApiEndpointDetector())
+    except ImportError as e:
+        log.debug("API endpoint detector unavailable: %s", e)
+
     return detectors

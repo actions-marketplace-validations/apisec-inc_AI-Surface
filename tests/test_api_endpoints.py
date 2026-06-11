@@ -30,7 +30,7 @@ def _assert_contract(f: Finding) -> None:
     assert f.audit is None
     assert f.bridges == []
     # All five documented metadata keys are always present.
-    assert _API_METADATA_KEYS <= set(f.evidence.metadata.keys())
+    assert set(f.evidence.metadata.keys()) >= _API_METADATA_KEYS
     # Snippet capped.
     assert len(f.evidence.snippet) <= 200
 

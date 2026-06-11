@@ -16,7 +16,7 @@ import json
 import logging
 import warnings
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 log = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ _REGISTRY_PATH = Path(__file__).parent / "known_mcps.json"
 # tampering with the trust list is detectable.
 REGISTRY_HASH = "5a8e4584c42bbd98c2bc0d5604911274c39d99ddf925f5723221a3a1e4bd5dc5"
 
-_registry: Optional[dict[str, Any]] = None
+_registry: dict[str, Any] | None = None
 
 
 class RegistryTamperWarning(UserWarning):
@@ -79,7 +79,7 @@ def _extract_domain(url: str) -> str:
     return url.split(":")[0]
 
 
-def lookup_mcp(source: str, name: Optional[str] = None) -> Optional[dict[str, Any]]:
+def lookup_mcp(source: str, name: str | None = None) -> dict[str, Any] | None:
     """Look up an MCP by package source, endpoint URL, or name.
 
     Priority: exact package match, endpoint/domain match, exact name match,
@@ -131,7 +131,7 @@ _TYPE_TO_LABEL = {
 }
 
 
-def trust_signals(source: str, name: Optional[str] = None) -> dict[str, Any]:
+def trust_signals(source: str, name: str | None = None) -> dict[str, Any]:
     """Resolve registry trust signals for a discovered MCP.
 
     Returns a dict with:
