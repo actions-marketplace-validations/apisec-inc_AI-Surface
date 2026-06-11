@@ -52,6 +52,21 @@ def render_cyclonedx(report: Report, indent: int = 2) -> str:
 
 def to_cyclonedx(report: Report) -> dict[str, Any]:
     """Convert a Report to a CycloneDX 1.6 BOM dict."""
+    from ..frameworks import framework_evidence  # noqa: PLC0415
+
+    meta_props: list[dict[str, str]] = [
+        {"name": "ai-surface:schema_version", "value": report.schema_version},
+        {"name": "ai-surface:findings_count", "value": str(len(report.findings))},
+    ]
+    # Governance-framework evidence (honest: evidence-for, not compliance).
+    for fw in framework_evidence(report):
+        meta_props.append(
+            {
+                "name": f"ai-surface:framework-evidence:{fw['id']}",
+                "value": f"{fw['name']}: {'; '.join(fw['provides'])}",
+            }
+        )
+
     return {
         "bomFormat": "CycloneDX",
         "specVersion": "1.6",
@@ -73,10 +88,7 @@ def to_cyclonedx(report: Report) -> dict[str, Any]:
                 "bom-ref": "root",
                 "name": report.scan_root or ".",
             },
-            "properties": [
-                {"name": "ai-surface:schema_version", "value": report.schema_version},
-                {"name": "ai-surface:findings_count", "value": str(len(report.findings))},
-            ],
+            "properties": meta_props,
         },
         "components": [_component(f, i) for i, f in enumerate(report.findings)],
     }
