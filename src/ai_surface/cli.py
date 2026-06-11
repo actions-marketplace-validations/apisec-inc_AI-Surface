@@ -333,7 +333,7 @@ def scan(
         "terminal",
         "--output",
         "-o",
-        help="Output format: terminal, json, markdown, cyclonedx (AI-BOM).",
+        help="Output format: terminal, json, markdown, cyclonedx (AI-BOM), sarif.",
     ),
     categories: Optional[str] = typer.Option(
         None,
@@ -566,6 +566,11 @@ def scan(
 
         # Print raw so the AI-BOM is valid CycloneDX JSON for piping to a file.
         print(render_cyclonedx(report))
+    elif output == "sarif":
+        from .reporters.sarif_reporter import render_sarif  # noqa: PLC0415
+
+        # Raw print so the SARIF is valid for upload to GitHub code scanning.
+        print(render_sarif(report))
     else:
         # terminal is default
         try:

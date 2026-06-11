@@ -367,9 +367,21 @@ ai-surface scan .                          # rich terminal output
 ai-surface scan . --ui                     # interactive map in a local browser viewer
 ai-surface scan . --output json            # machine-readable JSON (schema 1.0)
 ai-surface scan . --output markdown        # markdown report
+ai-surface scan . --output cyclonedx       # CycloneDX AI-BOM (governance artifact)
+ai-surface scan . --output sarif           # SARIF 2.1.0 for GitHub code scanning
 ai-surface scan . --write-inventory        # writes .ai-inventory.md to scan root
 ai-surface scan . --quiet                  # one-line summary for CI
 ```
+
+**SARIF** uploads to the GitHub **Security tab** and shows as inline PR annotations, the way SAST findings already do. Severity maps to SARIF levels (critical/high to `error`, medium to `warning`, the rest to `note`):
+
+```yaml
+- run: pipx run ai-surface scan . --output sarif > ai-surface.sarif
+- uses: github/codeql-action/upload-sarif@v3
+  with: { sarif_file: ai-surface.sarif }
+```
+
+**CycloneDX** emits the AI-BOM, the inventory/documentation artifact for EU AI Act / NIST AI RMF / ISO 42001, generated in CI exactly like an SBOM.
 
 The `--ui` viewer renders the **AI Attack Surface map**: a radial cluster of severity-colored nodes, one per finding, with a detail drawer that shows evidence, the MCP deep-dive audit (risk flags, OWASP-LLM badges, detected secrets by name only), and the paid upgrade bridge for that surface. It serves the engine's schema-1.0 JSON over `127.0.0.1` from a throwaway temp directory. No scanning happens in the browser, no network egress, no telemetry. Press Ctrl-C to stop the server.
 
