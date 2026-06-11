@@ -333,6 +333,14 @@ def scan(
         "-v",
         help="Verbose: show all files (no truncation), full detector errors.",
     ),
+    ui: bool = typer.Option(
+        False,
+        "--ui",
+        help=(
+            "Open the local visual UI viewer in a browser to explore results. "
+            "Serves on loopback only; nothing leaves your machine."
+        ),
+    ),
 ) -> None:
     """Scan PATH for production AI surfaces and report what's there."""
     _setup_logging(verbose)
@@ -367,6 +375,18 @@ def scan(
 
     orch = Orchestrator(detectors=detectors)
     report = orch.run(str(root))
+
+    # --ui: serve the full scan in the local visual viewer and block until
+    # the user stops it. Takes precedence over text reporters and baseline diff.
+    if ui:
+        try:
+            from .ui_server import serve_ui  # noqa: PLC0415
+
+            serve_ui(report)
+        except FileNotFoundError as exc:
+            err_console.print(f"[red]error[/red]: {exc}")
+            raise typer.Exit(code=2) from exc
+        return
 
     # Resolve the baseline file path once. Relative paths are anchored at
     # scan root so the same flag works from any working directory.
