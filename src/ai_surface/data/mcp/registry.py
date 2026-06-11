@@ -155,7 +155,7 @@ def trust_signals(source: str, name: str | None = None) -> dict[str, Any]:
 
     # Coarse score: verified+official is highest; community lower.
     if verified and label == "verified":
-        score: Optional[float] = 90.0
+        score: float | None = 90.0
     elif label == "verified":
         score = 80.0
     elif label == "community":

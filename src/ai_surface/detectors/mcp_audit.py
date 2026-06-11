@@ -23,11 +23,12 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from ..data.mcp import owasp_llm, registry
 from ..data.mcp.risk_definitions import get_risk_flag_info
 from ..data.mcp.secret_patterns import detect_secrets
+from ..types import CATEGORY_MCP_SERVER as _CATEGORY
 from ..types import (
     SEVERITY_ORDER,
     Audit,
@@ -35,9 +36,6 @@ from ..types import (
     Finding,
     RiskFlag,
     Secret,
-)
-from ..types import (
-    CATEGORY_MCP_SERVER as _CATEGORY,
 )
 from ..utils.walk import read_text_safe, relative_to_root, walk_files
 
@@ -130,9 +128,10 @@ def _identify_risks(
     name_lower = name.lower()
 
     filesystem_keywords = ["filesystem", "fs", "file", "directory", "path"]
-    if any(kw in name_lower or kw in all_args for kw in filesystem_keywords):
-        if any(p in all_args for p in ["/", "~", "$home", "."]):
-            risks.append("filesystem-access")
+    if any(kw in name_lower or kw in all_args for kw in filesystem_keywords) and any(
+        p in all_args for p in ["/", "~", "$home", "."]
+    ):
+        risks.append("filesystem-access")
 
     db_keywords = ["postgres", "mysql", "sqlite", "mongo", "redis", "database", "db"]
     if any(kw in name_lower or kw in all_args for kw in db_keywords):
@@ -147,7 +146,7 @@ def _identify_risks(
         risks.append("network-access")
 
     secret_keywords = ["key", "secret", "token", "password", "credential", "api_key"]
-    for key in env.keys():
+    for key in env:
         if any(kw in str(key).lower() for kw in secret_keywords):
             risks.append("secrets-in-env")
             break
@@ -259,7 +258,7 @@ def _split_words(s: str) -> list[str]:
 # --------------------------------------------------------------------------- #
 
 
-def _max_severity(severities: list[str]) -> Optional[str]:
+def _max_severity(severities: list[str]) -> str | None:
     """Return the most severe value in ``severities`` (None if empty)."""
     ranked = [s for s in severities if s in _SEVERITY_RANK]
     if not ranked:

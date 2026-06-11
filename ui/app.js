@@ -286,17 +286,28 @@ function renderFinding(f, cat) {
   }
   const sevBadge = sev ? `<span class="badge sev-pill ${sevClass(sev)}">${esc(sev)}</span>` : "";
 
-  // --- api metadata chips + BOLA candidate ---
+  // --- metadata chips (api gets the structured set + BOLA marker;
+  //     other categories show any scalar metadata generically) ---
   let chips = "";
+  const c = [];
   if (cat === "api") {
-    const c = [];
     if (meta.framework) c.push(chip("Framework", meta.framework));
     if (meta.auth) c.push(chip("Auth", meta.auth));
     if (meta.source_spec) c.push(chip("Spec", meta.source_spec));
     const bola = (f.risk_indicators || []).find((r) => /bola/i.test(r));
     if (bola) c.push(`<span class="chip" style="background:var(--med-bg);color:var(--med-fg)">⚠️ BOLA candidate</span>`);
-    if (c.length) chips = `<div class="meta-chips">${c.join("")}</div>`;
+  } else {
+    // Generic, schema-agnostic: surface simple scalar metadata as chips
+    // (e.g. llm-sdk "model", flags like non_literal_input). Arrays/objects
+    // are skipped here because tools/permissions already render below.
+    Object.keys(meta).forEach((k) => {
+      const v = meta[k];
+      if (v == null || typeof v === "object") return;
+      if (typeof v === "boolean") { if (v) c.push(chip(humanize(k), "yes")); return; }
+      c.push(chip(humanize(k), v));
+    });
   }
+  if (c.length) chips = `<div class="meta-chips">${c.join("")}</div>`;
 
   // --- evidence ---
   const ev = f.evidence || {};

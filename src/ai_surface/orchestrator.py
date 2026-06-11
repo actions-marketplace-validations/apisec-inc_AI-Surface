@@ -98,11 +98,19 @@ def default_detectors() -> list[Detector]:
 
     # Lazy imports keep the orchestrator usable even if a detector module is missing
     # during development. Each detector module is implemented in detectors/.
+    # MCP: the audit detector is a superset of the shallow mcp_servers detector
+    # (same discovery surface plus the deep-dive audit block + severity). Register
+    # the audit detector; fall back to the discovery-only one if it is unavailable.
     try:
-        from .detectors.mcp_servers import McpServerDetector  # noqa: PLC0415
-        detectors.append(McpServerDetector())
+        from .detectors.mcp_audit import McpAuditDetector  # noqa: PLC0415
+        detectors.append(McpAuditDetector())
     except ImportError as e:
-        log.debug("MCP detector unavailable: %s", e)
+        log.debug("MCP audit detector unavailable, trying discovery-only: %s", e)
+        try:
+            from .detectors.mcp_servers import McpServerDetector  # noqa: PLC0415
+            detectors.append(McpServerDetector())
+        except ImportError as e2:
+            log.debug("MCP detector unavailable: %s", e2)
 
     try:
         from .detectors.llm_sdks import LlmSdkDetector  # noqa: PLC0415

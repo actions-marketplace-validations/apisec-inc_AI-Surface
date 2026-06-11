@@ -7,14 +7,11 @@ from pathlib import Path
 
 from ai_surface.data.mcp import registry
 from ai_surface.detectors.mcp_audit import McpAuditDetector
+from ai_surface.types import CATEGORY_MCP_SERVER as MCP
 from ai_surface.types import (
     SEVERITY_CRITICAL,
     Audit,
-    Finding,
     Secret,
-)
-from ai_surface.types import (
-    CATEGORY_MCP_SERVER as MCP,
 )
 
 
