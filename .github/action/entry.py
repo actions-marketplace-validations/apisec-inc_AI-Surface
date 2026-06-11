@@ -305,6 +305,26 @@ def _post_pr_comment(token: str, body: str) -> None:
 # ---------------------------------------------------------------------------
 
 
+def _severity_banner(report: Dict[str, Any]) -> str:
+    """Render an assessed-severity breakdown from the schema-1.0 summary.
+
+    Returns e.g. " · **1 critical**, 2 high" or "" when nothing is assessed.
+    Defensive: never raises on older/partial reports (summary may be absent).
+    """
+    summary = report.get("summary") or {}
+    by_sev = summary.get("by_severity") or {}
+    if not by_sev:
+        return ""
+    order = ("critical", "high", "medium", "low", "info")
+    parts = []
+    for sev in order:
+        n = by_sev.get(sev)
+        if n:
+            label = f"**{n} {sev}**" if sev in ("critical", "high") else f"{n} {sev}"
+            parts.append(label)
+    return " · " + ", ".join(parts) if parts else ""
+
+
 def _format_diff_comment(diff_md: str, head_report: Dict[str, Any]) -> str:
     """Compose a PR comment body in diff mode.
 
@@ -318,7 +338,7 @@ def _format_diff_comment(diff_md: str, head_report: Dict[str, Any]) -> str:
 
     status = (
         f"<sub>After this PR merges: **{surfaces}** total AI surfaces, "
-        f"**{risks}** total risk indicators.</sub>\n\n"
+        f"**{risks}** total risk indicators{_severity_banner(head_report)}.</sub>\n\n"
     )
     return status + diff_md
 
@@ -344,7 +364,7 @@ def _format_inventory_comment(report: Dict[str, Any], markdown_body: str) -> str
     summary = (
         f"### 🤖 AI Surface Check\n\n"
         f"**{surfaces} production AI surfaces** · "
-        f"**{risks} risk indicators**\n\n"
+        f"**{risks} risk indicators**{_severity_banner(report)}\n\n"
         f"<sub>Detectors: {detectors}</sub>\n\n"
         f"<sub>Diff against the base branch was unavailable; showing full inventory.</sub>\n\n"
     )
