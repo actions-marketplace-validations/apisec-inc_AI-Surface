@@ -60,6 +60,17 @@ class Orchestrator:
                 errors.append(msg)
                 log.warning(msg)
 
+        # Enrich validate-runtime surfaces beyond MCP (agents) with deep-dive
+        # audits, so severity flows into dispositions + summary. Defensive.
+        try:
+            from .audits import enrich_audits  # noqa: PLC0415
+
+            enrich_audits(all_findings)
+        except Exception as exc:  # noqa: BLE001
+            msg = f"audit enrichment failed: {exc.__class__.__name__}: {exc}"
+            errors.append(msg)
+            log.warning(msg)
+
         # Classify dispositions (resolve-here vs validate-runtime), then attach
         # paid-platform bridges. Defensive: neither must abort a scan.
         try:

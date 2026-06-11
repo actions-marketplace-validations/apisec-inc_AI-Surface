@@ -458,7 +458,7 @@ python3 -m http.server 8000
     const defs = [
       { id: "overview",  label: "Overview" },
       { id: "findings",  label: "Findings",  n: FINDINGS.length },
-      { id: "mcp-audit", label: "MCP Audit", n: mcpCount },
+      { id: "mcp-audit", label: "Audits", n: mcpCount },
       { id: "validate",  label: "Validate",  n: validateCount },
     ];
     const tabs = defs.map((t) => {
@@ -994,10 +994,10 @@ python3 -m http.server 8000
       <div class="mcp-intro">
         <div class="ic">${icon("shield")}</div>
         <div>
-          <h3>Deep-dive audit</h3>
-          <p>Discovery is severity-free. Severity comes only from this audit layer. Each audited surface is
-             scored against the OWASP LLM Top 10, checked for secrets (names and types only, never values),
-             and matched against known source registries for trust.</p>
+          <h3>Deep-dive audits</h3>
+          <p>Discovery is severity-free. Severity comes only from this audit layer. Each audited surface
+             (MCP servers, agents) is scored against the OWASP LLM Top 10, checked for secrets (names and
+             types only, never values), risky tool/permission combinations, and source trust.</p>
         </div>
       </div>`;
 

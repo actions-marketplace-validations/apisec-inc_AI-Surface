@@ -25,20 +25,22 @@
       "api": 12
     },
     "by_severity": {
+      "high": 2,
+      "medium": 2,
       "critical": 1,
-      "high": 1,
-      "medium": 1,
       "low": 1
     },
     "top_risks": [
       "MCP Server: stripe-mcp: Live Stripe secret key present in MCP env block",
+      "LangChain Agent: refund_agent: Agent can invoke financial tools (issue_refund)",
+      "LangChain Agent: refund_agent: Agent combines broad read access with financial/destructive actions",
       "MCP Server: stripe-mcp: MCP exposes refund and charge tools to the model",
       "MCP Server: github-mcp: Write + workflow-trigger access to source control",
+      "LangChain Agent: refund_agent: Agent can send outbound messages/notifications",
+      "LangGraph Flow: onboarding_kyc: PII flows into an LLM call from this agent",
       "MCP Server: stripe-mcp: MCP server not found in known registry",
       "MCP Server: github-mcp: Can trigger CI workflows (indirect command execution)",
-      "MCP Server: ledger-mcp: In-house MCP server, not independently audited",
-      "MCP Server: ledger-mcp: Posts ledger entries",
-      "MCP Server: weather-mcp: Remote MCP over HTTP"
+      "MCP Server: ledger-mcp: In-house MCP server, not independently audited"
     ],
     "bridges_available": [
       "agent-validation",
@@ -193,8 +195,45 @@
         "high blast-radius combination"
       ],
       "detector_name": "agent_frameworks",
-      "severity": null,
-      "audit": null,
+      "severity": "high",
+      "audit": {
+        "risk_flags": [
+          {
+            "flag": "financial-action",
+            "severity": "high",
+            "description": "Agent can invoke financial tools (issue_refund)",
+            "owasp": [
+              "LLM06"
+            ],
+            "remediation": "Gate financial tools behind human approval; least-privilege the agent."
+          },
+          {
+            "flag": "messaging-action",
+            "severity": "medium",
+            "description": "Agent can send outbound messages/notifications",
+            "owasp": [
+              "LLM06"
+            ],
+            "remediation": "Rate-limit and gate outbound messaging behind approval."
+          },
+          {
+            "flag": "high-blast-radius",
+            "severity": "high",
+            "description": "Agent combines broad read access with financial/destructive actions",
+            "owasp": [
+              "LLM06"
+            ],
+            "remediation": "Split read and write agents; apply least-privilege per agent."
+          }
+        ],
+        "secrets": [],
+        "trust_score": null,
+        "trust_label": "",
+        "registry_match": "",
+        "owasp_mappings": [
+          "LLM06"
+        ]
+      },
       "bridges": [
         {
           "sku": "agent-validation",
@@ -272,13 +311,32 @@
         "approval action exposed"
       ],
       "detector_name": "agent_frameworks",
-      "severity": null,
-      "audit": null,
+      "severity": "medium",
+      "audit": {
+        "risk_flags": [
+          {
+            "flag": "pii-to-llm",
+            "severity": "medium",
+            "description": "PII flows into an LLM call from this agent",
+            "owasp": [
+              "LLM02"
+            ],
+            "remediation": "Redact or minimize PII before prompting; review the data flow."
+          }
+        ],
+        "secrets": [],
+        "trust_score": null,
+        "trust_label": "",
+        "registry_match": "",
+        "owasp_mappings": [
+          "LLM02"
+        ]
+      },
       "bridges": [
         {
           "sku": "agent-validation",
           "label": "Coming soon: agent validation in APIsec",
-          "url": "https://apisec.ai/ai-validation?category=agent-framework&risk=pii-flows-into-llm-call&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel",
+          "url": "https://apisec.ai/ai-validation?category=agent-framework&risk=pii-to-llm&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel",
           "status": "coming"
         }
       ],

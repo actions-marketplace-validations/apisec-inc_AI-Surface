@@ -142,6 +142,10 @@
           "value": "coming"
         },
         {
+          "name": "ai-surface:severity",
+          "value": "high"
+        },
+        {
           "name": "ai-surface:detector",
           "value": "agent_frameworks"
         },
@@ -156,6 +160,30 @@
         {
           "name": "ai-surface:file",
           "value": "src/agents/refund.py"
+        },
+        {
+          "name": "ai-surface:audit-flag",
+          "value": "high:financial-action"
+        },
+        {
+          "name": "ai-surface:owasp",
+          "value": "LLM06"
+        },
+        {
+          "name": "ai-surface:audit-flag",
+          "value": "medium:messaging-action"
+        },
+        {
+          "name": "ai-surface:owasp",
+          "value": "LLM06"
+        },
+        {
+          "name": "ai-surface:audit-flag",
+          "value": "high:high-blast-radius"
+        },
+        {
+          "name": "ai-surface:owasp",
+          "value": "LLM06"
         },
         {
           "name": "ai-surface:validate",
@@ -212,6 +240,10 @@
           "value": "coming"
         },
         {
+          "name": "ai-surface:severity",
+          "value": "medium"
+        },
+        {
           "name": "ai-surface:detector",
           "value": "agent_frameworks"
         },
@@ -226,6 +258,14 @@
         {
           "name": "ai-surface:file",
           "value": "src/agents/onboarding.py"
+        },
+        {
+          "name": "ai-surface:audit-flag",
+          "value": "medium:pii-to-llm"
+        },
+        {
+          "name": "ai-surface:owasp",
+          "value": "LLM02"
         },
         {
           "name": "ai-surface:validate",

@@ -19,10 +19,13 @@
       "api": 1
     },
     "by_severity": {
+      "high": 1,
       "critical": 1
     },
     "top_risks": [
       "MCP Server: stripe-mcp: Live Stripe secret key present in MCP env block",
+      "LangChain Agent: refund_agent: Agent can invoke financial tools (refund_payment)",
+      "LangChain Agent: refund_agent: Agent combines broad read access with financial/destructive actions",
       "MCP Server: stripe-mcp: MCP exposes refund and charge tools to the model",
       "MCP Server: stripe-mcp: MCP server not found in known registry"
     ],
@@ -126,8 +129,36 @@
         "financial action exposed"
       ],
       "detector_name": "agent_frameworks",
-      "severity": null,
-      "audit": null,
+      "severity": "high",
+      "audit": {
+        "risk_flags": [
+          {
+            "flag": "financial-action",
+            "severity": "high",
+            "description": "Agent can invoke financial tools (refund_payment)",
+            "owasp": [
+              "LLM06"
+            ],
+            "remediation": "Gate financial tools behind human approval; least-privilege the agent."
+          },
+          {
+            "flag": "high-blast-radius",
+            "severity": "high",
+            "description": "Agent combines broad read access with financial/destructive actions",
+            "owasp": [
+              "LLM06"
+            ],
+            "remediation": "Split read and write agents; apply least-privilege per agent."
+          }
+        ],
+        "secrets": [],
+        "trust_score": null,
+        "trust_label": "",
+        "registry_match": "",
+        "owasp_mappings": [
+          "LLM06"
+        ]
+      },
       "bridges": [
         {
           "sku": "agent-validation",
