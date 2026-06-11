@@ -1,2 +1,2 @@
-"""ai-surface: Inventory production AI surfaces in your application code."""
-__version__ = "0.5.3"
+"""ai-surface: Map the AI attack surface in your application code."""
+__version__ = "1.0.0"
