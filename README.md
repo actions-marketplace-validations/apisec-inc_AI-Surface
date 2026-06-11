@@ -2,20 +2,24 @@
 
 # `ai-surface`
 
-**Map your application's AI attack surface from source, at PR time, before it ships to production.**
+**Govern your application's AI attack surface from source: inventory it, generate an AI-BOM, and gate the risk at PR time.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
 [![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](CHANGELOG.md)
 [![Status: Production/Stable](https://img.shields.io/badge/status-production%2Fstable-brightgreen.svg)](#status)
-[![Tests](https://img.shields.io/badge/tests-238%20passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-246%20passing-brightgreen.svg)](tests/)
 [![No Telemetry](https://img.shields.io/badge/no_telemetry-runs_offline-brightgreen.svg)](docs/PRIVACY.md)
 
 </div>
 
 > 🔒 **`ai-surface` is a static source-code analyzer that runs entirely on your machine.** A CLI scan makes no network calls and the project contains no telemetry code path of any kind, so your source never leaves the host you run it on. The visual UI serves on loopback only. The full data-handling contract is in [`docs/PRIVACY.md`](docs/PRIVACY.md).
 
-Your application code is growing an AI attack surface (LLM calls, agents, MCP servers, model gateways, self-hosted runtimes, and the HTTP APIs that front them) faster than DevOps can govern it. `ai-surface` runs in your CI on every PR and on your laptop on demand. It **maps every AI component your code is about to expose to production**, goes deep on MCP servers with a built-in security audit, flags the permissions they hold and the risks they introduce, and can **fail the build** when a PR adds a risky one. Run `ai-surface scan . --ui` to explore the whole map as an interactive, severity-colored graph in your browser. Visibility plus a kill switch, at the cheapest control point you have.
+Your application code is growing an AI attack surface (LLM calls, agents, MCP servers, model gateways, self-hosted runtimes, and the HTTP APIs that front them) faster than anyone can govern it, and the mandate to govern it is arriving fast: the EU AI Act, NIST AI RMF, and ISO/IEC 42001 all require you to **know, document, and risk-assess the AI systems you run**. You cannot document what you cannot inventory.
+
+`ai-surface` is the AI-governance gate for your pipeline. It runs in your CI on every PR (and on your laptop on demand), **inventories every AI component your code is about to ship**, generates a standard **AI-BOM** (CycloneDX) the same way your pipeline already generates an SBOM, goes deep on MCP servers with a built-in security audit, and can **fail the build** when a PR introduces a risky surface. Run `ai-surface scan . --ui` to explore it as an interactive, severity-colored attack-surface map in your browser.
+
+It produces the evidence; it does not claim to make you compliant. And it draws a clear line: static discovery is free and local, here. Proving which of these surfaces is actually **exploitable** against your running application is what the [APIsec platform](https://apisec.ai/ai-validation) does.
 
 <br>
 

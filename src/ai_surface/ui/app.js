@@ -157,11 +157,11 @@ python3 -m http.server 8000
         ${topbarHTML()}
         <section class="welcome">
           <div class="welcome-inner reveal">
-            <span class="eyebrow"><span class="dot"></span>Static AI Surface Discovery</span>
+            <span class="eyebrow"><span class="dot"></span>AI Governance Gate &middot; Static + Offline</span>
             <h1 class="welcome-title">Map your codebase's<br><span class="grad">AI attack surface</span></h1>
-            <p class="welcome-lede">Every LLM call, agent, MCP server, gateway, key, and API in your repo, drawn
-               as one map. Discovery runs fully offline and is severity-free by design. Runtime exploitability is
-               validated in APIsec.</p>
+            <p class="welcome-lede">Every LLM call, agent, MCP server, gateway, key, and API in your repo, as one
+               map and a standard AI-BOM: the inventory and documentation the EU AI Act, NIST AI RMF, and
+               ISO 42001 expect. Runs fully offline. Exploitability is validated in APIsec.</p>
 
             <form class="scan-form reveal d1" id="scan-form" novalidate>
               <label class="scan-field">
@@ -336,9 +336,9 @@ python3 -m http.server 8000
       <section class="hero">
         <span class="eyebrow reveal"><span class="dot"></span>Static AI Surface Discovery${ts ? " &middot; " + esc(ts) : ""}</span>
         <h1 class="reveal d1">The <span class="grad">AI Attack Surface</span><br>of your codebase, mapped.</h1>
-        <p class="lede reveal d2">Every LLM call, agent, MCP server, gateway, key, and API we found, drawn as one map.
-           <b>Discovery is severity-free by design</b>: most surfaces are inventoried; a subset is assessed
-           for risk. Runtime exploitability is validated in APIsec.</p>
+        <p class="lede reveal d2">Every LLM call, agent, MCP server, gateway, key, and API we found, as one map
+           and an AI-BOM. <b>Discovery is severity-free by design</b>: most surfaces are inventoried; a subset is
+           assessed for risk. Exploitability is validated in APIsec.</p>
 
         <div class="stage reveal d3">
           <div class="panel map-panel" id="map-panel">
