@@ -292,6 +292,9 @@ python3 -m http.server 8000
     wireTooltips();
     wireTabs();
     renderActiveTab();
+    // deep-link: #open=<finding id> opens that finding's drawer directly
+    const om = /(?:#|&)open=(\d+)/.exec(location.hash);
+    if (om) openDrawer(Number(om[1]));
   }
 
   /* ---- topbar ------------------------------------------------------------- */
@@ -1285,74 +1288,77 @@ python3 -m http.server 8000
   function drawerHTML(f) {
     const m = catMeta(f.category);
     const sev = f.severity;
-    const accent = sevColor(sev);
     const sevTag = sev
-      ? `<span class="sev-tag" style="--accent:${accent}">${sev}</span>`
+      ? `<span class="sev-tag" style="--accent:${sevColor(sev)}">${sev}</span>`
       : `<span class="sev-tag none">inventoried</span>`;
+    const dispTag = f.disposition === "resolve-here"
+      ? `<span class="disp-pill resolve">resolve here</span>`
+      : f.disposition === "validate-runtime"
+      ? `<span class="disp-pill validate">validate at runtime</span>` : "";
 
     const ev = f.evidence || {};
     const md = ev.metadata || {};
+    const a = f.audit;
 
-    // evidence block
-    const files = (ev.files || []).map((fp) => `<span class="perm">${esc(fp)}</span>`).join("");
+    /* ---- 1 - INFORMATION: what this is ---- */
+    const kv = [`<dt>category</dt><dd class="mono">${esc(f.category)}</dd>`,
+                `<dt>detector</dt><dd class="mono">${esc(f.detector_name || "·")}</dd>`];
     const lines = (ev.line_numbers || []).join(", ");
-    let snippet = "";
-    if (ev.snippet) snippet = `<div class="snippet">${esc(ev.snippet)}</div>`;
-
-    // metadata kv (generic, so any category renders)
-    const mdRows = Object.entries(md).map(([k, v]) => {
-      const val = Array.isArray(v) ? v.join(", ") : (v === null ? "·" : String(v));
-      return `<dt>${esc(k)}</dt><dd class="mono">${esc(val)}</dd>`;
-    }).join("");
-
-    const perms = (f.permissions || []).map((p) => `<span class="perm">${esc(p)}</span>`).join("");
-    const ris = (f.risk_indicators || []).map((r) => `<span class="ri">${esc(r)}</span>`).join("");
-
-    const blocks = [];
-
-    // header summary kv
-    const kv = [];
-    kv.push(`<dt>category</dt><dd class="mono">${esc(f.category)}</dd>`);
-    kv.push(`<dt>detector</dt><dd class="mono">${esc(f.detector_name || "·")}</dd>`);
     if (lines) kv.push(`<dt>lines</dt><dd class="mono">${esc(lines)}</dd>`);
-    if (mdRows) kv.push(mdRows);
-    blocks.push(`<div class="dr-block"><h4>Detail</h4><dl class="kv">${kv.join("")}</dl></div>`);
+    Object.entries(md).forEach(([k, v]) => {
+      const val = Array.isArray(v) ? v.join(", ") : (v === null ? "·" : String(v));
+      kv.push(`<dt>${esc(k)}</dt><dd class="mono">${esc(val)}</dd>`);
+    });
+    const files = (ev.files || []).map((fp) => `<span class="perm">${esc(fp)}</span>`).join("");
+    const snippet = ev.snippet ? `<div class="snippet">${esc(ev.snippet)}</div>` : "";
+    const perms = (f.permissions || []).map((p) => `<span class="perm">${esc(p)}</span>`).join("");
+    let info = `<dl class="kv">${kv.join("")}</dl>`;
+    if (files || snippet) info += `<div class="dr-sub">Evidence</div>${files ? `<div class="tag-list">${files}</div>` : ""}${snippet}`;
+    if (perms) info += `<div class="dr-sub">Permissions / capabilities</div><div class="tag-list">${perms}</div>`;
 
-    if (files) blocks.push(`<div class="dr-block"><h4>Evidence ${snippet ? "" : ""}<span class="ct">${(ev.files || []).length} file${(ev.files || []).length === 1 ? "" : "s"}</span></h4><div class="tag-list" style="margin-bottom:${snippet ? "12px" : "0"}">${files}</div>${snippet}</div>`);
-    else if (snippet) blocks.push(`<div class="dr-block"><h4>Evidence</h4>${snippet}</div>`);
+    /* ---- 2 - RISKS: what's wrong (no fixes here) ---- */
+    const ris = (f.risk_indicators || []).map((r) => `<span class="ri">${esc(r)}</span>`).join("");
+    let risks = "";
+    if (ris) risks += `<div class="tag-list">${ris}</div>`;
+    if (a && (a.risk_flags || []).length) risks += auditFlagsHTML(a.risk_flags);
+    if (a && (a.secrets || []).length) risks += secretsHTML(a.secrets);
+    const trust = a ? trustHTML(a) : "";
+    if (trust) risks += `<div class="dr-sub">Source trust</div>${trust}`;
+    if (!risks) risks = `<div class="secret-note">${icon("info")}<span>Inventoried, not assessed for risk. Severity comes only from the deep-dive audit layer (MCP today).</span></div>`;
 
-    if (perms) blocks.push(`<div class="dr-block"><h4>Permissions / capabilities</h4><div class="tag-list">${perms}</div></div>`);
-    if (ris) blocks.push(`<div class="dr-block"><h4>Risk indicators</h4><div class="tag-list">${ris}</div></div>`);
+    /* ---- 3 - REMEDIATION: the fixes, pulled together ---- */
+    const rem = [];
+    if (a) (a.risk_flags || []).forEach((rf) => { if (rf.remediation) rem.push(`<li><b>${esc(rf.flag)}</b> ${esc(rf.remediation)}</li>`); });
+    if (a) (a.secrets || []).forEach((s) => rem.push(`<li><b>${esc(s.name)}</b> Move to a secrets manager and rotate; reference by name only.</li>`));
+    const remediation = rem.length
+      ? `<ul class="rem-list">${rem.join("")}</ul>`
+      : `<div class="secret-note">${icon("info")}<span>No static remediation items.${f.disposition === "validate-runtime" ? " Exploitability is proven at runtime, see below." : ""}</span></div>`;
 
-    // ---- audit block ----
-    if (f.audit) blocks.push(auditHTML(f.audit));
-    else blocks.push(`<div class="dr-block"><h4>Assessment</h4>
-      <div class="secret-note">${icon("info")}<span>Inventoried, not assessed. Severity comes only from the
-      deep-dive audit layer (MCP today). This surface was discovered but not risk-scored.</span></div></div>`);
-
-    // ---- bridges ----
+    /* ---- 4 - VALIDATE AT RUNTIME: the CTA ---- */
     const bridges = (f.bridges || []).map((b) => `
       <a class="dr-bridge" href="${esc(b.url)}" target="_blank" rel="noopener noreferrer">
         <span class="sku">${esc(b.sku)}</span>
         <span class="lbl">${esc(b.label)} ${icon("arrow", "")}</span>
       </a>`).join("");
-    // ---- disposition: the value boundary ----
+    let validate;
+    let stPill = "";
     if (f.disposition === "validate-runtime") {
       const st = f.runtime_status === "live" ? "live" : (f.runtime_status === "coming" ? "coming soon" : "");
-      const stPill = st ? `<span class="rt-status ${esc(f.runtime_status)}">${st}</span>` : "";
+      stPill = st ? `<span class="rt-status ${esc(f.runtime_status)}">${st}</span>` : "";
       const q = f.runtime_question
         ? `<div class="rt-q">${icon("info")}<span><b>Only runtime can answer:</b> ${esc(f.runtime_question)}</span></div>` : "";
-      blocks.push(`<div class="dr-block"><h4>Validate at runtime ${stPill}</h4>${q}${bridges}</div>`);
+      validate = `${q}${bridges}`;
     } else if (f.disposition === "resolve-here") {
-      blocks.push(`<div class="dr-block"><h4>Resolve here</h4><div class="secret-note">${icon("info")}<span>Statically resolvable: fix this in place. No runtime validation needed for this surface.</span></div></div>`);
-    } else if (bridges) {
-      blocks.push(`<div class="dr-block"><h4>Validate at runtime</h4>${bridges}</div>`);
+      validate = `<div class="secret-note">${icon("info")}<span>Statically resolvable: fix it in place (above). No runtime validation needed for this surface.</span></div>`;
+    } else {
+      validate = bridges || `<div class="secret-note">${icon("info")}<span>No runtime validation journey for this surface.</span></div>`;
     }
 
-    const dispTag = f.disposition === "resolve-here"
-      ? `<span class="disp-pill resolve">resolve here</span>`
-      : f.disposition === "validate-runtime"
-      ? `<span class="disp-pill validate">validate at runtime</span>` : "";
+    const sec = (n, title, extra, body) => `
+      <section class="dr-sec">
+        <div class="dr-sec-h"><span class="dr-sec-n">${n}</span>${title}${extra || ""}</div>
+        <div class="dr-sec-body">${body}</div>
+      </section>`;
 
     return `
       <div class="dr-head">
@@ -1361,29 +1367,34 @@ python3 -m http.server 8000
           <span class="cat">${esc(m.label)}</span>${sevTag}${dispTag}</div>
         <h3>${esc(f.surface)}</h3>
       </div>
-      <div class="dr-body">${blocks.join("")}</div>`;
+      <div class="dr-body">
+        ${sec("1", "Information", "", info)}
+        ${sec("2", "Risks", "", risks)}
+        ${sec("3", "Remediation", "", remediation)}
+        ${sec("4", "Validate at runtime", stPill, validate)}
+      </div>`;
   }
 
-  function auditHTML(a) {
-    const flags = (a.risk_flags || []).map((rf) => {
-      const accent = sevColor(rf.severity);
+  // Audit risk flags WITHOUT remediation (remediation lives in its own section).
+  function auditFlagsHTML(flags) {
+    return flags.map((rf) => {
       const owasp = (rf.owasp || []).map(owaspChip).join("");
       return `
         <div class="flag">
-          <div class="flag-top" style="--accent:${accent}">
-            <span class="sev-tag" style="--accent:${accent}">${esc(rf.severity || "info")}</span>
+          <div class="flag-top">
+            <span class="sev-tag" style="--accent:${sevColor(rf.severity)}">${esc(rf.severity || "info")}</span>
             <span class="fid">${esc(rf.flag)}</span>
-            <span class="grow"></span>
           </div>
           <div class="flag-body">
             ${rf.description ? `<p class="desc">${esc(rf.description)}</p>` : ""}
             ${owasp ? `<div class="owasp-row">${owasp}</div>` : ""}
-            ${rf.remediation ? `<div class="rem"><b>Fix:</b> ${esc(rf.remediation)}</div>` : ""}
           </div>
         </div>`;
     }).join("");
+  }
 
-    const secrets = (a.secrets || []).map((s) => `
+  function secretsHTML(secrets) {
+    const rows = secrets.map((s) => `
       <div class="secret-row">
         <span class="lock">${icon("lock")}</span>
         <span style="flex:1">
@@ -1392,24 +1403,19 @@ python3 -m http.server 8000
         </span>
         ${s.severity ? `<span class="sev-tag" style="--accent:${sevColor(s.severity)}">${esc(s.severity)}</span>` : ""}
       </div>`).join("");
+    return `<div class="dr-sub">Detected secrets <span class="ct">${secrets.length}</span></div>${rows}
+      <div class="secret-note">${icon("lock")}<span>Names and types only. ai-surface never reads or stores a secret value.</span></div>`;
+  }
 
-    const trust = [];
+  function trustHTML(a) {
+    const t = [];
     if (a.trust_label) {
       const cls = a.trust_label === "verified" ? "verified" : a.trust_label === "unknown" ? "unknown" : "";
-      trust.push(`<span class="trust-badge ${cls}">trust <b>${esc(a.trust_label)}</b></span>`);
+      t.push(`<span class="trust-badge ${cls}">trust <b>${esc(a.trust_label)}</b></span>`);
     }
-    if (a.trust_score != null) trust.push(`<span class="trust-badge">score <b>${esc(a.trust_score)}</b></span>`);
-    if (a.registry_match) trust.push(`<span class="trust-badge">registry <b>${esc(a.registry_match)}</b></span>`);
-
-    let html = `<div class="dr-block"><h4>${icon("shield")}Deep-dive audit <span class="ct">${(a.risk_flags || []).length} flag${(a.risk_flags || []).length === 1 ? "" : "s"}</span></h4>`;
-    if (flags) html += flags;
-    if (secrets) {
-      html += `<h4 style="margin-top:20px">Detected secrets <span class="ct">${(a.secrets || []).length}</span></h4>${secrets}
-        <div class="secret-note">${icon("lock")}<span>Names and types only. ai-surface never reads or stores a secret value; it stays on your machine.</span></div>`;
-    }
-    if (trust.length) html += `<h4 style="margin-top:20px">Source trust</h4><div class="trust-row">${trust.join("")}</div>`;
-    html += `</div>`;
-    return html;
+    if (a.trust_score != null) t.push(`<span class="trust-badge">score <b>${esc(a.trust_score)}</b></span>`);
+    if (a.registry_match) t.push(`<span class="trust-badge">registry <b>${esc(a.registry_match)}</b></span>`);
+    return t.length ? `<div class="trust-row">${t.join("")}</div>` : "";
   }
 
   /* ======================================================================== *

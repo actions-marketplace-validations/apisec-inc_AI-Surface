@@ -493,7 +493,7 @@ code, pre, .mono { font-family: var(--font-mono); }
   opacity: 0; transition: opacity var(--med); backdrop-filter: blur(2px); }
 .drawer[aria-hidden="false"] .drawer-scrim { opacity: 1; }
 .drawer-panel {
-  position: absolute; top: 0; right: 0; height: 100%; width: min(480px, 94vw);
+  position: absolute; top: 0; right: 0; height: 100%; width: min(640px, 96vw);
   background: var(--surface-solid); border-left: 1px solid var(--line-2);
   box-shadow: -30px 0 80px -30px rgba(0,0,0,.7);
   transform: translateX(102%); transition: transform var(--slow) var(--ease);
@@ -513,11 +513,28 @@ code, pre, .mono { font-family: var(--font-mono); }
 .dr-close:hover { color: var(--text); border-color: var(--line-2); }
 .dr-close svg { width: 15px; height: 15px; }
 
-.dr-body { padding: 22px 24px 40px; display: grid; gap: 24px; }
-.dr-block h4 { margin: 0 0 11px; font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
-  color: var(--text-3); display: flex; align-items: center; gap: 8px; }
-.dr-block h4 .ct { font-family: var(--font-mono); color: var(--text-2); letter-spacing: 0;
-  text-transform: none; background: var(--line); padding: 1px 7px; border-radius: 99px; }
+.dr-body { padding: 6px 26px 40px; }
+.dr-block h4, .dr-block h4 svg { /* legacy, kept harmless */ }
+.dr-block h4 svg { width: 15px; height: 15px; flex: none; }
+
+/* 4-part drawer sections: Information / Risks / Remediation / Validate */
+.dr-sec { padding: 22px 0; border-top: 1px solid var(--line); }
+.dr-sec:first-child { border-top: 0; padding-top: 10px; }
+.dr-sec-h { display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
+  font-size: 14px; font-weight: 700; letter-spacing: -.01em; color: var(--text); }
+.dr-sec-n { width: 22px; height: 22px; border-radius: 6px; flex: none;
+  background: var(--surface-2); border: 1px solid var(--line);
+  display: grid; place-items: center; font-family: var(--font-mono); font-size: 11px; color: var(--text-2); }
+.dr-sec-body { display: grid; gap: 14px; }
+.dr-sub { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-3);
+  margin-top: 4px; display: flex; align-items: center; gap: 8px; }
+.dr-sub .ct { font-family: var(--font-mono); letter-spacing: 0; text-transform: none;
+  color: var(--text-2); background: var(--line); padding: 1px 7px; border-radius: 99px; }
+.rem-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 11px; }
+.rem-list li { font-size: 13px; color: var(--text-2); line-height: 1.5; padding-left: 15px; position: relative; }
+.rem-list li::before { content: ""; position: absolute; left: 2px; top: 8px; width: 6px; height: 6px;
+  border-radius: 50%; background: #3fa87a; }
+.rem-list li b { color: var(--text); font-family: var(--font-mono); font-size: 12px; margin-right: 5px; }
 
 .kv { display: grid; grid-template-columns: 110px 1fr; gap: 7px 14px; font-size: 13px; }
 .kv dt { color: var(--text-3); }
