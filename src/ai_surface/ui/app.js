@@ -1010,64 +1010,38 @@ python3 -m http.server 8000
     return `<section class="tab-section reveal">${intro}<div class="mcp-grid">${cards}</div></section>`;
   }
 
+  // Compact summary card. Full audit detail lives in the drawer (click to open).
   function mcpCardHTML(f) {
     const a = f.audit || {};
     const sev = f.severity;
-    const accent = sevColor(sev);
     const sevTag = sev
-      ? `<span class="sev-tag" style="--accent:${accent}">${esc(sev)}</span>`
+      ? `<span class="sev-tag" style="--accent:${sevColor(sev)}">${esc(sev)}</span>`
       : `<span class="sev-tag none">audited</span>`;
-
-    const flags = (a.risk_flags || []).map((rf) => {
-      const fa = sevColor(rf.severity);
-      const owasp = (rf.owasp || []).map(owaspChip).join("");
-      return `
-        <div class="flag">
-          <div class="flag-top" style="--accent:${fa}">
-            <span class="sev-tag" style="--accent:${fa}">${esc(rf.severity || "info")}</span>
-            <span class="fid">${esc(rf.flag)}</span>
-          </div>
-          <div class="flag-body">
-            ${rf.description ? `<p class="desc">${esc(rf.description)}</p>` : ""}
-            ${owasp ? `<div class="owasp-row">${owasp}</div>` : ""}
-            ${rf.remediation ? `<div class="rem"><b>Fix:</b> ${esc(rf.remediation)}</div>` : ""}
-          </div>
-        </div>`;
-    }).join("") || `<div class="sev-empty">No risk flags raised.</div>`;
-
-    const secrets = (a.secrets || []).map((s) => `
-      <div class="secret-row">
-        <span class="lock">${icon("lock")}</span>
-        <span style="flex:1">
-          <span class="sname">${esc(s.name)}</span>
-          <span class="smeta">${esc(s.secret_type || "secret")}${s.confidence ? " &middot; " + esc(s.confidence) + " confidence" : ""}${s.location ? " &middot; " + esc(s.location) : ""}</span>
-        </span>
-        ${s.severity ? `<span class="sev-tag" style="--accent:${sevColor(s.severity)}">${esc(s.severity)}</span>` : ""}
-      </div>`).join("");
-
-    const trust = [];
-    if (a.trust_label) {
-      const cls = a.trust_label === "verified" ? "verified" : a.trust_label === "unknown" ? "unknown" : "";
-      trust.push(`<span class="trust-badge ${cls}">trust <b>${esc(a.trust_label)}</b></span>`);
-    }
-    if (a.trust_score != null) trust.push(`<span class="trust-badge">score <b>${esc(a.trust_score)}</b></span>`);
-    if (a.registry_match) trust.push(`<span class="trust-badge">registry <b>${esc(a.registry_match)}</b></span>`);
 
     const tools = (f.permissions || ((f.evidence && f.evidence.metadata && f.evidence.metadata.tools)) || [])
       .slice(0, 6).map((t) => `<span class="perm">${esc(t)}</span>`).join("");
 
+    const flagChips = (a.risk_flags || []).map((rf) =>
+      `<span class="flag-chip" style="--accent:${sevColor(rf.severity)}">${esc(rf.flag)}</span>`).join("")
+      || `<span class="sev-empty">No risk flags raised.</span>`;
+
+    const meta = [];
+    const ns = (a.secrets || []).length;
+    if (ns) meta.push(`<span class="mcp-meta-chip">${ns} secret${ns === 1 ? "" : "s"}</span>`);
+    if (a.trust_label) meta.push(`<span class="mcp-meta-chip">trust ${esc(a.trust_label)}</span>`);
+    const owaspSet = [...new Set((a.risk_flags || []).flatMap((rf) => rf.owasp || []))];
+    if (owaspSet.length) meta.push(`<span class="mcp-meta-chip">${esc(owaspSet.join(", "))}</span>`);
+
     return `
-      <article class="mcp-card" style="--accent:${accent}" data-open-id="${f._id}" tabindex="0" role="button">
+      <article class="mcp-card" data-open-id="${f._id}" tabindex="0" role="button">
         <div class="mcp-head">
           <span class="ic">${icon(catMeta(f.category).icon)}</span>
           <span class="title">${esc(f.surface)}</span>
           ${sevTag}
         </div>
         ${tools ? `<div class="mcp-tools tag-list">${tools}</div>` : ""}
-        <div class="mcp-flags">${flags}</div>
-        ${secrets ? `<div class="mcp-sub"><h5>Secrets <span class="ct">${(a.secrets || []).length}</span></h5>${secrets}
-          <div class="secret-note">${icon("lock")}<span>Names and types only. ai-surface never reads a secret value.</span></div></div>` : ""}
-        ${trust.length ? `<div class="mcp-sub"><h5>Source trust</h5><div class="trust-row">${trust.join("")}</div></div>` : ""}
+        <div class="mcp-flagchips">${flagChips}</div>
+        ${meta.length ? `<div class="mcp-metarow">${meta.join("")}</div>` : ""}
         <div class="mcp-foot"><span class="open">Open full detail ${icon("arrow")}</span></div>
       </article>`;
   }
