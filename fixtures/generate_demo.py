@@ -98,7 +98,12 @@ def _mcp() -> list[Finding]:
     out.append(Finding(
         surface="MCP Server: stripe-mcp", category=CATEGORY_MCP_SERVER,
         evidence=_ev([".mcp.json"], '"stripe-mcp": {"command": "npx", "args": ["stripe-mcp"], "env": {...}}',
-                     {"tools": ["create_charge", "refund", "list_customers"]}, [4]),
+                     {"tools": ["create_charge", "refund", "list_customers"],
+                      "reaches": [
+                          {"category": "saas", "url": "https://api.stripe.com", "source_key": "STRIPE_API_BASE"},
+                          {"category": "database", "url": "postgresql://****:****@db.acme.internal/payments", "source_key": "DATABASE_URL"},
+                      ],
+                      "models": ["gpt-4o"]}, [4]),
         permissions=["create_charge", "refund", "list_customers"],
         risk_indicators=["financial action exposed", "secret in env block"],
         detector_name="mcp_audit", severity=SEVERITY_CRITICAL,

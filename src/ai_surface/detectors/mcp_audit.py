@@ -188,6 +188,47 @@ def _command_args_env(cfg: dict[str, Any]) -> tuple[str, list[str], dict[str, An
     return command, args, env
 
 
+def _detect_reach(
+    cfg: dict[str, Any], args: list[str], env: dict[str, Any], name: str
+) -> tuple[list[dict[str, str]], list[str]]:
+    """APIs/services this MCP reaches (masked) and AI models it uses (names).
+
+    Ports mcp-audit's _detect_apis_in_config / _detect_model_in_config. Only
+    masked URLs and model names cross; no credential value is ever surfaced.
+    """
+    reaches: list[dict[str, str]] = []
+    models: list[str] = []
+    try:
+        from ..data.mcp.api_patterns import detect_apis  # noqa: PLC0415
+
+        seen = set()
+        for a in detect_apis(cfg, args, name) or []:
+            d = a.to_dict() if hasattr(a, "to_dict") else {}
+            key = (d.get("category"), d.get("url"))
+            if key in seen:
+                continue
+            seen.add(key)
+            reaches.append({
+                "category": str(d.get("category", "")),
+                "url": str(d.get("url", "")),  # masked by to_dict()
+                "source_key": str(d.get("source_key", "")),
+            })
+    except Exception:  # noqa: BLE001 - reach detection must never break a scan
+        pass
+    try:
+        from ..data.mcp.model_patterns import detect_model_from_config  # noqa: PLC0415
+
+        m = detect_model_from_config(env, reaches, name)
+        if m:
+            md = m.to_dict() if hasattr(m, "to_dict") else {}
+            name_val = md.get("model") or md.get("name") or md.get("model_id")
+            if name_val:
+                models.append(str(name_val))
+    except Exception:  # noqa: BLE001
+        pass
+    return reaches, models
+
+
 def _redact_snippet(snippet: str, secret_records: list[dict[str, Any]], cfg: dict[str, Any]) -> str:
     """Strip any detected secret value out of an evidence snippet.
 
@@ -419,8 +460,25 @@ class McpAuditDetector:
         if _has_broad_permissions(permissions, cfg):
             flag_ids.append("broad-permissions")
 
+        # 5. Blast-radius context: APIs/services this MCP reaches and models it
+        #    uses (masked, names only). Parity with the original mcp-audit.
+        reaches, models = _detect_reach(cfg, args, env, server_name)
+
         risk_indicators = self._risk_indicators(flag_ids)
         snippet = _redact_snippet(_snippet_for_server(server_name, full_text), secret_records, cfg)
+
+        meta: dict[str, Any] = {
+            "server_name": server_name,
+            "source": "config",
+            "server_type": server_type,
+            "mcp_source": source,
+            "tools": list(permissions),
+            "config_keys": sorted(cfg.keys()),
+        }
+        if reaches:
+            meta["reaches"] = reaches
+        if models:
+            meta["models"] = models
 
         finding = Finding(
             surface=f"MCP Server: {server_name}",
@@ -428,14 +486,7 @@ class McpAuditDetector:
             evidence=Evidence(
                 files=[rel_path],
                 snippet=snippet,
-                metadata={
-                    "server_name": server_name,
-                    "source": "config",
-                    "server_type": server_type,
-                    "mcp_source": source,
-                    "tools": list(permissions),
-                    "config_keys": sorted(cfg.keys()),
-                },
+                metadata=meta,
             ),
             permissions=permissions,
             risk_indicators=risk_indicators,

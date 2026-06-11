@@ -1323,6 +1323,7 @@ python3 -m http.server 8000
     const lines = (ev.line_numbers || []).join(", ");
     if (lines) kv.push(`<dt>lines</dt><dd class="mono">${esc(lines)}</dd>`);
     Object.entries(md).forEach(([k, v]) => {
+      if (k === "reaches" || k === "models") return;  // shown in dedicated sub-sections
       const val = Array.isArray(v) ? v.join(", ") : (v === null ? "·" : String(v));
       kv.push(`<dt>${esc(k)}</dt><dd class="mono">${esc(val)}</dd>`);
     });
@@ -1332,6 +1333,12 @@ python3 -m http.server 8000
     let info = `<dl class="kv">${kv.join("")}</dl>`;
     if (files || snippet) info += `<div class="dr-sub">Evidence</div>${files ? `<div class="tag-list">${files}</div>` : ""}${snippet}`;
     if (perms) info += `<div class="dr-sub">Permissions / capabilities</div><div class="tag-list">${perms}</div>`;
+    const reaches = md.reaches || [];
+    if (reaches.length) info += `<div class="dr-sub">Reaches (APIs / services)</div><div class="tag-list">${
+      reaches.map((r) => `<span class="perm" title="${esc(r.source_key || "")}">${esc(r.category)}: ${esc(r.url)}</span>`).join("")}</div>`;
+    const models = md.models || [];
+    if (models.length) info += `<div class="dr-sub">Models used</div><div class="tag-list">${
+      models.map((mm) => `<span class="perm">${esc(mm)}</span>`).join("")}</div>`;
 
     /* ---- 2 - RISKS: what's wrong (no fixes here) ---- */
     const ris = (f.risk_indicators || []).map((r) => `<span class="ri">${esc(r)}</span>`).join("");

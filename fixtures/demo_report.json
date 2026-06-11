@@ -360,6 +360,21 @@
             "create_charge",
             "refund",
             "list_customers"
+          ],
+          "reaches": [
+            {
+              "category": "saas",
+              "url": "https://api.stripe.com",
+              "source_key": "STRIPE_API_BASE"
+            },
+            {
+              "category": "database",
+              "url": "postgresql://****:****@db.acme.internal/payments",
+              "source_key": "DATABASE_URL"
+            }
+          ],
+          "models": [
+            "gpt-4o"
           ]
         }
       },
