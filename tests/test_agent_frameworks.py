@@ -218,3 +218,70 @@ def test_messaging_tool_indicator(tmp_path: Path) -> None:
     findings = AgentFrameworkDetector().detect(str(tmp_path))
     assert len(findings) == 1
     assert "messaging action exposed" in findings[0].risk_indicators
+
+
+# ---------------------------------------------------------------------------
+# tools=<variable> resolution to an in-file list literal
+# ---------------------------------------------------------------------------
+
+
+def test_tools_kwarg_resolves_distant_list_var(tmp_path: Path) -> None:
+    """tools=<var> resolves to an in-file list literal even when the assignment
+    is far from the constructor (beyond the nearest-block window)."""
+    filler = "\n".join(f"x{i} = {i}" for i in range(40))
+    (tmp_path / "agent.py").write_text(
+        "from strands import Agent\n"
+        "AGENT_TOOLS = [refund_payment, get_customer]\n"
+        f"{filler}\n"
+        "agent = Agent(model=m, tools=AGENT_TOOLS)\n",
+        encoding="utf-8",
+    )
+    findings = AgentFrameworkDetector().detect(str(tmp_path))
+    agents = [f for f in findings if "Agent:" in f.surface and f.permissions]
+    assert len(agents) == 1
+    f = agents[0]
+    assert "refund_payment" in f.permissions
+    assert "get_customer" in f.permissions
+    assert "financial action exposed" in f.risk_indicators
+
+
+def test_tools_var_flows_to_audit_and_oversight(tmp_path: Path) -> None:
+    """A tools=<var> agent now reaches the deep-dive audit AND the oversight
+    pass end to end (the gap dogfooding surfaced)."""
+    from ai_surface.audits import enrich_audits
+    from ai_surface.oversight import enrich_oversight
+
+    (tmp_path / "agent.py").write_text(
+        "from strands import Agent\n"
+        "TOOLS = [refund_payment, get_customer, delete_account]\n"
+        "agent = Agent(model=m, tools=TOOLS)\n",
+        encoding="utf-8",
+    )
+    findings = AgentFrameworkDetector().detect(str(tmp_path))
+    enrich_audits(findings)
+    enrich_oversight(findings)  # snippet only -> no approval gate -> should flag
+
+    agents = [f for f in findings if "Agent:" in f.surface and f.permissions]
+    assert agents
+    f = agents[0]
+    assert f.audit is not None
+    flags = {rf.flag for rf in f.audit.risk_flags}
+    assert "financial-action" in flags
+    assert "destructive-action" in flags
+    assert "no-human-oversight" in flags
+    assert f.severity == "high"
+
+
+def test_tools_var_factory_call_not_resolved(tmp_path: Path) -> None:
+    """A tools list built by a function call is NOT falsely resolved (honest:
+    needs dataflow). The agent is still inventoried, just without tools."""
+    (tmp_path / "agent.py").write_text(
+        "from strands import Agent\n"
+        "tools, budget, capture = make_tools()\n"
+        "agent = Agent(model=m, tools=tools)\n",
+        encoding="utf-8",
+    )
+    findings = AgentFrameworkDetector().detect(str(tmp_path))
+    agents = [f for f in findings if "Agent:" in f.surface]
+    assert len(agents) == 1
+    assert agents[0].permissions == []

@@ -139,6 +139,13 @@ TOOL_DECORATOR_RE = re.compile(
 )
 # Bare-identifier list inside tools=[...] (search_tool, refund_tool, ...).
 IDENTIFIER_RE = re.compile(r"\b([a-z_][a-zA-Z0-9_]*)\b")
+# tools=<identifier> kwarg: a variable, not an inline list. Resolved against
+# in-file list variables so `TOOLS = [a, b]; Agent(tools=TOOLS)` is captured.
+# Does NOT match `tools=[` (the next char after = must be an identifier char).
+TOOLS_KWARG_VAR_RE = re.compile(r"\btools\s*=\s*([A-Za-z_]\w*)")
+# Module/function-level `NAME = [ ... ]` list assignment, used to resolve the
+# tools=<identifier> kwarg above. Tuple-unpacks (`a, b = f()`) do not match.
+VAR_LIST_ASSIGN_RE = re.compile(r"^[ \t]*([A-Za-z_]\w*)\s*=\s*\[", re.MULTILINE)
 
 # Agent definition patterns. Each captures the agent's display name (assignment
 # LHS, role= kwarg, or name= kwarg). Order matters within (framework -> name).
@@ -306,6 +313,33 @@ def _extract_tools_blocks(text: str) -> list[tuple[list[str], int, str]]:
     return out
 
 
+def _collect_list_vars(text: str) -> dict[str, list[str]]:
+    """Map in-file ``NAME = [ ... ]`` list variables to their extracted tool names.
+
+    Lets a constructor that passes ``tools=NAME`` (a variable) resolve to the
+    list literal ``NAME`` was assigned, the very common
+    ``TOOLS = [a, b]; Agent(tools=TOOLS)`` shape. Same file only; a list built
+    by a function call (``tools = make_tools()``) is not resolvable here and is
+    left for a future AST/dataflow pass.
+    """
+    out: dict[str, list[str]] = {}
+    attempts = 0
+    for m in VAR_LIST_ASSIGN_RE.finditer(text):
+        if attempts >= _BRACKET_ATTEMPTS_PER_FILE:
+            break
+        attempts += 1
+        bracket_idx = text.find("[", m.end() - 1)
+        if bracket_idx < 0:
+            continue
+        block = _balanced_content(text, bracket_idx)
+        if block is None:
+            continue
+        name = m.group(1)
+        if name not in out:  # keep the first assignment
+            out[name] = _extract_tools_from_block(block)
+    return out
+
+
 def _enclosing_function(text: str, char_offset: int) -> str | None:
     """Find the name of the function containing `char_offset`. Best-effort."""
     # Scan backwards for the most recent `def name(` or `async def name(` at
@@ -370,8 +404,9 @@ class AgentFrameworkDetector:
 
             blocks = _extract_tools_blocks(text)
             decorator_tools = _extract_decorator_tools(text)
+            list_vars = _collect_list_vars(text)
             agent_defs.extend(
-                self._extract_agent_defs(text, rel, frameworks, blocks, decorator_tools)
+                self._extract_agent_defs(text, rel, frameworks, blocks, decorator_tools, list_vars)
             )
 
             # Anthropic-shape standalone: tools=[{"name": "..."}] dict literals
@@ -443,13 +478,15 @@ class AgentFrameworkDetector:
         frameworks: set[str],
         blocks: list[tuple[list[str], int, str]],
         decorator_tools: list[tuple[str, int]],
+        list_vars: dict[str, list[str]],
     ) -> list[_AgentDef]:
         """Identify named agent definitions and attach the closest tools block.
 
         Tool resolution falls back in priority order: tools=[...] inside the
-        constructor itself, the nearest tools=[...] block in the file, then
-        any @tool-decorated functions in the file. v0.6 should track these
-        with real dataflow.
+        constructor itself, a tools=<var> kwarg resolved to an in-file list
+        variable, the nearest tools=[...] block in the file, then any
+        @tool-decorated functions in the file. v0.6 should track these with
+        real dataflow.
         """
         defs: list[_AgentDef] = []
         decorator_tool_names = [name for name, _ in decorator_tools]
@@ -513,6 +550,8 @@ class AgentFrameworkDetector:
 
                 tools = self._extract_tools_from_constructor(ctor_text)
                 if not tools:
+                    tools = self._tools_from_kwarg_var(ctor_text, list_vars)
+                if not tools:
                     tools = self._nearest_tools_block(blocks, line_no)
                 if not tools and decorator_tool_names:
                     tools = list(decorator_tool_names)
@@ -542,6 +581,14 @@ class AgentFrameworkDetector:
                     )
                 )
         return defs
+
+    @staticmethod
+    def _tools_from_kwarg_var(ctor_text: str, list_vars: dict[str, list[str]]) -> list[str]:
+        """Resolve a ``tools=<identifier>`` kwarg to an in-file list variable."""
+        m = TOOLS_KWARG_VAR_RE.search(ctor_text)
+        if not m:
+            return []
+        return list(list_vars.get(m.group(1), []))
 
     @staticmethod
     def _extract_tools_from_constructor(ctor_text: str) -> list[str]:
