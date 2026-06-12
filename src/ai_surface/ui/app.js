@@ -44,6 +44,26 @@
     LLM10: "Unbounded Consumption",
   };
 
+  // Human-readable names for audit risk flags (the UI must not show raw ids).
+  const FLAG_LABELS = {
+    "secrets-detected": "Secrets in config", "secrets-in-env": "Secrets in env",
+    "admin-credentials": "Admin credentials", "financial-action": "Financial action",
+    "destructive-action": "Destructive action", "high-blast-radius": "High blast radius",
+    "excessive-agency": "Excessive agency", "messaging-action": "Outbound messaging",
+    "pii-to-llm": "PII into LLM", "broad-permissions": "Broad permissions",
+    "shell-access": "Shell access", "filesystem-access": "Filesystem access",
+    "filesystem-write": "Filesystem write", "database-access": "Database access",
+    "network-access": "Network access", "unverified-source": "Unverified source",
+    "local-binary": "Local binary", "remote-mcp": "Remote MCP endpoint",
+    "no-human-oversight": "No human approval gate", "no-observability": "No logging or tracing",
+  };
+  // Framework full names, for badge tooltips.
+  const FW_DESC = {
+    "eu-ai-act": "EU AI Act requirement",
+    "nist-ai-rmf": "NIST AI Risk Management Framework",
+    "iso-42001": "ISO/IEC 42001 Annex A control",
+  };
+
   const ICONS = {
     chip:   '<path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><rect x="6" y="6" width="12" height="12" rx="2.5" stroke="currentColor" stroke-width="1.6"/><rect x="9.5" y="9.5" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.6"/>',
     agent:  '<circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.6"/><path d="M4 21a8 8 0 0116 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
@@ -173,7 +193,7 @@ python3 -m http.server 8000
               </label>
               <label class="scan-field">
                 <span class="fl">or scan a local path</span>
-                <input id="scan-path" type="text" name="path" autocomplete="off" value="." placeholder="." />
+                <input id="scan-path" type="text" name="path" autocomplete="off" value="." placeholder="/path/to/your/project" />
               </label>
               <div class="scan-actions">
                 <button type="submit" class="btn btn-primary" id="scan-go">
@@ -419,8 +439,8 @@ python3 -m http.server 8000
   function severityDistHTML(bySev, assessed) {
     if (!assessed) {
       return `<div class="sev-empty">No findings have been assessed for severity yet.
-        Severity comes only from the deep-dive audit layer (MCP today). Everything else is
-        inventoried, not assessed.</div>`;
+        Severity comes from the deep-dive audit layer (MCP servers and agents, plus checks for
+        missing approval gates and missing observability). Everything else is inventoried, not assessed.</div>`;
     }
     const peak = Math.max(...SEV_ORDER.map((s) => bySev[s] || 0), 1);
     const rows = SEV_ORDER.filter((s) => (bySev[s] || 0) > 0).map((s) => {
@@ -587,8 +607,11 @@ python3 -m http.server 8000
     g.appendChild(edgeLayer); g.appendChild(nodeLayer);
 
     // radii scale to fit the viewport regardless of count
-    const hubR = Math.min(W, H) * 0.215;
-    const leafR = Math.min(W, H) * 0.40;
+    const minWH = Math.min(W, H);
+    const hubR = minWH * 0.205;
+    const leafBase = minWH * 0.40;   // first ring of leaves
+    const leafMax = minWH * 0.47;    // outer ring (crowded categories band outward)
+    const sector = (Math.PI * 2) / cats.length;  // angular wedge owned by each category
     const startAngle = -Math.PI / 2; // top
 
     // --- center node ---
@@ -622,8 +645,10 @@ python3 -m http.server 8000
       const leaves = byCat[cat];
       const m = catMeta(cat);
 
-      // edge center -> hub
-      edgeLayer.appendChild(edge(NS, cx, cy, hx, hy, 1.7, .7));
+      // edge center -> hub (tagged so hover can light up only this wedge)
+      const hubEdge = edge(NS, cx, cy, hx, hy, 1.7, .7);
+      hubEdge.dataset.cat = cat;
+      edgeLayer.appendChild(hubEdge);
 
       // hub size by child count
       const hr = 13 + Math.min(leaves.length, 12) * 1.6;
@@ -645,18 +670,25 @@ python3 -m http.server 8000
       hub.appendChild(hl);
       nodeLayer.appendChild(hub);
 
-      // leaves fanned in an arc around the hub's angle
+      // Leaves stay INSIDE this category's own angular wedge so categories
+      // never visually overlap (a leaf only ever sits under its real hub).
+      // Crowded categories fan into concentric radial bands instead of widening
+      // past their wedge, so a large app stays legible.
       const n = leaves.length;
-      // arc grows with count but caps; single leaf sits straight out
-      const arc = n <= 1 ? 0 : Math.min(Math.PI * 0.95, 0.32 * n);
-      const lr = leafR + Math.min(n, 14) * 4; // push out a bit as crowd grows
+      const arc = n <= 1 ? 0 : Math.min(sector * 0.74, 0.16 * n);
+      const bands = Math.max(1, Math.ceil(n / 6));
+      const bandGap = bands > 1 ? (leafMax - leafBase) / (bands - 1) : 0;
       leaves.forEach((f, j) => {
+        const band = j % bands;
         const t = n === 1 ? 0 : (j / (n - 1)) - 0.5;
         const la = ang + t * arc;
+        const lr = leafBase + band * bandGap;
         const lx2 = cx + Math.cos(la) * lr;
         const ly2 = cy + Math.sin(la) * lr;
 
-        edgeLayer.appendChild(edge(NS, hx, hy, lx2, ly2, 1.2, .5));
+        const leafEdge = edge(NS, hx, hy, lx2, ly2, 1.2, .5);
+        leafEdge.dataset.cat = cat;
+        edgeLayer.appendChild(leafEdge);
 
         const sev = f.severity;
         const assessed = !!sev;
@@ -781,6 +813,11 @@ python3 -m http.server 8000
     g.querySelectorAll(".node").forEach((n) => {
       if (n.classList.contains("node-center") || n.dataset.cat === cat) n.classList.add("related");
     });
+    // Light up only the edges wiring this category, so unrelated leaves never
+    // look connected to the hovered hub.
+    g.querySelectorAll(".edge").forEach((e) => {
+      if (e.dataset.cat === cat) e.classList.add("related");
+    });
   }
   function unfocus(g) {
     g.classList.remove("dim");
@@ -861,8 +898,8 @@ python3 -m http.server 8000
     const head = `<div class="panel-head"><h2>Top risks</h2><span class="grow"></span><span class="sub">severity-ordered triage</span></div>`;
     if (!risks.length) {
       return `<div class="panel ov-panel">${head}<div class="ov-pad"><div class="sev-empty">No risks to triage.
-        Discovery is severity-free; severity comes only from the deep-dive audit layer (MCP today),
-        and nothing in this scan was flagged.</div></div></div>`;
+        Discovery is severity-free; severity comes from the deep-dive audit layer (MCP servers and agents,
+        plus approval-gate and observability checks), and nothing in this scan was flagged.</div></div></div>`;
     }
     const items = risks.slice(0, 10).map((r, i) => {
       // resolve to a finding so clicking opens its drawer; the surface is the
@@ -1317,17 +1354,30 @@ python3 -m http.server 8000
     const md = ev.metadata || {};
     const a = f.audit;
 
-    /* ---- 1 - INFORMATION: what this is ---- */
-    const kv = [`<dt>category</dt><dd class="mono">${esc(f.category)}</dd>`,
-                `<dt>detector</dt><dd class="mono">${esc(f.detector_name || "·")}</dd>`];
-    const lines = (ev.line_numbers || []).join(", ");
-    if (lines) kv.push(`<dt>lines</dt><dd class="mono">${esc(lines)}</dd>`);
+    /* ---- 1 - INFORMATION: what this is (humanized, no internal plumbing) ---- */
+    // Internal/plumbing keys the user does not need to see, plus keys rendered
+    // elsewhere (tools -> Capabilities, reaches/models -> their own sub-sections).
+    const META_HIDE = new Set(["server_name", "config_keys", "tools", "source", "reaches", "models"]);
+    const META_LABELS = {
+      server_type: "Connection", mcp_source: "Package", method: "Method",
+      path: "Route", framework: "Framework", auth: "Auth", source_spec: "Spec file",
+      model: "Model", non_literal_input: "Dynamic input",
+    };
+    const CONN = { remote: "remote endpoint", npm: "npm package", node: "Node script",
+                   python: "Python module", docker: "Docker image", local: "local binary", unknown: "unknown" };
+    const metaVal = (k, v) => {
+      if (k === "server_type") return CONN[v] || v;
+      if (k === "non_literal_input") return v ? "yes" : "no";
+      return Array.isArray(v) ? v.join(", ") : String(v);
+    };
+    const kv = [`<dt>Type</dt><dd>${esc(catMeta(f.category).label)}</dd>`];
     Object.entries(md).forEach(([k, v]) => {
-      if (k === "reaches" || k === "models") return;  // shown in dedicated sub-sections
-      const val = Array.isArray(v) ? v.join(", ") : (v === null ? "·" : String(v));
-      kv.push(`<dt>${esc(k)}</dt><dd class="mono">${esc(val)}</dd>`);
+      if (META_HIDE.has(k) || v == null || v === "" || typeof v === "object") return;
+      kv.push(`<dt>${esc(META_LABELS[k] || titleCase(k))}</dt><dd>${esc(metaVal(k, v))}</dd>`);
     });
-    const files = (ev.files || []).map((fp) => `<span class="perm">${esc(fp)}</span>`).join("");
+    const lineSuffix = (ev.line_numbers && ev.line_numbers.length) ? ":" + ev.line_numbers[0] : "";
+    const files = (ev.files || []).map((fp, i) =>
+      `<span class="perm">${esc(fp)}${i === 0 ? esc(lineSuffix) : ""}</span>`).join("");
     const snippet = ev.snippet ? `<div class="snippet">${esc(ev.snippet)}</div>` : "";
     const perms = (f.permissions || []).map((p) => `<span class="perm">${esc(p)}</span>`).join("");
     let info = `<dl class="kv">${kv.join("")}</dl>`;
@@ -1348,11 +1398,11 @@ python3 -m http.server 8000
     if (a && (a.secrets || []).length) risks += secretsHTML(a.secrets);
     const trust = a ? trustHTML(a) : "";
     if (trust) risks += `<div class="dr-sub">Source trust</div>${trust}`;
-    if (!risks) risks = `<div class="secret-note">${icon("info")}<span>Inventoried, not assessed for risk. Severity comes only from the deep-dive audit layer (MCP today).</span></div>`;
+    if (!risks) risks = `<div class="secret-note">${icon("info")}<span>Inventoried, not assessed for risk. Severity comes from the deep-dive audit layer (MCP servers and agents, plus approval-gate and observability checks).</span></div>`;
 
     /* ---- 3 - REMEDIATION: the fixes, pulled together ---- */
     const rem = [];
-    if (a) (a.risk_flags || []).forEach((rf) => { if (rf.remediation) rem.push(`<li><b>${esc(rf.flag)}</b> ${esc(rf.remediation)}</li>`); });
+    if (a) (a.risk_flags || []).forEach((rf) => { if (rf.remediation) rem.push(`<li><b>${esc(flagLabel(rf.flag))}</b> ${esc(rf.remediation)}</li>`); });
     if (a) (a.secrets || []).forEach((s) => rem.push(`<li><b>${esc(s.name)}</b> Move to a secrets manager and rotate; reference by name only.</li>`));
     const remediation = rem.length
       ? `<ul class="rem-list">${rem.join("")}</ul>`
@@ -1392,10 +1442,14 @@ python3 -m http.server 8000
         <h3>${esc(f.surface)}</h3>
       </div>
       <div class="dr-body">
-        ${sec("1", "Information", "", info)}
-        ${sec("2", "Risks", "", risks)}
-        ${sec("3", "Remediation", "", remediation)}
-        ${sec("4", "Validate at runtime", stPill, validate)}
+        <div class="dr-col">
+          ${sec("1", "Information", "", info)}
+          ${sec("2", "Risks", "", risks)}
+        </div>
+        <div class="dr-col">
+          ${sec("3", "Remediation", "", remediation)}
+          ${sec("4", "Validate at runtime", stPill, validate)}
+        </div>
       </div>`;
   }
 
@@ -1403,18 +1457,31 @@ python3 -m http.server 8000
   function auditFlagsHTML(flags) {
     return flags.map((rf) => {
       const owasp = (rf.owasp || []).map(owaspChip).join("");
+      const stds = (rf.standards || []).map(stdChip).join("");
+      const badges = owasp + stds;
       return `
         <div class="flag">
           <div class="flag-top">
             <span class="sev-tag" style="--accent:${sevColor(rf.severity)}">${esc(rf.severity || "info")}</span>
-            <span class="fid">${esc(rf.flag)}</span>
+            <span class="fid">${esc(flagLabel(rf.flag))}</span>
           </div>
           <div class="flag-body">
             ${rf.description ? `<p class="desc">${esc(rf.description)}</p>` : ""}
-            ${owasp ? `<div class="owasp-row">${owasp}</div>` : ""}
+            ${badges ? `<div class="badge-row">${badges}</div>` : ""}
           </div>
         </div>`;
     }).join("");
+  }
+
+  const flagLabel = (f) => FLAG_LABELS[f] || titleCase(f);
+
+  // Governance-standard badge (EU AI Act / NIST / ISO) next to OWASP badges.
+  function stdChip(s) {
+    const fw = s.framework || "";
+    const clause = s.clause || "";
+    const cls = s.framework_id ? `std-${s.framework_id}` : "";
+    const name = FW_DESC[s.framework_id] || fw;
+    return `<span class="chip std ${cls}" data-tip="${esc(fw + " · " + clause)}|${esc(name)}">${esc(fw)} ${esc(clause)}</span>`;
   }
 
   function secretsHTML(secrets) {

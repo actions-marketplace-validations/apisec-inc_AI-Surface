@@ -71,6 +71,31 @@ class Orchestrator:
             errors.append(msg)
             log.warning(msg)
 
+        # Human-oversight pass (EU AI Act Art. 14): flag high-risk actions with
+        # no detectable approval / human-in-the-loop gate. Runs after audits so
+        # both agent and MCP findings can be assessed. Reads only each finding's
+        # own evidence files (under root). Defensive: must not abort a scan.
+        try:
+            from .oversight import enrich_oversight  # noqa: PLC0415
+
+            enrich_oversight(all_findings, str(root))
+        except Exception as exc:  # noqa: BLE001
+            msg = f"oversight enrichment failed: {exc.__class__.__name__}: {exc}"
+            errors.append(msg)
+            log.warning(msg)
+
+        # Observability pass (EU AI Act Art. 12 / ISO A.6.2.6 / NIST MEASURE 3):
+        # if the repo wires no AI tracing/logging anywhere, flag the autonomous
+        # execution surfaces (agents + MCP). Defensive: must not abort a scan.
+        try:
+            from .observability import enrich_observability  # noqa: PLC0415
+
+            enrich_observability(all_findings, str(root))
+        except Exception as exc:  # noqa: BLE001
+            msg = f"observability enrichment failed: {exc.__class__.__name__}: {exc}"
+            errors.append(msg)
+            log.warning(msg)
+
         # Classify dispositions (resolve-here vs validate-runtime), then attach
         # paid-platform bridges. Defensive: neither must abort a scan.
         try:

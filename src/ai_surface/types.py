@@ -34,7 +34,8 @@ ALL_CATEGORIES = (
     CATEGORY_API,
 )
 
-# Severity is OPTIONAL and only set by deep-dive audit layers (e.g. MCP audit).
+# Severity is OPTIONAL and only set by deep-dive audit layers (MCP and agent
+# audits, plus the oversight and observability passes).
 # Pure discovery findings leave severity as None. Do not invent severity for
 # inventory-only findings; absence of severity means "inventoried, not assessed".
 SEVERITY_CRITICAL = "critical"
@@ -100,7 +101,7 @@ class Evidence:
 
 @dataclass
 class RiskFlag:
-    """One specific risk surfaced by a deep-dive audit layer (MCP first).
+    """One specific risk surfaced by a deep-dive audit layer (MCP and agents).
 
     This is the audit counterpart to Finding.risk_indicators (which stays
     severity-free, plain-English, for the discovery layer). RiskFlag carries
@@ -147,10 +148,10 @@ class Secret:
 class Audit:
     """Deep-dive audit results attached to a discovery Finding.
 
-    Optional. Present only when a deep-dive module (MCP today; agents/APIs
-    later) has assessed the discovered surface. Absent for inventory-only
-    findings. This is the bridge between ai-surface's discovery layer and the
-    mcp-audit depth being merged in.
+    Optional. Present only when a deep-dive module (MCP and agents today, plus
+    the oversight and observability passes) has assessed the discovered surface.
+    Absent for inventory-only findings. This is the bridge between ai-surface's
+    discovery layer and the mcp-audit depth merged in.
     """
 
     risk_flags: list[RiskFlag] = field(default_factory=list)

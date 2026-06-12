@@ -49,6 +49,13 @@ def report_to_dict(report: Report) -> dict[str, Any]:
 
 def _finding_to_dict(finding: Any) -> dict[str, Any]:
     """asdict-compatible conversion that flattens Evidence nicely."""
+    from ..frameworks import standards_for_flag  # noqa: PLC0415
+
     d = asdict(finding)
-    # asdict already flattens dataclasses to dicts. Just clean up if needed.
+    # Attach the specific governance clauses each risk flag evidences (beyond
+    # OWASP, which is already on the flag). Lets the UI render framework badges.
+    audit = d.get("audit")
+    if audit:
+        for rf in audit.get("risk_flags", []):
+            rf["standards"] = standards_for_flag(rf.get("flag", ""))
     return d

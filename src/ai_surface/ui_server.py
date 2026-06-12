@@ -88,10 +88,32 @@ def scan_for_request(
         with clone_repo(repo_url, token) as cloned:
             return Orchestrator(default_detectors()).run(str(cloned))
 
-    target = Path(path or ".").resolve()
-    if not target.is_dir():
-        raise FileNotFoundError(f"not a directory: {path or '.'}")
+    target = _resolve_local_path(path)
     return Orchestrator(default_detectors()).run(str(target))
+
+
+def _resolve_local_path(path: str | None) -> Path:
+    """Resolve a UI-entered local path to an existing directory.
+
+    Forgiving of two common slips when typing a path into the form:
+      * a "~" home prefix (expanded), and
+      * a dropped leading slash on an absolute path (e.g. "Users/me/proj"
+        instead of "/Users/me/proj"), which would otherwise resolve against
+        the server's working directory and fail confusingly.
+    """
+    raw = (path or ".").strip()
+    candidate = Path(raw).expanduser()
+    if candidate.is_dir():
+        return candidate.resolve()
+    # Dropped-leading-slash recovery: only when it actually points at a dir.
+    if not raw.startswith(("/", "~", ".")):
+        slashed = Path("/" + raw)
+        if slashed.is_dir():
+            return slashed.resolve()
+    raise FileNotFoundError(
+        f"not a directory: {raw}. Use an absolute path, e.g. "
+        f"/Users/you/project (include the leading slash)."
+    )
 
 
 class _UIRequestHandler(SimpleHTTPRequestHandler):

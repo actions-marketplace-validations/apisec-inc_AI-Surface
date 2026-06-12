@@ -47,3 +47,20 @@ def test_scan_for_request_scans_local_path() -> None:
 def test_scan_for_request_bad_path_raises() -> None:
     with pytest.raises(FileNotFoundError):
         scan_for_request(path="/no/such/dir/ai-surface-test")
+
+
+def test_ui_resolve_local_path_recovers_dropped_slash(tmp_path) -> None:
+    from ai_surface.ui_server import _resolve_local_path
+
+    # Absolute path works.
+    assert _resolve_local_path(str(tmp_path)) == tmp_path.resolve()
+    # Dropped leading slash on an absolute path is recovered.
+    dropped = str(tmp_path).lstrip("/")
+    assert _resolve_local_path(dropped) == tmp_path.resolve()
+
+
+def test_ui_resolve_local_path_bad_dir_raises() -> None:
+    from ai_surface.ui_server import _resolve_local_path
+
+    with pytest.raises(FileNotFoundError):
+        _resolve_local_path("/no/such/dir/anywhere/xyz")

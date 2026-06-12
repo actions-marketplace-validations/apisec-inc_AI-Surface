@@ -35,6 +35,7 @@ FLAG_TO_OWASP: dict[str, list[str]] = {
     # ai-surface deep-dive additions.
     "financial-action": ["LLM06"],
     "broad-permissions": ["LLM06"],
+    "no-human-oversight": ["LLM06", "LLM09"],
 }
 
 

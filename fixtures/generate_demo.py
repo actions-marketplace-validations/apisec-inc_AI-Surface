@@ -255,8 +255,12 @@ def build() -> Report:
     )
     from ai_surface.audits import enrich_audits  # noqa: PLC0415
     from ai_surface.dispositions import attach_dispositions  # noqa: PLC0415
+    from ai_surface.observability import enrich_observability  # noqa: PLC0415
+    from ai_surface.oversight import enrich_oversight  # noqa: PLC0415
 
     enrich_audits(report.findings)
+    enrich_oversight(report.findings)
+    enrich_observability(report.findings)
     attach_dispositions(report.findings)
     attach_bridges(report.findings)
     report.summary = report.build_summary()

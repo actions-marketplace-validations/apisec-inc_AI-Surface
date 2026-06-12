@@ -25,22 +25,22 @@
       "api": 12
     },
     "by_severity": {
-      "high": 2,
-      "medium": 2,
-      "critical": 1,
-      "low": 1
+      "high": 3,
+      "low": 2,
+      "medium": 1,
+      "critical": 1
     },
     "top_risks": [
       "MCP Server: stripe-mcp: Live Stripe secret key present in MCP env block",
       "LangChain Agent: refund_agent: Agent can invoke financial tools (issue_refund)",
       "LangChain Agent: refund_agent: Agent combines broad read access with financial/destructive actions",
+      "LangChain Agent: refund_agent: High-risk action (financial-action, high-blast-radius) runs with no human approval / in-the-loop gate detected",
       "MCP Server: stripe-mcp: MCP exposes refund and charge tools to the model",
+      "MCP Server: stripe-mcp: High-risk action (financial-action) runs with no human approval / in-the-loop gate detected",
       "MCP Server: github-mcp: Write + workflow-trigger access to source control",
+      "MCP Server: ledger-mcp: High-risk action (financial-action) runs with no human approval / in-the-loop gate detected",
       "LangChain Agent: refund_agent: Agent can send outbound messages/notifications",
-      "LangGraph Flow: onboarding_kyc: PII flows into an LLM call from this agent",
-      "MCP Server: stripe-mcp: MCP server not found in known registry",
-      "MCP Server: github-mcp: Can trigger CI workflows (indirect command execution)",
-      "MCP Server: ledger-mcp: In-house MCP server, not independently audited"
+      "LangGraph Flow: onboarding_kyc: PII flows into an LLM call from this agent"
     ],
     "bridges_available": [
       "agent-validation",
@@ -56,7 +56,9 @@
       "name": "EU AI Act",
       "provides": [
         "Technical documentation and record-keeping (Art. 11-12)",
-        "Risk management of AI systems (Art. 9)"
+        "Risk management of AI systems (Art. 9)",
+        "Human oversight of high-risk actions (Art. 14)",
+        "Logging and monitoring of AI operation (Art. 12)"
       ]
     },
     {
@@ -64,7 +66,8 @@
       "name": "NIST AI RMF",
       "provides": [
         "Map: inventory and context of AI systems",
-        "Measure: identify and assess AI risks"
+        "Measure: identify and assess AI risks",
+        "Measure: AI system monitored in operation (MEASURE 3)"
       ]
     },
     {
@@ -72,7 +75,8 @@
       "name": "ISO/IEC 42001",
       "provides": [
         "AI system inventory (Annex A)",
-        "AI risk assessment"
+        "AI risk assessment",
+        "Operation and monitoring (Annex A.6.2.6)"
       ]
     },
     {
@@ -205,7 +209,14 @@
             "owasp": [
               "LLM06"
             ],
-            "remediation": "Gate financial tools behind human approval; least-privilege the agent."
+            "remediation": "Gate financial tools behind human approval; least-privilege the agent.",
+            "standards": [
+              {
+                "framework": "EU AI Act",
+                "framework_id": "eu-ai-act",
+                "clause": "Art. 9"
+              }
+            ]
           },
           {
             "flag": "messaging-action",
@@ -214,7 +225,8 @@
             "owasp": [
               "LLM06"
             ],
-            "remediation": "Rate-limit and gate outbound messaging behind approval."
+            "remediation": "Rate-limit and gate outbound messaging behind approval.",
+            "standards": []
           },
           {
             "flag": "high-blast-radius",
@@ -223,7 +235,55 @@
             "owasp": [
               "LLM06"
             ],
-            "remediation": "Split read and write agents; apply least-privilege per agent."
+            "remediation": "Split read and write agents; apply least-privilege per agent.",
+            "standards": [
+              {
+                "framework": "EU AI Act",
+                "framework_id": "eu-ai-act",
+                "clause": "Art. 9"
+              }
+            ]
+          },
+          {
+            "flag": "no-human-oversight",
+            "severity": "high",
+            "description": "High-risk action (financial-action, high-blast-radius) runs with no human approval / in-the-loop gate detected",
+            "owasp": [
+              "LLM06",
+              "LLM09"
+            ],
+            "remediation": "Put a human-in-the-loop approval step in front of this action (approval gate, confirmation, or a LangGraph interrupt). If approval is enforced elsewhere, confirm the gate sits on this path.",
+            "standards": [
+              {
+                "framework": "EU AI Act",
+                "framework_id": "eu-ai-act",
+                "clause": "Art. 14"
+              }
+            ]
+          },
+          {
+            "flag": "no-observability",
+            "severity": "low",
+            "description": "AI execution surface has no logging/tracing configured (no observability signal found in the repo)",
+            "owasp": [],
+            "remediation": "Wire AI tracing/logging (OpenTelemetry, LangSmith, Langfuse, or app logging around the calls). If observability is configured outside this repo (a sidecar or platform agent), confirm it covers this surface.",
+            "standards": [
+              {
+                "framework": "EU AI Act",
+                "framework_id": "eu-ai-act",
+                "clause": "Art. 12"
+              },
+              {
+                "framework": "NIST AI RMF",
+                "framework_id": "nist-ai-rmf",
+                "clause": "MEASURE 3"
+              },
+              {
+                "framework": "ISO 42001",
+                "framework_id": "iso-42001",
+                "clause": "A.6.2.6"
+              }
+            ]
           }
         ],
         "secrets": [],
@@ -231,7 +291,8 @@
         "trust_label": "",
         "registry_match": "",
         "owasp_mappings": [
-          "LLM06"
+          "LLM06",
+          "LLM09"
         ]
       },
       "bridges": [
@@ -270,13 +331,45 @@
       ],
       "risk_indicators": [],
       "detector_name": "agent_frameworks",
-      "severity": null,
-      "audit": null,
+      "severity": "low",
+      "audit": {
+        "risk_flags": [
+          {
+            "flag": "no-observability",
+            "severity": "low",
+            "description": "AI execution surface has no logging/tracing configured (no observability signal found in the repo)",
+            "owasp": [],
+            "remediation": "Wire AI tracing/logging (OpenTelemetry, LangSmith, Langfuse, or app logging around the calls). If observability is configured outside this repo (a sidecar or platform agent), confirm it covers this surface.",
+            "standards": [
+              {
+                "framework": "EU AI Act",
+                "framework_id": "eu-ai-act",
+                "clause": "Art. 12"
+              },
+              {
+                "framework": "NIST AI RMF",
+                "framework_id": "nist-ai-rmf",
+                "clause": "MEASURE 3"
+              },
+              {
+                "framework": "ISO 42001",
+                "framework_id": "iso-42001",
+                "clause": "A.6.2.6"
+              }
+            ]
+          }
+        ],
+        "secrets": [],
+        "trust_score": null,
+        "trust_label": "",
+        "registry_match": "",
+        "owasp_mappings": []
+      },
       "bridges": [
         {
           "sku": "agent-validation",
           "label": "Coming soon: agent validation in APIsec",
-          "url": "https://apisec.ai/ai-validation?category=agent-framework&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel",
+          "url": "https://apisec.ai/ai-validation?category=agent-framework&risk=no-observability&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel",
           "status": "coming"
         }
       ],
@@ -321,7 +414,32 @@
             "owasp": [
               "LLM02"
             ],
-            "remediation": "Redact or minimize PII before prompting; review the data flow."
+            "remediation": "Redact or minimize PII before prompting; review the data flow.",
+            "standards": []
+          },
+          {
+            "flag": "no-observability",
+            "severity": "low",
+            "description": "AI execution surface has no logging/tracing configured (no observability signal found in the repo)",
+            "owasp": [],
+            "remediation": "Wire AI tracing/logging (OpenTelemetry, LangSmith, Langfuse, or app logging around the calls). If observability is configured outside this repo (a sidecar or platform agent), confirm it covers this surface.",
+            "standards": [
+              {
+                "framework": "EU AI Act",
+                "framework_id": "eu-ai-act",
+                "clause": "Art. 12"
+              },
+              {
+                "framework": "NIST AI RMF",
+                "framework_id": "nist-ai-rmf",
+                "clause": "MEASURE 3"
+              },
+              {
+                "framework": "ISO 42001",
+                "framework_id": "iso-42001",
+                "clause": "A.6.2.6"
+              }
+            ]
           }
         ],
         "secrets": [],
@@ -398,7 +516,14 @@
             "owasp": [
               "LLM02"
             ],
-            "remediation": "Move the key to a secrets manager; reference by name only."
+            "remediation": "Move the key to a secrets manager; reference by name only.",
+            "standards": [
+              {
+                "framework": "EU AI Act",
+                "framework_id": "eu-ai-act",
+                "clause": "Art. 15"
+              }
+            ]
           },
           {
             "flag": "financial-action",
@@ -407,7 +532,14 @@
             "owasp": [
               "LLM06"
             ],
-            "remediation": "Gate financial tools behind human approval."
+            "remediation": "Gate financial tools behind human approval.",
+            "standards": [
+              {
+                "framework": "EU AI Act",
+                "framework_id": "eu-ai-act",
+                "clause": "Art. 9"
+              }
+            ]
           },
           {
             "flag": "unverified-source",
@@ -416,7 +548,55 @@
             "owasp": [
               "LLM03"
             ],
-            "remediation": ""
+            "remediation": "",
+            "standards": [
+              {
+                "framework": "ISO 42001",
+                "framework_id": "iso-42001",
+                "clause": "A.10"
+              }
+            ]
+          },
+          {
+            "flag": "no-human-oversight",
+            "severity": "high",
+            "description": "High-risk action (financial-action) runs with no human approval / in-the-loop gate detected",
+            "owasp": [
+              "LLM06",
+              "LLM09"
+            ],
+            "remediation": "Put a human-in-the-loop approval step in front of this action (approval gate, confirmation, or a LangGraph interrupt). If approval is enforced elsewhere, confirm the gate sits on this path.",
+            "standards": [
+              {
+                "framework": "EU AI Act",
+                "framework_id": "eu-ai-act",
+                "clause": "Art. 14"
+              }
+            ]
+          },
+          {
+            "flag": "no-observability",
+            "severity": "low",
+            "description": "AI execution surface has no logging/tracing configured (no observability signal found in the repo)",
+            "owasp": [],
+            "remediation": "Wire AI tracing/logging (OpenTelemetry, LangSmith, Langfuse, or app logging around the calls). If observability is configured outside this repo (a sidecar or platform agent), confirm it covers this surface.",
+            "standards": [
+              {
+                "framework": "EU AI Act",
+                "framework_id": "eu-ai-act",
+                "clause": "Art. 12"
+              },
+              {
+                "framework": "NIST AI RMF",
+                "framework_id": "nist-ai-rmf",
+                "clause": "MEASURE 3"
+              },
+              {
+                "framework": "ISO 42001",
+                "framework_id": "iso-42001",
+                "clause": "A.6.2.6"
+              }
+            ]
           }
         ],
         "secrets": [
@@ -434,7 +614,8 @@
         "owasp_mappings": [
           "LLM02",
           "LLM06",
-          "LLM03"
+          "LLM03",
+          "LLM09"
         ]
       },
       "bridges": [
@@ -487,7 +668,8 @@
             "owasp": [
               "LLM06"
             ],
-            "remediation": "Scope the token to read-only or specific repos."
+            "remediation": "Scope the token to read-only or specific repos.",
+            "standards": []
           },
           {
             "flag": "shell-access",
@@ -496,7 +678,32 @@
             "owasp": [
               "LLM06"
             ],
-            "remediation": ""
+            "remediation": "",
+            "standards": []
+          },
+          {
+            "flag": "no-observability",
+            "severity": "low",
+            "description": "AI execution surface has no logging/tracing configured (no observability signal found in the repo)",
+            "owasp": [],
+            "remediation": "Wire AI tracing/logging (OpenTelemetry, LangSmith, Langfuse, or app logging around the calls). If observability is configured outside this repo (a sidecar or platform agent), confirm it covers this surface.",
+            "standards": [
+              {
+                "framework": "EU AI Act",
+                "framework_id": "eu-ai-act",
+                "clause": "Art. 12"
+              },
+              {
+                "framework": "NIST AI RMF",
+                "framework_id": "nist-ai-rmf",
+                "clause": "MEASURE 3"
+              },
+              {
+                "framework": "ISO 42001",
+                "framework_id": "iso-42001",
+                "clause": "A.6.2.6"
+              }
+            ]
           }
         ],
         "secrets": [],
@@ -546,7 +753,7 @@
         "financial action exposed"
       ],
       "detector_name": "mcp_audit",
-      "severity": "medium",
+      "severity": "high",
       "audit": {
         "risk_flags": [
           {
@@ -556,7 +763,14 @@
             "owasp": [
               "LLM03"
             ],
-            "remediation": ""
+            "remediation": "",
+            "standards": [
+              {
+                "framework": "ISO 42001",
+                "framework_id": "iso-42001",
+                "clause": "A.10"
+              }
+            ]
           },
           {
             "flag": "financial-action",
@@ -565,7 +779,55 @@
             "owasp": [
               "LLM06"
             ],
-            "remediation": ""
+            "remediation": "",
+            "standards": [
+              {
+                "framework": "EU AI Act",
+                "framework_id": "eu-ai-act",
+                "clause": "Art. 9"
+              }
+            ]
+          },
+          {
+            "flag": "no-human-oversight",
+            "severity": "high",
+            "description": "High-risk action (financial-action) runs with no human approval / in-the-loop gate detected",
+            "owasp": [
+              "LLM06",
+              "LLM09"
+            ],
+            "remediation": "Put a human-in-the-loop approval step in front of this action (approval gate, confirmation, or a LangGraph interrupt). If approval is enforced elsewhere, confirm the gate sits on this path.",
+            "standards": [
+              {
+                "framework": "EU AI Act",
+                "framework_id": "eu-ai-act",
+                "clause": "Art. 14"
+              }
+            ]
+          },
+          {
+            "flag": "no-observability",
+            "severity": "low",
+            "description": "AI execution surface has no logging/tracing configured (no observability signal found in the repo)",
+            "owasp": [],
+            "remediation": "Wire AI tracing/logging (OpenTelemetry, LangSmith, Langfuse, or app logging around the calls). If observability is configured outside this repo (a sidecar or platform agent), confirm it covers this surface.",
+            "standards": [
+              {
+                "framework": "EU AI Act",
+                "framework_id": "eu-ai-act",
+                "clause": "Art. 12"
+              },
+              {
+                "framework": "NIST AI RMF",
+                "framework_id": "nist-ai-rmf",
+                "clause": "MEASURE 3"
+              },
+              {
+                "framework": "ISO 42001",
+                "framework_id": "iso-42001",
+                "clause": "A.6.2.6"
+              }
+            ]
           }
         ],
         "secrets": [],
@@ -574,14 +836,15 @@
         "registry_match": "unknown",
         "owasp_mappings": [
           "LLM03",
-          "LLM06"
+          "LLM06",
+          "LLM09"
         ]
       },
       "bridges": [
         {
           "sku": "mcp-runtime",
           "label": "Coming soon: MCP runtime validation in APIsec",
-          "url": "https://apisec.ai/ai-validation?category=mcp-server&risk=unverified-source&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel",
+          "url": "https://apisec.ai/ai-validation?category=mcp-server&risk=no-human-oversight&utm_source=ai-surface&utm_medium=ui&utm_campaign=oss-funnel",
           "status": "coming"
         }
       ],
@@ -621,7 +884,38 @@
             "owasp": [
               "LLM03"
             ],
-            "remediation": ""
+            "remediation": "",
+            "standards": [
+              {
+                "framework": "ISO 42001",
+                "framework_id": "iso-42001",
+                "clause": "A.10"
+              }
+            ]
+          },
+          {
+            "flag": "no-observability",
+            "severity": "low",
+            "description": "AI execution surface has no logging/tracing configured (no observability signal found in the repo)",
+            "owasp": [],
+            "remediation": "Wire AI tracing/logging (OpenTelemetry, LangSmith, Langfuse, or app logging around the calls). If observability is configured outside this repo (a sidecar or platform agent), confirm it covers this surface.",
+            "standards": [
+              {
+                "framework": "EU AI Act",
+                "framework_id": "eu-ai-act",
+                "clause": "Art. 12"
+              },
+              {
+                "framework": "NIST AI RMF",
+                "framework_id": "nist-ai-rmf",
+                "clause": "MEASURE 3"
+              },
+              {
+                "framework": "ISO 42001",
+                "framework_id": "iso-42001",
+                "clause": "A.6.2.6"
+              }
+            ]
           }
         ],
         "secrets": [],

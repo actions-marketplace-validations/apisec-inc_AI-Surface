@@ -123,7 +123,8 @@ def _component(finding: Finding, index: int) -> dict[str, Any]:
             if val:
                 props.append({"name": f"ai-surface:api-{key}", "value": str(val)})
 
-    # Deep-dive audit (MCP today): flags + OWASP, secrets by name/type only.
+    # Deep-dive audit (MCP + agents, plus oversight/observability): flags +
+    # OWASP, secrets by name/type only.
     if finding.audit:
         for rf in finding.audit.risk_flags:
             props.append(
