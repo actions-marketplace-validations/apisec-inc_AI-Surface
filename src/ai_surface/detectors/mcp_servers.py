@@ -70,7 +70,11 @@ _TOOL_CALL_RE = re.compile(
     r"""(?:server|app|mcp)\.tool\s*\(\s*['"]([A-Za-z_][A-Za-z_0-9\-]*)['"]""",
 )
 
-_FINANCIAL_TOKENS = ("refund", "payment", "charge", "payout", "invoice", "billing")
+_FINANCIAL_TOKENS = (
+    "refund", "refunds", "payment", "payments", "charge", "charges",
+    "payout", "payouts", "invoice", "invoices", "billing",
+    "wire", "transfer", "transfers", "withdraw", "withdrawal",
+)
 _BROAD_PERMISSION_TOKENS = frozenset({"admin", "write", "delete", "*", "all", "owner", "root"})
 
 # Word-boundary split for permission strings. Permissions in real MCP configs

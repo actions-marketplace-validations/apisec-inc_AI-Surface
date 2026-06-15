@@ -50,9 +50,10 @@ def test_golden_app_known_answers() -> None:
     assert ts_agent, "expected a Vercel AI SDK agent finding"
     assert "financial-action" in flags[ts_agent[0]]
 
-    # MCP: secret + database
+    # MCP: secret + database + financial (payments-mcp, plural name)
     assert any("secret" in fl for fset in flags.values() for fl in fset), "expected an MCP secret flag"
     assert any("database-access" in fset for fset in flags.values())
+    assert any("financial-action" in fset for s, fset in flags.items() if "payments-mcp" in s)
 
     # observability gap fires somewhere (no tracing wired)
     assert "no-observability" in allflags
