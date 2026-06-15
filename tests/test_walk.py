@@ -87,3 +87,33 @@ def test_relative_to_root_outside_does_not_leak_absolute_path(tmp_path: Path) ->
     assert not rel.startswith("/")
     assert "<outside-root>" in rel
     assert rel.endswith("hostname")
+
+
+def test_is_test_path_directory_segments() -> None:
+    from ai_surface.utils.walk import is_test_path
+    assert is_test_path("tests/foo.py")
+    assert is_test_path("backend/tests/unit/llm.py")
+    assert is_test_path("src/__tests__/agent.ts")
+    assert is_test_path("e2e/flow.ts")
+    assert is_test_path("pkg/spec/thing.py")
+
+
+def test_is_test_path_filename_shapes() -> None:
+    from ai_surface.utils.walk import is_test_path
+    assert is_test_path("test_app.py")
+    assert is_test_path("app_test.py")
+    assert is_test_path("conftest.py")
+    assert is_test_path("handlers_test.go")
+    assert is_test_path("agent.spec.ts")
+    assert is_test_path("agent.test.tsx")
+
+
+def test_is_test_path_negatives() -> None:
+    from ai_surface.utils.walk import is_test_path
+    # Production code, examples, and demos are not tests.
+    assert not is_test_path("app.py")
+    assert not is_test_path("src/agents/support.py")
+    assert not is_test_path("examples/quickstart/agent.py")
+    assert not is_test_path("contest.py")          # not conftest
+    assert not is_test_path("latest_release.py")   # 'test' substring, not a segment
+    assert not is_test_path("attestation.ts")

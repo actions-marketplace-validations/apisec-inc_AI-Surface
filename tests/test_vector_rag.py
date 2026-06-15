@@ -93,5 +93,6 @@ def test_vespa_store(tmp_path) -> None:
 
 def test_plain_elasticsearch_not_flagged(tmp_path) -> None:
     # plain ES (no vector signal) must NOT be flagged as a vector store
-    (tmp_path / "log.py").write_text("from elasticsearch import Elasticsearch\nes = Elasticsearch()\n", encoding="utf-8")
+    (tmp_path / "log.py").write_text(
+        "from elasticsearch import Elasticsearch\nes = Elasticsearch()\n", encoding="utf-8")
     assert _scan(tmp_path) == []

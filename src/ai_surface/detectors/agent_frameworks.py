@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from typing import TypedDict
 
 from ..types import CATEGORY_AGENT_FRAMEWORK, Evidence, Finding
-from ..utils.walk import read_text_safe, relative_to_root, walk_files
+from ..utils.walk import is_test_path, read_text_safe, relative_to_root, walk_files
 
 log = logging.getLogger(__name__)
 
@@ -636,6 +636,10 @@ class AgentFrameworkDetector:
             if not text:
                 continue
             rel = relative_to_root(path, root_path)
+            # Skip test/spec scaffolding: an agent that exists only inside a
+            # unit test is not part of the application's real AI surface.
+            if is_test_path(rel):
+                continue
 
             frameworks = _detect_frameworks_in_file(text)
             for fw in frameworks:
@@ -677,6 +681,8 @@ class AgentFrameworkDetector:
             if not frameworks:
                 continue
             rel = relative_to_root(path, root_path)
+            if is_test_path(rel):
+                continue
             for fw in frameworks:
                 framework_files.setdefault(fw, []).append(rel)
                 if fw not in framework_first_snippet:

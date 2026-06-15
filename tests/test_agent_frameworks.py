@@ -404,3 +404,39 @@ def test_js_vercel_calls_deduped(tmp_path: Path) -> None:
     findings = AgentFrameworkDetector().detect(str(tmp_path))
     vercel = [f for f in findings if "Vercel AI SDK Agent" in f.surface]
     assert len(vercel) == 1
+
+
+def test_test_files_are_skipped(tmp_path: Path) -> None:
+    """Agents that exist only inside test files are not part of the surface."""
+    agent_src = (
+        'from langchain.agents import AgentExecutor, create_react_agent\n'
+        'bot = AgentExecutor(agent=create_react_agent(), tools=[refund_payment])\n'
+    )
+    # Same agent code in production location vs. test locations.
+    (tmp_path / "app.py").write_text(agent_src, encoding="utf-8")
+    (tmp_path / "test_app.py").write_text(agent_src, encoding="utf-8")
+    tests_dir = tmp_path / "tests"
+    tests_dir.mkdir()
+    (tests_dir / "helpers.py").write_text(agent_src, encoding="utf-8")
+
+    findings = AgentFrameworkDetector().detect(str(tmp_path))
+    agent_files = [
+        f.evidence.files[0] for f in findings
+        if "LangChain Agent" in f.surface and f.evidence.files
+    ]
+    # Only the production app.py agent should be counted.
+    assert agent_files == ["app.py"]
+
+
+def test_js_spec_files_are_skipped(tmp_path: Path) -> None:
+    agent_src = (
+        'import { Agent } from "@mastra/core/agent";\n'
+        'const bot = new Agent({ name: "bot", tools: [refund] });\n'
+    )
+    (tmp_path / "agent.ts").write_text(agent_src, encoding="utf-8")
+    (tmp_path / "agent.spec.ts").write_text(agent_src, encoding="utf-8")
+    (tmp_path / "agent.test.ts").write_text(agent_src, encoding="utf-8")
+    findings = AgentFrameworkDetector().detect(str(tmp_path))
+    named = [f for f in findings if "Mastra Agent: bot" in f.surface]
+    assert len(named) == 1
+    assert named[0].evidence.files == ["agent.ts"]

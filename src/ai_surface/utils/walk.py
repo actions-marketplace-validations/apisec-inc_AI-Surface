@@ -74,6 +74,43 @@ ALWAYS_SKIP_FILES = frozenset(
 )
 
 
+# Path segments and filename shapes that mark a file as test/spec scaffolding
+# rather than production surface. Code-level detectors (agents, LLM call sites)
+# use ``is_test_path`` to skip these: an agent wired up only inside a unit test
+# is not part of the application's real AI attack surface, and counting it both
+# inflates inventory numbers and produces noise like
+# ``Claude Tools: test_bedrock_claude_...``.
+_TEST_DIR_SEGMENTS = frozenset(
+    ["test", "tests", "__tests__", "testing", "spec", "specs", "e2e"]
+)
+_JS_TEST_EXTS = (".test.ts", ".test.tsx", ".test.js", ".test.jsx",
+                 ".test.mjs", ".test.cjs",
+                 ".spec.ts", ".spec.tsx", ".spec.js", ".spec.jsx",
+                 ".spec.mjs", ".spec.cjs")
+
+
+def is_test_path(rel_path: str) -> bool:
+    """True if ``rel_path`` looks like test/spec code rather than production code.
+
+    Matches on a test/spec directory segment anywhere in the path, or on a
+    test filename shape: ``conftest.py``, ``test_*.py``, ``*_test.py``,
+    ``*_test.go``, and JS/TS ``*.test.*`` / ``*.spec.*``. Examples and demos
+    are intentionally NOT treated as tests; they can ship real deployable code.
+    """
+    p = rel_path.replace("\\", "/").lower()
+    segments = p.split("/")
+    if any(seg in _TEST_DIR_SEGMENTS for seg in segments[:-1]):
+        return True
+    fname = segments[-1]
+    if fname == "conftest.py":
+        return True
+    if fname.endswith(".py") and (fname.startswith("test_") or fname.endswith("_test.py")):
+        return True
+    if fname.endswith("_test.go"):
+        return True
+    return fname.endswith(_JS_TEST_EXTS)
+
+
 def _load_gitignore(root: Path) -> pathspec.PathSpec | None:
     """Load .gitignore at root if present. Returns None if no gitignore."""
     gitignore_path = root / ".gitignore"
