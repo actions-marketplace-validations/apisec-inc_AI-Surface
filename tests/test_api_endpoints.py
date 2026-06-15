@@ -153,3 +153,20 @@ def test_detector_identity() -> None:
     det = ApiEndpointDetector()
     assert det.name == "api_endpoints"
     assert det.category == CATEGORY_API
+
+
+def test_fastapi_router_prefix_resolved(tmp_path) -> None:
+    """APIRouter(prefix=...) routes resolve to the full path, not the bare route."""
+    from ai_surface.detectors.api_endpoints import ApiEndpointDetector
+    (tmp_path / "orders.py").write_text(
+        "from fastapi import APIRouter\n"
+        'router = APIRouter(prefix="/orders", tags=["orders"])\n'
+        '@router.get("/{order_id}")\n'
+        "def get_order(order_id: str): ...\n",
+        encoding="utf-8",
+    )
+    findings = ApiEndpointDetector().detect(str(tmp_path))
+    paths = {f.evidence.metadata.get("path") for f in findings}
+    assert "/orders/{order_id}" in paths
+    bola = [f for f in findings if any("BOLA" in r for r in f.risk_indicators)]
+    assert bola and bola[0].evidence.metadata["path"] == "/orders/{order_id}"

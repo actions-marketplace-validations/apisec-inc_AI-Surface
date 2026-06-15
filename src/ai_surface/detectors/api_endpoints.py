@@ -322,10 +322,17 @@ def _line_no_of(text: str, needle: str) -> int:
 # @RequestMapping without an explicit method, or a Django path()).
 
 # FastAPI / Starlette: @app.get("...") / @router.post("...") etc.
+# Group 1 = the router/app object, so a router's prefix can be resolved.
 _FASTAPI_RE = re.compile(
-    r"""@\s*(?:app|router|api|v\d+|[A-Za-z_]\w*)\s*\.\s*"""
+    r"""@\s*([A-Za-z_]\w*)\s*\.\s*"""
     r"""(get|post|put|delete|patch|head|options|trace)\s*\(\s*['"]([^'"]+)['"]""",
     re.IGNORECASE,
+)
+# APIRouter(prefix="/orders") so routes declared on that router resolve to the
+# full path (a real FastAPI pattern; without this, paths look truncated).
+_APIROUTER_PREFIX_RE = re.compile(
+    r"""\b([A-Za-z_]\w*)\s*=\s*APIRouter\s*\([^)]*?prefix\s*=\s*['"]([^'"]+)['"]""",
+    re.DOTALL,
 )
 
 # Flask: @app.route("/path", methods=["GET","POST"]) / @bp.route(...)
@@ -352,10 +359,24 @@ _DJANGO_RE = re.compile(
 )
 
 
+def _join_prefix(prefix: str, path: str) -> str:
+    """Join an APIRouter prefix with a route path into one normalized path."""
+    if not prefix:
+        return path
+    base = prefix.rstrip("/")
+    if not path or path == "/":
+        return base or "/"
+    return base + "/" + path.lstrip("/")
+
+
 def _fastapi_routes(text: str) -> list[tuple[str, str, int]]:
+    # Map each router variable to its APIRouter(prefix=...), if any.
+    prefixes = {m.group(1): m.group(2) for m in _APIROUTER_PREFIX_RE.finditer(text)}
     out: list[tuple[str, str, int]] = []
     for m in _FASTAPI_RE.finditer(text):
-        out.append((m.group(1).upper(), m.group(2), text.count("\n", 0, m.start()) + 1))
+        obj, method, path = m.group(1), m.group(2).upper(), m.group(3)
+        out.append((method, _join_prefix(prefixes.get(obj, ""), path),
+                    text.count("\n", 0, m.start()) + 1))
     return out
 
 
