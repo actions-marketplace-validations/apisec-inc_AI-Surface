@@ -121,6 +121,10 @@ _FLAG_STANDARDS: dict[str, list[tuple[str, str, str]]] = {
         ("NIST AI RMF", "nist-ai-rmf", "MEASURE 3"),
         ("ISO 42001", "iso-42001", "A.6.2.6"),
     ],
+    "pii-to-llm": [
+        ("EU AI Act", "eu-ai-act", "Art. 10"),
+        ("ISO 42001", "iso-42001", "A.7"),
+    ],
     "unverified-source": [("ISO 42001", "iso-42001", "A.10")],
     "local-binary": [("ISO 42001", "iso-42001", "A.10")],
     "remote-mcp": [("ISO 42001", "iso-42001", "A.10")],

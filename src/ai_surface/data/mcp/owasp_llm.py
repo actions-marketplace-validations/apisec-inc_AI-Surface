@@ -36,6 +36,7 @@ FLAG_TO_OWASP: dict[str, list[str]] = {
     "financial-action": ["LLM06"],
     "broad-permissions": ["LLM06"],
     "no-human-oversight": ["LLM06", "LLM09"],
+    "pii-to-llm": ["LLM02"],
 }
 
 

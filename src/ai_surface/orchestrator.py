@@ -96,6 +96,17 @@ class Orchestrator:
             errors.append(msg)
             log.warning(msg)
 
+        # PII-into-prompt pass (EU AI Act Art. 10 / ISO A.7 / OWASP LLM02): flag
+        # agents whose prompt templates embed PII fields. Defensive.
+        try:
+            from .pii import enrich_pii  # noqa: PLC0415
+
+            enrich_pii(all_findings, str(root))
+        except Exception as exc:  # noqa: BLE001
+            msg = f"pii enrichment failed: {exc.__class__.__name__}: {exc}"
+            errors.append(msg)
+            log.warning(msg)
+
         # Classify dispositions (resolve-here vs validate-runtime), then attach
         # paid-platform bridges. Defensive: neither must abort a scan.
         try:
