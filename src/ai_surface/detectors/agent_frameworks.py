@@ -373,6 +373,232 @@ class _AgentDef:
     tools: list[str]
 
 
+# --------------------------------------------------------------------------- #
+# JavaScript / TypeScript agent detection (v0.6)
+#
+# LLM-SDK and MCP-source detection already cover JS/TS elsewhere; agents were
+# the Python-only gap. AST-free, same regex + bracket-matching approach as the
+# Python path, so it reuses _match_bracket, _balanced_content, and _classify_tools.
+# --------------------------------------------------------------------------- #
+
+_JS_EXTENSIONS = [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"]
+
+# key -> (display, import-package roots, agent-usage anchors)
+_JS_FRAMEWORK_SPECS: list[tuple[str, str, list[str], list[str]]] = [
+    ("langgraph", "LangGraph", ["@langchain/langgraph"],
+     [r"\bnew\s+StateGraph\b", r"\bcreateReactAgent\b"]),
+    ("langchain", "LangChain", ["langchain", "@langchain"],
+     [r"\bAgentExecutor\b", r"\bcreateToolCallingAgent\b", r"\binitializeAgentExecutor"]),
+    ("vercel_ai", "Vercel AI SDK", ["ai", "@ai-sdk"],
+     [r"\bgenerateText\s*\(", r"\bstreamText\s*\("]),
+    ("mastra", "Mastra", ["@mastra/core", "@mastra"],
+     [r"\bnew\s+Agent\s*\(", r"\bcreateAgent\s*\("]),
+    ("openai_agents", "OpenAI Agents", ["@openai/agents"],
+     [r"\bnew\s+Agent\s*\("]),
+    ("llama_index", "LlamaIndex", ["llamaindex"],
+     [r"\bOpenAIAgent\b", r"\bReActAgent\b"]),
+]
+
+
+def _build_js_import_regex(pkgs: list[str]) -> re.Pattern[str]:
+    """Match ``from "pkg"`` / ``require("pkg")`` / ``import "pkg"`` incl. subpaths.
+
+    The package must be quote-bounded, so "ai" does not match "openai" and
+    "./ai" does not match the "ai" package.
+    """
+    alt = "|".join(re.escape(p) for p in pkgs)
+    return re.compile(rf"""(?:from|require|import)\s*\(?\s*['"](?:{alt})(?:/[^'"]*)?['"]""")
+
+
+_JS_FRAMEWORK_IMPORTS: dict[str, re.Pattern[str]] = {
+    key: _build_js_import_regex(pkgs) for key, _d, pkgs, _u in _JS_FRAMEWORK_SPECS
+}
+_JS_DISPLAY = {key: disp for key, disp, _p, _u in _JS_FRAMEWORK_SPECS}
+
+# Combined display map (Python + JS frameworks) for findings and fallbacks.
+_FRAMEWORK_DISPLAY: dict[str, str] = {
+    **{k: v["display"] for k, v in FRAMEWORK_PATTERNS.items()},
+    **_JS_DISPLAY,
+}
+
+
+def _detect_js_frameworks(text: str) -> set[str]:
+    """Framework keys whose package is imported in this JS/TS file."""
+    return {key for key, rx in _JS_FRAMEWORK_IMPORTS.items() if rx.search(text) is not None}
+
+
+def _first_js_import_line(text: str, fw: str) -> str:
+    rx = _JS_FRAMEWORK_IMPORTS.get(fw)
+    m = rx.search(text) if rx else None
+    if not m:
+        return ""
+    start = text.rfind("\n", 0, m.start()) + 1
+    end = text.find("\n", m.start())
+    return text[start: end if end >= 0 else len(text)].strip()[:200]
+
+
+# Named JS agent constructors -> framework key. "Agent" is ambiguous (Mastra /
+# OpenAI Agents) and resolved against the file's imports at match time.
+_JS_CTOR_FRAMEWORK = {
+    "AgentExecutor": "langchain",
+    "createToolCallingAgent": "langchain",
+    "initializeAgentExecutorWithOptions": "langchain",
+    "StateGraph": "langgraph",
+    "createReactAgent": "langgraph",
+    "createAgent": "mastra",
+    "OpenAIAgent": "llama_index",
+    "ReActAgent": "llama_index",
+}
+_JS_CTOR_ALT = ("AgentExecutor|createToolCallingAgent|initializeAgentExecutorWithOptions|"
+                "StateGraph|createReactAgent|createAgent|OpenAIAgent|ReActAgent|Agent")
+_JS_AGENT_RE = re.compile(
+    rf"(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:await\s+)?(?:new\s+)?({_JS_CTOR_ALT})\s*\(",
+)
+_JS_VERCEL_RE = re.compile(r"\b(generateText|streamText)\s*\(")
+_JS_VAR_ASSIGN_RE = re.compile(r"(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*([\[{])", re.MULTILINE)
+_JS_NAME_RE = re.compile(r"""\bname\s*:\s*['"]([A-Za-z0-9_\-.]+)['"]""")
+_JS_TOOLKEY_RE = re.compile(r"""([A-Za-z_$][\w$]*)\s*:\s*(?:tool\s*\(|new\s+[A-Za-z_$]|async\b)""")
+_JS_IDENT_RE = re.compile(r"[A-Za-z_$][\w$]*")
+_JS_IDENT_SKIP = frozenset({
+    "new", "tool", "async", "await", "const", "let", "var", "true", "false",
+    "null", "undefined", "function", "return", "name", "description",
+})
+
+
+def _extract_js_tools_from_block(block: str) -> list[str]:
+    """Pull tool names from a JS ``tools`` array or object block.
+
+    Handles ``[toolA, toolB]`` (identifiers), ``[tool({name:"x"})]`` and
+    ``{name:"x"}`` (name fields), and the Vercel-style object
+    ``{ getWeather: tool({...}) }`` (the keys are the tool names).
+    """
+    names: list[str] = []
+    seen: set[str] = set()
+
+    def add(n: str) -> None:
+        if n and n not in seen and n not in _JS_IDENT_SKIP:
+            seen.add(n)
+            names.append(n)
+
+    for m in _JS_NAME_RE.finditer(block):
+        add(m.group(1))
+    for m in _JS_TOOLKEY_RE.finditer(block):
+        add(m.group(1))
+    if not names:
+        for m in _JS_IDENT_RE.finditer(block):
+            add(m.group(0))
+    return names
+
+
+def _collect_js_list_vars(text: str) -> dict[str, list[str]]:
+    """Map in-file ``const NAME = [...]`` / ``{...}`` to extracted tool names,
+    so a ``tools: NAME`` reference can be resolved."""
+    out: dict[str, list[str]] = {}
+    attempts = 0
+    for m in _JS_VAR_ASSIGN_RE.finditer(text):
+        if attempts >= _BRACKET_ATTEMPTS_PER_FILE:
+            break
+        attempts += 1
+        block = _balanced_content(text, m.start(2))
+        if block is None:
+            continue
+        name = m.group(1)
+        if name not in out:
+            out[name] = _extract_js_tools_from_block(block)
+    return out
+
+
+def _extract_js_tools_from_ctor(ctor_text: str, list_vars: dict[str, list[str]]) -> list[str]:
+    """Pull tools from a ctor/call argument list: inline ``tools: [...]`` /
+    ``tools: {...}``, or a ``tools: NAME`` variable resolved in-file."""
+    m = re.search(r"tools\s*:\s*([\[{])", ctor_text)
+    if m:
+        block = _balanced_content(ctor_text, m.start(1))
+        if block is not None:
+            return _extract_js_tools_from_block(block)
+    m2 = re.search(r"tools\s*:\s*([A-Za-z_$][\w$]*)", ctor_text)
+    if m2:
+        return list(list_vars.get(m2.group(1), []))
+    # object shorthand: `{ agent, tools }` resolves the in-file `tools` variable
+    if re.search(r"[,{]\s*tools\s*[,}]", ctor_text) and "tools" in list_vars:
+        return list(list_vars["tools"])
+    return []
+
+
+def _js_enclosing_function(text: str, offset: int) -> str | None:
+    """Best-effort name of the function/const containing ``offset``."""
+    pre = text[:offset]
+    matches = list(re.finditer(
+        r"function\s+([A-Za-z_$][\w$]*)|(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?\(",
+        pre))
+    if not matches:
+        return None
+    last = matches[-1]
+    return last.group(1) or last.group(2)
+
+
+def _extract_js_agent_defs(
+    text: str, rel_file: str, frameworks: set[str], list_vars: dict[str, list[str]],
+) -> list[_AgentDef]:
+    """Identify JS/TS agent definitions and the tools each exposes."""
+    defs: list[_AgentDef] = []
+    if not frameworks:
+        return defs
+    attempts = 0
+
+    # 1. Named agent constructors (const x = new Agent({...}) etc.)
+    for m in _JS_AGENT_RE.finditer(text):
+        if attempts >= _BRACKET_ATTEMPTS_PER_FILE:
+            break
+        attempts += 1
+        name, ctor = m.group(1), m.group(2)
+        if ctor == "Agent":
+            fw = ("mastra" if "mastra" in frameworks
+                  else "openai_agents" if "openai_agents" in frameworks else None)
+        else:
+            fw = _JS_CTOR_FRAMEWORK.get(ctor)
+            if fw == "langgraph" and "langgraph" not in frameworks and "langchain" in frameworks:
+                fw = "langchain"  # createReactAgent is also a LangChain prebuilt
+        if fw is None or fw not in frameworks:
+            continue
+        paren = text.find("(", m.end() - 1)
+        if paren < 0:
+            continue
+        end = _match_bracket(text, paren)
+        if end is None:
+            continue
+        line_no = text.count("\n", 0, m.start()) + 1
+        defs.append(_AgentDef(
+            framework=fw, agent_name=name, file=rel_file, line_no=line_no,
+            snippet=_line_snippet(text, line_no),
+            tools=_extract_js_tools_from_ctor(text[paren: end + 1], list_vars),
+        ))
+
+    # 2. Vercel AI SDK call sites that actually wire tools.
+    if "vercel_ai" in frameworks:
+        for m in _JS_VERCEL_RE.finditer(text):
+            if attempts >= _BRACKET_ATTEMPTS_PER_FILE:
+                break
+            attempts += 1
+            paren = text.find("(", m.end() - 1)
+            if paren < 0:
+                continue
+            end = _match_bracket(text, paren)
+            if end is None:
+                continue
+            tools = _extract_js_tools_from_ctor(text[paren: end + 1], list_vars)
+            if not tools:
+                continue  # plain generateText with no tools is not an agent
+            line_no = text.count("\n", 0, m.start()) + 1
+            defs.append(_AgentDef(
+                framework="vercel_ai",
+                agent_name=_js_enclosing_function(text, m.start()) or m.group(1),
+                file=rel_file, line_no=line_no,
+                snippet=_line_snippet(text, line_no), tools=tools,
+            ))
+    return defs
+
+
 class AgentFrameworkDetector:
     """Detect agent frameworks and the tools each agent exposes.
 
@@ -385,11 +611,12 @@ class AgentFrameworkDetector:
     category = CATEGORY_AGENT_FRAMEWORK
 
     def detect(self, root_path: str) -> list[Finding]:
-        framework_files: dict[str, list[str]] = {k: [] for k in FRAMEWORK_PATTERNS}
+        framework_files: dict[str, list[str]] = {}
         framework_first_snippet: dict[str, str] = {}
         agent_defs: list[_AgentDef] = []
         anthropic_tool_blocks: list[_AgentDef] = []
 
+        # --- Python pass ---
         for path in walk_files(root_path, extensions=[".py"]):
             text = read_text_safe(path)
             if not text:
@@ -398,7 +625,7 @@ class AgentFrameworkDetector:
 
             frameworks = _detect_frameworks_in_file(text)
             for fw in frameworks:
-                framework_files[fw].append(rel)
+                framework_files.setdefault(fw, []).append(rel)
                 if fw not in framework_first_snippet:
                     framework_first_snippet[fw] = self._first_import_line(text, fw)
 
@@ -427,14 +654,30 @@ class AgentFrameworkDetector:
                         )
                     )
 
+        # --- JavaScript / TypeScript pass ---
+        for path in walk_files(root_path, extensions=_JS_EXTENSIONS):
+            text = read_text_safe(path)
+            if not text:
+                continue
+            frameworks = _detect_js_frameworks(text)
+            if not frameworks:
+                continue
+            rel = relative_to_root(path, root_path)
+            for fw in frameworks:
+                framework_files.setdefault(fw, []).append(rel)
+                if fw not in framework_first_snippet:
+                    framework_first_snippet[fw] = _first_js_import_line(text, fw)
+            agent_defs.extend(
+                _extract_js_agent_defs(text, rel, frameworks, _collect_js_list_vars(text))
+            )
+
         findings: list[Finding] = []
-        files_used_by_agents: dict[str, set[str]] = {k: set() for k in FRAMEWORK_PATTERNS}
+        files_used_by_agents: dict[str, set[str]] = {}
 
         # 1. Per-agent findings (frameworks + anthropic-shape standalone).
         for ad in agent_defs + anthropic_tool_blocks:
             findings.append(self._finding_from_agent_def(ad))
-            if ad.framework in FRAMEWORK_PATTERNS:
-                files_used_by_agents.setdefault(ad.framework, set()).add(ad.file)
+            files_used_by_agents.setdefault(ad.framework, set()).add(ad.file)
 
         # 2. Framework-only fallbacks: one Finding per framework imported in
         #    files where no specific agent definition could be identified.
@@ -442,7 +685,7 @@ class AgentFrameworkDetector:
             leftover = sorted(set(files) - files_used_by_agents.get(fw, set()))
             if not leftover:
                 continue
-            display = FRAMEWORK_PATTERNS[fw]["display"]
+            display = _FRAMEWORK_DISPLAY.get(fw, fw.replace("_", " ").title())
             n = len(leftover)
             findings.append(
                 Finding(
@@ -623,10 +866,12 @@ class AgentFrameworkDetector:
         if ad.framework == "anthropic_tools":
             label = "Claude Tools"
         else:
-            label = f"{FRAMEWORK_PATTERNS[ad.framework]['display']} Agent"
+            display = _FRAMEWORK_DISPLAY.get(ad.framework, ad.framework.replace("_", " ").title())
+            label = f"{display} Agent"
         surface = f"{label}: {ad.agent_name}"
         if ad.file:
             surface = f"{surface} (in {ad.file})"
+        language = "python" if ad.file.endswith(".py") else "javascript/typescript"
         return Finding(
             surface=surface,
             category=CATEGORY_AGENT_FRAMEWORK,
@@ -638,6 +883,7 @@ class AgentFrameworkDetector:
                     "framework": ad.framework,
                     "agent_name": ad.agent_name,
                     "tool_count": len(ad.tools),
+                    "language": language,
                 },
             ),
             permissions=list(ad.tools),

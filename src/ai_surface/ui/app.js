@@ -179,11 +179,11 @@ python3 -m http.server 8000
         ${topbarHTML()}
         <section class="welcome">
           <div class="welcome-inner reveal">
-            <span class="eyebrow"><span class="dot"></span>AI Governance Gate &middot; Static + Offline</span>
+            <span class="eyebrow"><span class="dot"></span>AI Inventory and CI Governance Gate &middot; Offline</span>
             <h1 class="welcome-title">Map your codebase's<br><span class="grad">AI attack surface</span></h1>
-            <p class="welcome-lede">Every LLM call, agent, MCP server, gateway, key, and API in your repo, as one
-               map and a standard AI-BOM: the inventory and documentation the EU AI Act, NIST AI RMF, and
-               ISO 42001 expect. Runs fully offline. Exploitability is validated in APIsec.</p>
+            <p class="welcome-lede">Map every LLM call, agent, MCP server, gateway, key, and API in your repo
+               as one view and a standard AI-BOM. That is the inventory the EU AI Act, NIST AI RMF, and ISO 42001
+               expect, and it runs fully offline.</p>
 
             <form class="scan-form reveal d1" id="scan-form" novalidate>
               <label class="scan-field">
@@ -972,7 +972,7 @@ python3 -m http.server 8000
         <div class="bridges-band">
           <div class="lead">
             <h3>Validate exploitability at runtime in APIsec</h3>
-            <p>ai-surface maps what exists, statically. APIsec proves what's actually exploitable against your
+            <p>ai-surface maps what exists in your code. APIsec proves what's actually exploitable against your
                running system. These are the next steps for what we found here. Per-finding bridges also appear
                in each finding's drawer.</p>
           </div>
@@ -1406,7 +1406,7 @@ python3 -m http.server 8000
     if (a) (a.secrets || []).forEach((s) => rem.push(`<li><b>${esc(s.name)}</b> Move to a secrets manager and rotate; reference by name only.</li>`));
     const remediation = rem.length
       ? `<ul class="rem-list">${rem.join("")}</ul>`
-      : `<div class="secret-note">${icon("info")}<span>No static remediation items.${f.disposition === "validate-runtime" ? " Exploitability is proven at runtime, see below." : ""}</span></div>`;
+      : `<div class="secret-note">${icon("info")}<span>No code-level remediation items.${f.disposition === "validate-runtime" ? " Exploitability is proven at runtime, see below." : ""}</span></div>`;
 
     /* ---- 4 - VALIDATE AT RUNTIME: the CTA ---- */
     const bridges = (f.bridges || []).map((b) => `
@@ -1423,7 +1423,7 @@ python3 -m http.server 8000
         ? `<div class="rt-q">${icon("info")}<span><b>Only runtime can answer:</b> ${esc(f.runtime_question)}</span></div>` : "";
       validate = `${q}${bridges}`;
     } else if (f.disposition === "resolve-here") {
-      validate = `<div class="secret-note">${icon("info")}<span>Statically resolvable: fix it in place (above). No runtime validation needed for this surface.</span></div>`;
+      validate = `<div class="secret-note">${icon("info")}<span>Resolvable in code: fix it in place (above). No runtime validation needed for this surface.</span></div>`;
     } else {
       validate = bridges || `<div class="secret-note">${icon("info")}<span>No runtime validation journey for this surface.</span></div>`;
     }
@@ -1552,16 +1552,16 @@ python3 -m http.server 8000
     if (minimal || !REPORT) {
       return `
         <footer>
-          <div class="row"><b>Privacy</b> ai-surface is static and fully offline. Secrets are reported by name and type only: no value is ever read.</div>
-          <div class="row"><b>Scope</b> Static discovery only. Runtime exploitability is the paid APIsec platform; this free tool routes to it via bridges.</div>
+          <div class="row"><b>Privacy</b> ai-surface runs locally and fully offline. Secrets are reported by name and type only: no value is ever read.</div>
+          <div class="row"><b>Scope</b> Discovery and code-level audit only. Runtime exploitability is the paid APIsec platform; this free tool routes to it via bridges.</div>
           <div class="row" style="margin-top:6px;color:var(--text-3)">ai-surface by APIsec</div>
         </footer>`;
     }
     const detectors = (REPORT.detectors_run || []).map((d) => `<span class="chip-mono">${esc(d)}</span>`).join(" ");
     return `
       <footer>
-        <div class="row"><b>Privacy</b> ai-surface is static and fully offline. Secrets are reported by name and type only: no value is ever read into the report.</div>
-        <div class="row"><b>Scope</b> Static discovery only. Runtime exploitability is the paid APIsec platform; this free tool routes to it via the Validate bridges.</div>
+        <div class="row"><b>Privacy</b> ai-surface runs locally and fully offline. Secrets are reported by name and type only: no value is ever read into the report.</div>
+        <div class="row"><b>Scope</b> Discovery and code-level audit only. Runtime exploitability is the paid APIsec platform; this free tool routes to it via the Validate bridges.</div>
         ${detectors ? `<div class="row" style="margin-top:6px;"><b>Detectors run</b> ${detectors}</div>` : ""}
         <div class="row" style="margin-top:6px;color:var(--text-3)">schema ${esc(REPORT.schema_version || "1.0")} &middot; ai-surface by APIsec</div>
       </footer>`;

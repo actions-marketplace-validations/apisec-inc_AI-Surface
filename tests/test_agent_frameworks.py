@@ -285,3 +285,112 @@ def test_tools_var_factory_call_not_resolved(tmp_path: Path) -> None:
     agents = [f for f in findings if "Agent:" in f.surface]
     assert len(agents) == 1
     assert agents[0].permissions == []
+
+
+# ---------------------------------------------------------------------------
+# JavaScript / TypeScript agent detection (v0.6)
+# ---------------------------------------------------------------------------
+
+
+def _js_findings(name: str, content: str, tmp_path: Path) -> list[Finding]:
+    (tmp_path / name).write_text(content, encoding="utf-8")
+    return AgentFrameworkDetector().detect(str(tmp_path))
+
+
+def test_js_langchain_agentexecutor_tools_var(tmp_path: Path) -> None:
+    findings = _js_findings("agent.ts",
+        'import { AgentExecutor } from "langchain/agents";\n'
+        'const tools = [searchTool, refundTool];\n'
+        'const executor = new AgentExecutor({ agent, tools, maxIterations: 5 });\n',
+        tmp_path)
+    agents = [f for f in findings if "Agent:" in f.surface]
+    assert len(agents) == 1
+    f = agents[0]
+    assert "LangChain Agent: executor" in f.surface
+    assert "refundTool" in f.permissions and "searchTool" in f.permissions
+    assert f.evidence.metadata["language"] == "javascript/typescript"
+    assert "financial action exposed" in f.risk_indicators
+
+
+def test_js_langgraph_react_agent(tmp_path: Path) -> None:
+    findings = _js_findings("graph.ts",
+        'import { createReactAgent } from "@langchain/langgraph/prebuilt";\n'
+        'const agent = createReactAgent({ llm, tools: [lookupTool, deleteTool] });\n',
+        tmp_path)
+    agents = [f for f in findings if "Agent:" in f.surface]
+    assert len(agents) == 1
+    assert agents[0].evidence.metadata["framework"] == "langgraph"
+    assert "deleteTool" in agents[0].permissions
+
+
+def test_js_vercel_ai_tools_object_keys(tmp_path: Path) -> None:
+    findings = _js_findings("vercel.ts",
+        'import { generateText, tool } from "ai";\n'
+        'async function run() {\n'
+        '  return generateText({\n'
+        '    model: openai("gpt-4o"),\n'
+        '    tools: {\n'
+        '      refundPayment: tool({ description: "refund" }),\n'
+        '      getCustomer: tool({ description: "lookup" }),\n'
+        '    },\n'
+        '  });\n'
+        '}\n',
+        tmp_path)
+    agents = [f for f in findings if "Agent:" in f.surface]
+    assert len(agents) == 1
+    f = agents[0]
+    assert f.evidence.metadata["framework"] == "vercel_ai"
+    assert "refundPayment" in f.permissions and "getCustomer" in f.permissions
+    assert "financial action exposed" in f.risk_indicators
+
+
+def test_js_mastra_agent(tmp_path: Path) -> None:
+    findings = _js_findings("mastra.ts",
+        'import { Agent } from "@mastra/core/agent";\n'
+        'const support = new Agent({ name: "support", tools: [getOrder, sendEmail] });\n',
+        tmp_path)
+    agents = [f for f in findings if "Agent:" in f.surface]
+    assert len(agents) == 1
+    assert agents[0].evidence.metadata["framework"] == "mastra"
+    assert "getOrder" in agents[0].permissions
+
+
+def test_js_framework_only_fallback(tmp_path: Path) -> None:
+    findings = _js_findings("chain.ts",
+        'import { ChatOpenAI } from "@langchain/openai";\n'
+        'const model = new ChatOpenAI({});\n',
+        tmp_path)
+    assert len(findings) == 1
+    assert findings[0].surface.startswith("LangChain (used in 1 file")
+    assert findings[0].evidence.metadata["framework"] == "langchain"
+
+
+def test_js_no_framework_no_findings(tmp_path: Path) -> None:
+    findings = _js_findings("util.ts", 'export function add(a, b) { return a + b; }\n', tmp_path)
+    assert findings == []
+
+
+def test_js_ai_package_not_matched_by_openai(tmp_path: Path) -> None:
+    # `from "openai"` must NOT trigger the Vercel "ai" package match.
+    findings = _js_findings("oai.ts",
+        'import OpenAI from "openai";\nconst c = new OpenAI();\n', tmp_path)
+    assert findings == []
+
+
+def test_js_agent_flows_to_audit_and_oversight(tmp_path: Path) -> None:
+    from ai_surface.audits import enrich_audits
+    from ai_surface.oversight import enrich_oversight
+
+    findings = _js_findings("agent.ts",
+        'import { Agent } from "@mastra/core/agent";\n'
+        'const TOOLS = [refundPayment, deleteAccount, getCustomer];\n'
+        'const billing = new Agent({ name: "billing", tools: TOOLS });\n',
+        tmp_path)
+    enrich_audits(findings)
+    enrich_oversight(findings)
+    agents = [f for f in findings if "Agent:" in f.surface and f.permissions]
+    assert agents
+    flags = {rf.flag for rf in agents[0].audit.risk_flags}
+    assert "financial-action" in flags
+    assert "destructive-action" in flags
+    assert "no-human-oversight" in flags
