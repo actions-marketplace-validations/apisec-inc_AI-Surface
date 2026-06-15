@@ -130,3 +130,24 @@ def test_repo_signal_suppresses_flag(tmp_path) -> None:
     f = _mcp()
     enrich_observability([f], scan_root=str(tmp_path))
     assert not any(rf.flag == "no-observability" for rf in f.audit.risk_flags)
+
+
+def test_dependency_manifest_is_not_observability_proof(tmp_path) -> None:
+    """A tracing lib in a manifest/lockfile is a transitive dep, not wiring.
+
+    langsmith ships transitively with langchain and otel is transitive
+    everywhere; reading manifests made every such repo look 'observed'.
+    """
+    (tmp_path / "app.py").write_text("import anthropic\nclient = anthropic.Anthropic()\n")
+    (tmp_path / "package-lock.json").write_text('{"packages": {"node_modules/langsmith": {}}}')
+    (tmp_path / "pnpm-lock.yaml").write_text("langsmith:\n  version: 0.1.0\n")
+    (tmp_path / "requirements.txt").write_text("langchain==0.2.0\nlangsmith==0.1.0\nopentelemetry-api\n")
+    (tmp_path / "pyproject.toml").write_text('[project]\ndependencies = ["langfuse", "wandb"]\n')
+    assert repo_has_observability(str(tmp_path)) is False
+
+
+def test_real_wiring_still_detected_alongside_manifests(tmp_path) -> None:
+    """Manifest exclusion must not hide genuine source-level wiring."""
+    (tmp_path / "requirements.txt").write_text("langfuse==2.0\n")  # excluded
+    (tmp_path / "tracing.py").write_text("from langfuse import Langfuse\nlf = Langfuse()\n")
+    assert repo_has_observability(str(tmp_path)) is True

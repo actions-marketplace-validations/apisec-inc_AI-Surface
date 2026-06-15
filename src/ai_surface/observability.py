@@ -90,7 +90,39 @@ _RELEVANT_EXTS = frozenset(
 )
 
 
+# Dependency manifests and lockfiles list installed/transitive packages, not
+# wiring. ``langsmith`` ships as a transitive dependency of ``langchain`` and
+# ``opentelemetry`` is transitive in countless packages, so reading these files
+# made every langchain/otel-dependent repo look "observed" and wrongly
+# suppressed the no-observability flag (validated empirically: tiny demo repos
+# matched ONLY in package-lock.json / pnpm-lock.yaml). Observability must be
+# evidenced by real wiring: a source import, or an enabled tracing flag in an
+# env/config file (e.g. LANGCHAIN_TRACING_V2). A package merely appearing in a
+# manifest is never proof.
+_DEP_MANIFEST_NAMES = frozenset(
+    {
+        "package.json", "package-lock.json", "pnpm-lock.yaml", "yarn.lock",
+        "poetry.lock", "pipfile", "pipfile.lock", "pyproject.toml",
+        "setup.py", "setup.cfg", "go.mod", "go.sum",
+        "cargo.toml", "cargo.lock", "gemfile", "gemfile.lock",
+        "composer.json", "composer.lock", "environment.yml", "environment.yaml",
+    }
+)
+
+
+def _is_dep_manifest(name: str) -> bool:
+    """True for dependency manifests/lockfiles (transitive deps, not wiring)."""
+    low = name.lower()
+    if low in _DEP_MANIFEST_NAMES:
+        return True
+    if low.endswith(".lock"):
+        return True
+    return low.startswith("requirements") and low.endswith(".txt")
+
+
 def _is_relevant(path: Path) -> bool:
+    if _is_dep_manifest(path.name):
+        return False
     if path.suffix.lower() in _RELEVANT_EXTS:
         return True
     name = path.name
