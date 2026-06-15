@@ -151,3 +151,15 @@ def test_real_wiring_still_detected_alongside_manifests(tmp_path) -> None:
     (tmp_path / "requirements.txt").write_text("langfuse==2.0\n")  # excluded
     (tmp_path / "tracing.py").write_text("from langfuse import Langfuse\nlf = Langfuse()\n")
     assert repo_has_observability(str(tmp_path)) is True
+
+
+def test_weave_dictionary_word_is_not_observability(tmp_path) -> None:
+    """Bare 'weave' (a common word, and a token in minified bundles) is not proof."""
+    (tmp_path / "text.py").write_text("# we weave the retrieved chunks into a prompt\n")
+    (tmp_path / "min.js").write_text("function n(e,t){weave;return 0}\n")
+    assert repo_has_observability(str(tmp_path)) is False
+
+
+def test_real_weave_usage_is_observability(tmp_path) -> None:
+    (tmp_path / "trace.py").write_text("import weave\nweave.init('proj')\n")
+    assert repo_has_observability(str(tmp_path)) is True

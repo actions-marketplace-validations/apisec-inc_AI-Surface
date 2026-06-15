@@ -77,7 +77,9 @@ _PREFILTER = (
 _SIGNAL_RE = re.compile(
     r"langsmith|langfuse|helicone|traceloop|openllmetry|openinference|"
     r"opentelemetry|\botel[_-]|langchain[_-]?tracing|langchain_api_key|"
-    r"\bwandb\b|\bweave\b|mlflow|logfire|\barize\b",  # \barize\b: not "singularize"
+    # \bwandb\b is distinctive; "weave" is a dictionary word (and appears in
+    # minified bundles), so require real W&B Weave usage; \barize\b not "singularize".
+    r"\bwandb\b|weave\.(?:init|op)|(?:import|from)\s+weave\b|mlflow|logfire|\barize\b",
     re.IGNORECASE,
 )
 

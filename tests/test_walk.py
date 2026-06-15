@@ -117,3 +117,11 @@ def test_is_test_path_negatives() -> None:
     assert not is_test_path("contest.py")          # not conftest
     assert not is_test_path("latest_release.py")   # 'test' substring, not a segment
     assert not is_test_path("attestation.ts")
+
+
+def test_walk_skips_next_build_output(tmp_path: Path) -> None:
+    _make(tmp_path, "src/app.py")
+    _make(tmp_path, "out/_next/static/chunks/514-abc.js", "var weave=1")
+    names = sorted(p.name for p in walk_files(str(tmp_path)))
+    assert "app.py" in names
+    assert "514-abc.js" not in names

@@ -54,6 +54,7 @@ ALWAYS_SKIP_DIRS = frozenset(
         ".vscode",
         "target",  # rust/java build dir
         ".next",
+        "_next",  # Next.js static-export output (minified bundles, not source)
         ".nuxt",
         ".cache",
         ".parcel-cache",
