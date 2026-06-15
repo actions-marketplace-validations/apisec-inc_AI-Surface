@@ -20,6 +20,7 @@ What ai-surface detects, by language. Two things to know up front:
 | API endpoints (`api_endpoints`) | yes | yes | yes | no | yes (OpenAPI / Swagger specs) |
 | Model gateways (`model_gateways`) | yes (source) | yes (source) | no | no | yes (config: yaml / json / toml) |
 | AI infrastructure (`ai_infra`) | n/a | n/a | n/a | n/a | yes (yaml, Terraform .tf/.tfvars) |
+| Vector store / RAG (`vector_rag`) | yes | yes | no | no | yes (pgvector via .sql) |
 
 Code-level extensions: Python `.py`; TS/JS `.ts .tsx .js .jsx .mjs .cjs`; Java `.java` (API routes only).
 
@@ -49,6 +50,9 @@ wherever the component is detected:
 - **Agents:** LangChain, LangGraph, CrewAI, AutoGen, LlamaIndex, Haystack,
   Semantic Kernel, Pydantic AI, AWS Strands (Python); LangChain.js, LangGraph.js,
   Vercel AI SDK, Mastra, OpenAI Agents, LlamaIndex.ts (TS/JS).
+- **Vector stores / RAG:** Pinecone, Weaviate, Chroma, Qdrant, Milvus, FAISS,
+  LanceDB, pgvector, and LangChain / LlamaIndex retrieval pipelines (native SDKs
+  and LangChain wrapper imports). Maps to OWASP LLM08 + EU AI Act Art. 10 / ISO A.7.
 
 ## Roadmap
 

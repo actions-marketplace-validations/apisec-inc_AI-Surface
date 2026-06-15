@@ -27,8 +27,9 @@
     "ai-infra":        { label: "AI Infra",        desc: "Self-hosted runtimes, cloud endpoints",  icon: "server" },
     "env-key":         { label: "Env Keys",        desc: "AI provider key names",                  icon: "key"    },
     "api":             { label: "APIs",            desc: "HTTP / REST endpoints + OpenAPI specs",  icon: "globe"  },
+    "vector-store":    { label: "Vector / RAG",    desc: "Vector stores and retrieval pipelines",  icon: "vector" },
   };
-  const CAT_ORDER = ["mcp-server", "agent-framework", "llm-sdk", "model-gateway", "ai-infra", "env-key", "api"];
+  const CAT_ORDER = ["mcp-server", "agent-framework", "vector-store", "llm-sdk", "model-gateway", "ai-infra", "env-key", "api"];
 
   // OWASP LLM Top 10 (2025) · for badge tooltips.
   const OWASP = {
@@ -73,6 +74,7 @@
     key:    '<circle cx="8" cy="8" r="4.5" stroke="currentColor" stroke-width="1.6"/><path d="M11.2 11.2L20 20M17 17l2-2M15 15l2-2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
     globe:  '<circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18" stroke="currentColor" stroke-width="1.6"/>',
     node:   '<circle cx="12" cy="12" r="6" stroke="currentColor" stroke-width="1.6"/>',
+    vector: '<ellipse cx="12" cy="6" rx="7" ry="3" stroke="currentColor" stroke-width="1.6"/><path d="M5 6v12c0 1.66 3.13 3 7 3s7-1.34 7-3V6" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M5 12c0 1.66 3.13 3 7 3s7-1.34 7-3" stroke="currentColor" stroke-width="1.6" fill="none"/>',
     file:   '<path d="M5 3h8l6 6v12a0 0 0 010 0H5a0 0 0 010 0V3z" stroke="currentColor" stroke-width="1.4" fill="none"/><path d="M13 3v6h6" stroke="currentColor" stroke-width="1.4"/>',
     arrow:  '<path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
     close:  '<path d="M5 5l14 14M19 5L5 19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',

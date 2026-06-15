@@ -204,4 +204,10 @@ def default_detectors() -> list[Detector]:
     except ImportError as e:
         log.debug("API endpoint detector unavailable: %s", e)
 
+    try:
+        from .detectors.vector_rag import VectorRagDetector  # noqa: PLC0415
+        detectors.append(VectorRagDetector())
+    except ImportError as e:
+        log.debug("Vector/RAG detector unavailable: %s", e)
+
     return detectors

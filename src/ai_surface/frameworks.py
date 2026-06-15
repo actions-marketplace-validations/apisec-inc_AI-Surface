@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .types import Report
+from .types import CATEGORY_VECTOR_STORE, Report
 
 #: framework id -> (display name, [(requirement, evidence_kind), ...])
 FRAMEWORKS: list[dict[str, Any]] = [
@@ -29,6 +29,7 @@ FRAMEWORKS: list[dict[str, Any]] = [
             ("Risk management of AI systems (Art. 9)", "risk"),
             ("Human oversight of high-risk actions (Art. 14)", "oversight"),
             ("Logging and monitoring of AI operation (Art. 12)", "observability"),
+            ("Data governance for AI systems (Art. 10)", "data"),
         ],
     },
     {
@@ -38,6 +39,7 @@ FRAMEWORKS: list[dict[str, Any]] = [
             ("Map: inventory and context of AI systems", "inventory"),
             ("Measure: identify and assess AI risks", "risk"),
             ("Measure: AI system monitored in operation (MEASURE 3)", "observability"),
+            ("Measure: data privacy and provenance", "data"),
         ],
     },
     {
@@ -47,6 +49,7 @@ FRAMEWORKS: list[dict[str, Any]] = [
             ("AI system inventory (Annex A)", "inventory"),
             ("AI risk assessment", "risk"),
             ("Operation and monitoring (Annex A.6.2.6)", "observability"),
+            ("Data for AI systems (Annex A.7)", "data"),
         ],
     },
     {
@@ -76,6 +79,12 @@ def _evidence_kinds_present(report: Report) -> set[str]:
         # assessed an execution surface and found no tracing wired for it.
         if f.audit and any(rf.flag == "no-observability" for rf in f.audit.risk_flags):
             kinds.add("observability")
+        # A vector store / RAG layer, or PII flowing into a prompt, is data
+        # the AI system handles: data-governance evidence.
+        if f.category == CATEGORY_VECTOR_STORE:
+            kinds.add("data")
+        if f.audit and any(rf.flag == "pii-to-llm" for rf in f.audit.risk_flags):
+            kinds.add("data")
     return kinds
 
 

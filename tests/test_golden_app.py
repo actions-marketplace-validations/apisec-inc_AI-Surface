@@ -33,6 +33,16 @@ def test_golden_app_known_answers() -> None:
     assert "agent-framework" in by_cat
     assert "mcp-server" in by_cat
     assert "api" in by_cat
+    assert "vector-store" in by_cat
+
+    # vector / RAG layer: a store + a RAG pipeline, with the data-flow indicator
+    vec = {f.surface for f in by_cat["vector-store"]}
+    assert any("Vector store" in s for s in vec)
+    assert any("RAG pipeline" in s for s in vec)
+    assert any(
+        "retrieval-augmented generation" in r
+        for f in by_cat["vector-store"] for r in f.risk_indicators
+    )
 
     flags = _flags(report.findings)
     allflags = set().union(*flags.values()) if flags else set()

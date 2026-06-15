@@ -15,6 +15,7 @@ OWASP_LLM_TOP_10 = {
     "LLM03": "Supply Chain Vulnerabilities",
     "LLM06": "Excessive Agency",
     "LLM07": "System Prompt Leakage",
+    "LLM08": "Vector and Embedding Weaknesses",
     "LLM09": "Overreliance",
     "LLM10": "Unbounded Consumption",
 }

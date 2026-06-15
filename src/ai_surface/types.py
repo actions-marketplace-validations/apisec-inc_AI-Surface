@@ -23,6 +23,7 @@ CATEGORY_MODEL_GATEWAY = "model-gateway"
 CATEGORY_AI_INFRA = "ai-infra"
 CATEGORY_ENV_KEY = "env-key"
 CATEGORY_API = "api"  # HTTP/REST endpoints + OpenAPI specs (feeds API runtime SKU)
+CATEGORY_VECTOR_STORE = "vector-store"  # vector DBs + RAG retrieval pipelines
 
 ALL_CATEGORIES = (
     CATEGORY_LLM_SDK,
@@ -32,6 +33,7 @@ ALL_CATEGORIES = (
     CATEGORY_AI_INFRA,
     CATEGORY_ENV_KEY,
     CATEGORY_API,
+    CATEGORY_VECTOR_STORE,
 )
 
 # Severity is OPTIONAL and only set by deep-dive audit layers (MCP and agent
