@@ -1,0 +1,6 @@
+{
+  "mcpServers": {
+    "payments-mcp": {"command": "npx", "args": ["stripe-mcp"], "env": {"STRIPE_SECRET_KEY": "sk_test_FAKE_demo"}},
+    "db-mcp": {"command": "npx", "args": ["@modelcontextprotocol/server-postgres", "postgresql://admin:admin@db/app"]}
+  }
+}
