@@ -83,6 +83,26 @@ _SPECS: list[tuple[str, str, str, list[str]]] = [
         r"USING\s+(?:ivfflat|hnsw)\b",
         r"from\s+langchain_postgres\b", r"\.vectorstores\b[^\n]*\bPGVector\b",
     ]),
+    # Search engines used AS vector stores. Matched only on vector-specific
+    # signals (dense_vector / knn / the LangChain store class), so plain
+    # Elasticsearch/Redis logging or search use is not mis-flagged.
+    ("elasticsearch", "Elasticsearch (vector)", "self-hosted", [
+        r"\bElasticsearchStore\b", r"\bdense_vector\b",
+        r"from\s+langchain_elasticsearch\b", r"\.vectorstores\b[^\n]*\bElasticsearch\b",
+    ]),
+    ("opensearch", "OpenSearch (vector)", "self-hosted", [
+        r"\bOpenSearchVectorSearch\b", r"\bknn_vector\b",
+        r"\.vectorstores\b[^\n]*\bOpenSearch\b",
+    ]),
+    ("vespa", "Vespa", "self-hosted", [
+        r"^\s*import\s+vespa\b", r"^\s*from\s+vespa\b", r"\bpyvespa\b", r"\bVespaStore\b",
+    ]),
+    ("marqo", "Marqo", "managed", [
+        r"^\s*import\s+marqo\b", r"""['"]marqo['"]""", r"\.vectorstores\b[^\n]*\bMarqo\b",
+    ]),
+    ("redis_vector", "Redis (vector)", "self-hosted", [
+        r"\bRedisVectorStore\b", r"\bRediSearch\b", r"\.vectorstores\b[^\n]*\bRedis\b",
+    ]),
     ("langchain_rag", "LangChain", "framework", [
         r"from\s+langchain(?:_community|_core|_[a-z]+)?\.vectorstores\b",
         r"\.as_retriever\s*\(", r"\bRetrievalQA\b", r"\bVectorStoreRetriever\b",

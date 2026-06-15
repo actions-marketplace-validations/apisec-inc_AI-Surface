@@ -78,3 +78,20 @@ def test_external_loader_poisoning_indicator(tmp_path) -> None:
 def test_no_false_positive(tmp_path) -> None:
     (tmp_path / "app.py").write_text("def add(a, b):\n    return a + b\n", encoding="utf-8")
     assert _scan(tmp_path) == []
+
+
+def test_elasticsearch_dense_vector(tmp_path) -> None:
+    (tmp_path / "es.py").write_text(
+        'mapping = {"embedding": {"type": "dense_vector", "dims": 1536}}\n', encoding="utf-8")
+    assert "Vector store: Elasticsearch (vector)" in _by_surface(_scan(tmp_path))
+
+
+def test_vespa_store(tmp_path) -> None:
+    (tmp_path / "v.py").write_text("from vespa.application import Vespa\n", encoding="utf-8")
+    assert "Vector store: Vespa" in _by_surface(_scan(tmp_path))
+
+
+def test_plain_elasticsearch_not_flagged(tmp_path) -> None:
+    # plain ES (no vector signal) must NOT be flagged as a vector store
+    (tmp_path / "log.py").write_text("from elasticsearch import Elasticsearch\nes = Elasticsearch()\n", encoding="utf-8")
+    assert _scan(tmp_path) == []

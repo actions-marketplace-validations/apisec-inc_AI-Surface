@@ -596,7 +596,21 @@ def _extract_js_agent_defs(
                 file=rel_file, line_no=line_no,
                 snippet=_line_snippet(text, line_no), tools=tools,
             ))
-    return defs
+
+    # Dedupe within a file by (framework, name). A single file can repeat
+    # generateText/streamText many times (registries, examples), which would
+    # otherwise explode into hundreds of duplicate "generateText" agents.
+    # Collapse same-named defs and union their tools.
+    merged: dict[tuple[str, str], _AgentDef] = {}
+    for d in defs:
+        key = (d.framework, d.agent_name)
+        if key in merged:
+            for t in d.tools:
+                if t not in merged[key].tools:
+                    merged[key].tools.append(t)
+        else:
+            merged[key] = d
+    return list(merged.values())
 
 
 class AgentFrameworkDetector:

@@ -102,6 +102,13 @@ _SDK_PATTERNS: dict[str, list[str]] = {
         r"^\s*from\s+litellm\b",
         r"^\s*import\s+litellm\b",
     ],
+    "Vercel AI SDK": [
+        # The `ai` package (Vercel AI SDK) and its provider adapters. Common in
+        # TS apps that never import a provider SDK directly.
+        r"""from\s+['"]ai['"]""",
+        r"""require\(\s*['"]ai['"]\s*\)""",
+        r"""['"]@ai-sdk/""",
+    ],
 }
 
 # Compile once.
@@ -126,6 +133,7 @@ _DETECTION_ORDER = [
     "Replicate",
     "Groq",
     "LiteLLM",
+    "Vercel AI SDK",
 ]
 
 

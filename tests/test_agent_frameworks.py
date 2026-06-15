@@ -394,3 +394,13 @@ def test_js_agent_flows_to_audit_and_oversight(tmp_path: Path) -> None:
     assert "financial-action" in flags
     assert "destructive-action" in flags
     assert "no-human-oversight" in flags
+
+
+def test_js_vercel_calls_deduped(tmp_path: Path) -> None:
+    """Many generateText calls in one file collapse to one agent (no inflation)."""
+    calls = "\n".join("await generateText({ tools: { refund: tool({}) } });" for _ in range(6))
+    (tmp_path / "registry.ts").write_text(
+        'import { generateText, tool } from "ai";\n' + calls, encoding="utf-8")
+    findings = AgentFrameworkDetector().detect(str(tmp_path))
+    vercel = [f for f in findings if "Vercel AI SDK Agent" in f.surface]
+    assert len(vercel) == 1

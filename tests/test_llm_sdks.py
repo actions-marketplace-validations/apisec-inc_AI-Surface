@@ -187,3 +187,11 @@ def test_detect_ignores_unrelated_extensions(tmp_path: Path) -> None:
         "We use the anthropic SDK and import openai.", encoding="utf-8"
     )
     assert LlmSdkDetector().detect(str(tmp_path)) == []
+
+
+def test_vercel_ai_sdk_detected(tmp_path) -> None:
+    from ai_surface.detectors.llm_sdks import LlmSdkDetector
+    (tmp_path / "chat.ts").write_text(
+        'import { generateText } from "ai";\nimport { openai } from "@ai-sdk/openai";\n', encoding="utf-8")
+    surfaces = {f.surface for f in LlmSdkDetector().detect(str(tmp_path))}
+    assert "Vercel AI SDK" in surfaces
