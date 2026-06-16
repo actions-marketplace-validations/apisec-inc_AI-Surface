@@ -51,10 +51,10 @@ dev = [
 ai-surface = "ai_surface.cli:app"
 
 [project.urls]
-Homepage = "https://github.com/apisec-inc/ai-surface"
-Documentation = "https://github.com/apisec-inc/ai-surface#readme"
-Issues = "https://github.com/apisec-inc/ai-surface/issues"
-Source = "https://github.com/apisec-inc/ai-surface"
+Homepage = "https://github.com/apisec-inc/AI-Surface"
+Documentation = "https://github.com/apisec-inc/AI-Surface#readme"
+Issues = "https://github.com/apisec-inc/AI-Surface/issues"
+Source = "https://github.com/apisec-inc/AI-Surface"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ai_surface"]

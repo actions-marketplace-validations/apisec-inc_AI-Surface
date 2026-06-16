@@ -358,7 +358,7 @@ def _render_footer() -> str:
     upgrade_url = build_upgrade_url(source="ai-surface", medium="pr-comment")
     return (
         "<sub>"
-        "Powered by [ai-surface](https://github.com/apisec-inc/ai-surface). "
+        "Powered by [ai-surface](https://github.com/apisec-inc/AI-Surface). "
         f"Validate which of these surfaces are exploitable: "
         f"[apisec.ai/ai-validation]({upgrade_url})."
         "</sub>"

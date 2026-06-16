@@ -375,7 +375,7 @@ def _format_inventory_comment(report: Dict[str, Any], markdown_body: str) -> str
             "_LLM SDK call sites, agent frameworks, MCP servers, model gateways, "
             "and AI provider env keys are all clean._\n\n"
             "<sub>Powered by "
-            "[ai-surface](https://github.com/apisec-inc/ai-surface) · "
+            "[ai-surface](https://github.com/apisec-inc/AI-Surface) · "
             "[Validate exploitability](https://apisec.ai/ai-validation)</sub>"
         )
 
@@ -396,7 +396,7 @@ def _format_inventory_comment(report: Dict[str, Any], markdown_body: str) -> str
     footer = (
         "\n---\n\n"
         "<sub>"
-        "Powered by [ai-surface](https://github.com/apisec-inc/ai-surface). "
+        "Powered by [ai-surface](https://github.com/apisec-inc/AI-Surface). "
         "To validate which of these surfaces are exploitable in a running application: "
         "[apisec.ai/ai-validation](https://apisec.ai/ai-validation)."
         "</sub>"

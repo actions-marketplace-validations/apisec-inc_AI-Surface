@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Security vulnerability
-    url: https://github.com/apisec-inc/ai-surface/security/policy
+    url: https://github.com/apisec-inc/AI-Surface/security/policy
     about: For security issues, please follow our SECURITY.md policy rather than filing a public issue.
   - name: Question or discussion
-    url: https://github.com/apisec-inc/ai-surface/discussions
+    url: https://github.com/apisec-inc/AI-Surface/discussions
     about: Use Discussions for open-ended questions or design conversations.

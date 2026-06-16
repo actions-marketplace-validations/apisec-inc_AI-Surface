@@ -434,8 +434,11 @@ def _django_routes(text: str) -> list[tuple[str, str, int]]:
     out: list[tuple[str, str, int]] = []
     for m in _DJANGO_RE.finditer(text):
         path = m.group(1)
+        # re_path() patterns carry regex anchors; strip them so the route reads
+        # as a path (e.g. "^orders/$" -> "/orders/") rather than a raw regex.
+        path = path.strip().lstrip("^").rstrip("$")
         # Normalize a leading slash for display consistency.
-        if not path.startswith(("/", "^")):
+        if not path.startswith("/"):
             path = "/" + path
         out.append(("*", path, text.count("\n", 0, m.start()) + 1))
     return out

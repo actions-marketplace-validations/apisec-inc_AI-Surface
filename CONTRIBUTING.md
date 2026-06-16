@@ -19,7 +19,7 @@ Thanks for your interest. `ai-surface` is built to be useful and accurate; impro
 ## Development setup
 
 ```bash
-git clone https://github.com/apisec-inc/ai-surface
+git clone https://github.com/apisec-inc/AI-Surface
 cd ai-surface
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"

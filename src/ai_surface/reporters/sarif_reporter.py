@@ -19,7 +19,7 @@ from ..types import (
     Report,
 )
 
-_INFO_URI = "https://github.com/apisec-inc/ai-surface"
+_INFO_URI = "https://github.com/apisec-inc/AI-Surface"
 
 #: Human labels for the per-category rules.
 _CATEGORY_LABEL = {
