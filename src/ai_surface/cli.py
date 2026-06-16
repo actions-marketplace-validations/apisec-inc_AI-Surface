@@ -510,10 +510,22 @@ def scan(
             "v0.5 detectors are still being implemented."
         )
 
+    # Never let a scan re-ingest its own baseline output (self-poison): if the
+    # baseline file lives inside the scan root, exclude it from the walk. The
+    # default name is already in ALWAYS_SKIP_FILES; this covers custom
+    # --baseline-file paths.
+    from .utils import walk as _walk  # noqa: PLC0415
+
+    _baseline_path = Path(baseline_file)
+    if not _baseline_path.is_absolute():
+        _baseline_path = root / _baseline_path
+    _walk.set_runtime_skip([str(_baseline_path)])
+
     orch = Orchestrator(detectors=detectors)
     try:
         report = orch.run(str(root))
     finally:
+        _walk.clear_runtime_skip()
         # The clone is only needed during the scan; the Report is in-memory,
         # so discard the clone before rendering regardless of outcome.
         if _repo_cleanup:

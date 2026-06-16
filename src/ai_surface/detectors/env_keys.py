@@ -39,7 +39,9 @@ from ..utils.walk import read_text_safe, relative_to_root, walk_files
 
 _KEY_RULES: tuple[tuple[str, str], ...] = (
     # --- Azure OpenAI (must precede plain OpenAI) ---
-    (r"AZURE_OPENAI_[A-Z0-9_]*(?:KEY|TOKEN|SECRET|CREDENTIAL|PASSWORD|ENDPOINT)", "Azure OpenAI"),
+    # Only credential-bearing vars. ENDPOINT is a URL, not a secret, so it is
+    # excluded to avoid listing non-credentials under "AI Provider API Keys".
+    (r"AZURE_OPENAI_[A-Z0-9_]*(?:KEY|TOKEN|SECRET|CREDENTIAL|PASSWORD)", "Azure OpenAI"),
 
     # --- AWS Bedrock ---
     # Narrowed from BEDROCK_[A-Z0-9_]+ so that non-credential envvars like
@@ -48,9 +50,9 @@ _KEY_RULES: tuple[tuple[str, str], ...] = (
     (r"BEDROCK_[A-Z0-9_]*(?:KEY|TOKEN|SECRET|CREDENTIAL|PASSWORD)", "AWS Bedrock"),
 
     # --- OpenAI ---
+    # ORG_ID / PROJECT_ID are identifiers, not secrets, so they are not listed
+    # as keys (they are configuration, not credentials).
     (r"OPENAI_API_KEY", "OpenAI"),
-    (r"OPENAI_ORG_ID", "OpenAI"),
-    (r"OPENAI_PROJECT_ID", "OpenAI"),
     (r"OPENAI_[A-Z0-9_]*KEY", "OpenAI"),
 
     # --- Anthropic ---
@@ -80,7 +82,6 @@ _KEY_RULES: tuple[tuple[str, str], ...] = (
     (r"HUGGINGFACE_TOKEN", "Hugging Face"),
     (r"HF_TOKEN", "Hugging Face"),
     (r"HF_API_TOKEN", "Hugging Face"),
-    (r"OLLAMA_HOST", "Ollama"),
     (r"OPENROUTER_API_KEY", "OpenRouter"),
     (r"PERPLEXITY_API_KEY", "Perplexity"),
     (r"DEEPINFRA_API_KEY", "DeepInfra"),

@@ -112,6 +112,32 @@ def is_test_path(rel_path: str) -> bool:
     return fname.endswith(_JS_TEST_EXTS)
 
 
+# Absolute file paths the CLI registers to exclude from the current scan, so
+# the tool never re-ingests its own output. The default baseline / inventory
+# names are handled by ALWAYS_SKIP_FILES; this covers a CUSTOM --baseline-file
+# (or --output target) that lives inside the scan root, which would otherwise be
+# walked and its captured key names / model ids re-reported as fresh findings.
+# Process-local; a scan is single-threaded.
+_RUNTIME_SKIP_ABS: set[str] = set()
+
+
+def set_runtime_skip(paths: list[str]) -> None:
+    """Register absolute file paths to exclude from subsequent walks."""
+    _RUNTIME_SKIP_ABS.clear()
+    for p in paths:
+        if not p:
+            continue
+        try:
+            _RUNTIME_SKIP_ABS.add(str(Path(p).resolve()))
+        except (OSError, ValueError):
+            continue
+
+
+def clear_runtime_skip() -> None:
+    """Clear any registered runtime skip paths."""
+    _RUNTIME_SKIP_ABS.clear()
+
+
 def _load_gitignore(root: Path) -> pathspec.PathSpec | None:
     """Load .gitignore at root if present. Returns None if no gitignore."""
     gitignore_path = root / ".gitignore"
@@ -183,6 +209,12 @@ def walk_files(
                 continue
             if skip_tests and is_test_path(full.relative_to(root_path).as_posix()):
                 continue
+            if _RUNTIME_SKIP_ABS:
+                try:
+                    if str(full.resolve()) in _RUNTIME_SKIP_ABS:
+                        continue
+                except OSError:
+                    pass
             if gitignore is not None:
                 rel = full.relative_to(root_path).as_posix()
                 if gitignore.match_file(rel):

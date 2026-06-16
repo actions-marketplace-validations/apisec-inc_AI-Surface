@@ -28,10 +28,21 @@ The 1.0 release. The MCP deep-dive audit is merged in, two new detector categori
   - Observability was credited from dependency manifests and lockfiles, so a transitive `langsmith` dependency of `langchain` made every such repo look "observed." Observability now requires real wiring (a source import or an enabled tracing flag); manifests and lockfiles are excluded.
   - The bare word `weave` matched inside minified Next.js `_next` build bundles; `_next` is now skipped and the signal requires real W&B Weave usage.
 
+### Security and hardening (pre-release audit)
+
+- Fixed two ReDoS vectors (a crafted YAML file that hung any scan via `yaml_top_value`, and the BOLA path-segment regex) so a single malicious file can no longer stall a scan or CI run.
+- Added an SSRF guard to `--repo` / the UI scan: internal, loopback, link-local, and cloud-metadata addresses (and URL-embedded credentials) are rejected.
+- Stopped the Portkey config detector from echoing a hardcoded value, closing the one path that bypassed the name/type-only secret guarantee.
+- Test-file skipping now applies across all code-level detectors (was agent-only), so test fixtures no longer inflate the inventory.
+- Excluded a custom `--baseline-file` inside the scan root from the walk, so the tool never re-ingests its own output.
+- env-key detection no longer lists non-credential configuration (endpoint URLs, org/project ids, hosts) as keys.
+- Django `re_path` routes no longer leak regex anchors into the displayed path.
+
 ### Changed
 
 - The category count is now **8** (added vector/RAG and API endpoints). README, DETECTORS, and LANGUAGE_SUPPORT updated accordingly.
-- Test suite expanded to **340 passing**.
+- Repo URL casing normalized to `apisec-inc/AI-Surface`; CI actions bumped to current Node-24 major versions.
+- Test suite expanded to **348 passing**.
 
 ## [0.5.3] - 2026-05-28
 

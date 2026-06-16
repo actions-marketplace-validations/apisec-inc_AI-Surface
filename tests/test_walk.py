@@ -140,3 +140,20 @@ def test_walk_skip_tests_excludes_test_paths(tmp_path: Path) -> None:
     # default (skip_tests=False) keeps everything
     allf = {p.relative_to(tmp_path).as_posix() for p in walk_files(str(tmp_path))}
     assert "tests/test_main.py" in allf
+
+
+def test_walk_runtime_skip_excludes_registered_path(tmp_path: Path) -> None:
+    from ai_surface.utils.walk import clear_runtime_skip, set_runtime_skip
+
+    _make(tmp_path, "app.py")
+    baseline = _make(tmp_path, "ci/baseline.json", '{"key":"HELICONE_API_KEY"}')
+    try:
+        set_runtime_skip([str(baseline)])
+        got = {p.relative_to(tmp_path).as_posix() for p in walk_files(str(tmp_path))}
+        assert "app.py" in got
+        assert "ci/baseline.json" not in got  # the registered baseline is skipped
+    finally:
+        clear_runtime_skip()
+    # After clearing, it is walked again.
+    got2 = {p.relative_to(tmp_path).as_posix() for p in walk_files(str(tmp_path))}
+    assert "ci/baseline.json" in got2

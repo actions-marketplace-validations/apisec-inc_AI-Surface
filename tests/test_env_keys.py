@@ -54,7 +54,6 @@ def test_detects_ai_keys_in_with_keys_fixture() -> None:
         "ANTHROPIC_API_KEY",
         "GROQ_API_KEY",
         "AZURE_OPENAI_API_KEY",
-        "AZURE_OPENAI_ENDPOINT",
         "LANGSMITH_API_KEY",
     }
     assert expected_keys.issubset(set(key_names))
@@ -62,6 +61,9 @@ def test_detects_ai_keys_in_with_keys_fixture() -> None:
     # Non-AI vars are NOT present.
     assert "DATABASE_URL" not in key_names
     assert "REDIS_URL" not in key_names
+    # Non-credential config is NOT listed as a key (an endpoint URL / org id is
+    # configuration, not a secret).
+    assert "AZURE_OPENAI_ENDPOINT" not in key_names
 
     # Sorted lists.
     assert key_names == sorted(key_names)
