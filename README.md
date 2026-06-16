@@ -6,9 +6,9 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](CHANGELOG.md)
-[![Tests](https://img.shields.io/badge/tests-341%20passing-brightgreen.svg)](tests/)
-[![Runs offline](https://img.shields.io/badge/no_telemetry-runs_offline-brightgreen.svg)](docs/PRIVACY.md)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/apisec-inc/AI-Surface/blob/main/CHANGELOG.md)
+[![Tests](https://img.shields.io/badge/tests-347%20passing-brightgreen.svg)](https://github.com/apisec-inc/AI-Surface/tree/main/tests)
+[![Runs offline](https://img.shields.io/badge/no_telemetry-runs_offline-brightgreen.svg)](https://github.com/apisec-inc/AI-Surface/blob/main/docs/PRIVACY.md)
 
 </div>
 
@@ -25,7 +25,7 @@ It also generates an **AI-BOM** and maps findings to the OWASP LLM Top 10 and th
 
 <div align="center">
 
-![ai-surface attack surface map](docs/images/surface-map.png)
+![ai-surface attack surface map](https://raw.githubusercontent.com/apisec-inc/AI-Surface/main/docs/images/surface-map.png)
 
 <sub>The <code>--ui</code> map: every detected AI surface as a node, grouped by category, served on loopback.</sub>
 
@@ -123,7 +123,7 @@ ai-surface scan . --baseline --fail-on high   # 3. in CI, fail only on NEW high+
 
 ## What it detects
 
-Eight categories, one per detector. Configuration, keys, and specs are detected on **any stack**; deep code-level detection is strongest on **Python and TypeScript/JavaScript** (full matrix in [`docs/LANGUAGE_SUPPORT.md`](docs/LANGUAGE_SUPPORT.md)).
+Eight categories, one per detector. Configuration, keys, and specs are detected on **any stack**; deep code-level detection is strongest on **Python and TypeScript/JavaScript** (full matrix in [`docs/LANGUAGE_SUPPORT.md`](https://github.com/apisec-inc/AI-Surface/blob/main/docs/LANGUAGE_SUPPORT.md)).
 
 | Category | Coverage | What it finds |
 |---|---|---|
@@ -136,7 +136,7 @@ Eight categories, one per detector. Configuration, keys, and specs are detected 
 | **AI infrastructure** | Manifests + IaC | K8s/Helm/compose workloads (ollama, vllm, TGI, etc.), AI-runtime Dockerfiles, Terraform Bedrock/SageMaker/Vertex endpoints. |
 | **AI provider keys** | Names only | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, etc. across `.env` files. Never reads values. |
 
-Inventory categories carry no invented severity; severity comes only from the deep-dive audit layers (MCP, agents, RAG). See [`docs/DETECTORS.md`](docs/DETECTORS.md) for every pattern matched.
+Inventory categories carry no invented severity; severity comes only from the deep-dive audit layers (MCP, agents, RAG). See [`docs/DETECTORS.md`](https://github.com/apisec-inc/AI-Surface/blob/main/docs/DETECTORS.md) for every pattern matched.
 
 ## Proven on real code
 
@@ -150,11 +150,11 @@ We statically scanned 19 of the most popular open-source AI projects on GitHub (
 | Expose MCP servers | 42% |
 | Run an agent/MCP surface with no observability wired | 33% |
 
-These are category-presence numbers, which are the reliable signal; raw per-component counts are indicative only. Full methodology, per-app appendix, and the honest caveats are in the [State of AI Surface](docs/STATE_OF_AI_SURFACE.md) report.
+These are category-presence numbers, which are the reliable signal; raw per-component counts are indicative only. Full methodology, per-app appendix, and the honest caveats are in the [State of AI Surface](https://github.com/apisec-inc/AI-Surface/blob/main/docs/STATE_OF_AI_SURFACE.md) report.
 
 <div align="center">
 
-![State of AI Surface report](docs/images/state-of-ai-surface.png)
+![State of AI Surface report](https://raw.githubusercontent.com/apisec-inc/AI-Surface/main/docs/images/state-of-ai-surface.png)
 
 </div>
 
@@ -191,7 +191,7 @@ In any non-GitHub CI, the gate is just an exit code:
 ai-surface scan . --fail-on high   # exit 1 if any critical/high finding
 ```
 
-See [`docs/CI_INTEGRATION.md`](docs/CI_INTEGRATION.md) for policy files, thresholds, and multi-repo rollups.
+See [`docs/CI_INTEGRATION.md`](https://github.com/apisec-inc/AI-Surface/blob/main/docs/CI_INTEGRATION.md) for policy files, thresholds, and multi-repo rollups.
 
 ## Output formats
 
@@ -243,7 +243,7 @@ Every audited finding maps to the **OWASP LLM Top 10** and to the specific **EU 
 
 <div align="center">
 
-![Governance evidence and AI-BOM](docs/images/overview-governance.png)
+![Governance evidence and AI-BOM](https://raw.githubusercontent.com/apisec-inc/AI-Surface/main/docs/images/overview-governance.png)
 
 </div>
 
@@ -268,7 +268,7 @@ Every audited finding maps to the **OWASP LLM Top 10** and to the specific **EU 
 | `unverified-source` / `remote-mcp` | LLM03 | | | A.10 |
 | vector store / RAG present | LLM08 | Art. 10 | data | A.7 |
 
-Full detail, including the honesty boundary, is in [`docs/COMPLIANCE.md`](docs/COMPLIANCE.md).
+Full detail, including the honesty boundary, is in [`docs/COMPLIANCE.md`](https://github.com/apisec-inc/AI-Surface/blob/main/docs/COMPLIANCE.md).
 
 ## How it works
 
@@ -290,7 +290,7 @@ flowchart LR
     style G fill:#fef3c7,stroke:#d97706,stroke-width:2px
 ```
 
-The only network call in the whole project is the GitHub Action posting a PR comment via a token your workflow provides. Local CLI runs are 100% offline. Deep dive: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+The only network call in the whole project is the GitHub Action posting a PR comment via a token your workflow provides. Local CLI runs are 100% offline. Deep dive: [`docs/ARCHITECTURE.md`](https://github.com/apisec-inc/AI-Surface/blob/main/docs/ARCHITECTURE.md).
 
 ## Comparison with adjacent tools
 
@@ -348,25 +348,25 @@ ruff check src/ tests/       # lint
 mypy src/                    # types
 ```
 
-Adding a detector: implement the `Detector` protocol in `types.py`, register it in `default_detectors()`, add fixtures and tests under `tests/`. The report shape is frozen in [`docs/SCHEMA_v1.md`](docs/SCHEMA_v1.md). See [CONTRIBUTING.md](CONTRIBUTING.md).
+Adding a detector: implement the `Detector` protocol in `types.py`, register it in `default_detectors()`, add fixtures and tests under `tests/`. The report shape is frozen in [`docs/SCHEMA_v1.md`](https://github.com/apisec-inc/AI-Surface/blob/main/docs/SCHEMA_v1.md). See [CONTRIBUTING.md](https://github.com/apisec-inc/AI-Surface/blob/main/CONTRIBUTING.md).
 
 ## Project
 
 | Resource | Link |
 |---|---|
-| Detectors | [docs/DETECTORS.md](docs/DETECTORS.md) |
-| Compliance mapping | [docs/COMPLIANCE.md](docs/COMPLIANCE.md) |
-| Language support | [docs/LANGUAGE_SUPPORT.md](docs/LANGUAGE_SUPPORT.md) |
-| Architecture | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
-| CI integration | [docs/CI_INTEGRATION.md](docs/CI_INTEGRATION.md) |
-| Report schema | [docs/SCHEMA_v1.md](docs/SCHEMA_v1.md) |
-| State of AI Surface | [docs/STATE_OF_AI_SURFACE.md](docs/STATE_OF_AI_SURFACE.md) |
-| Privacy | [docs/PRIVACY.md](docs/PRIVACY.md) |
-| Changelog | [CHANGELOG.md](CHANGELOG.md) |
+| Detectors | [docs/DETECTORS.md](https://github.com/apisec-inc/AI-Surface/blob/main/docs/DETECTORS.md) |
+| Compliance mapping | [docs/COMPLIANCE.md](https://github.com/apisec-inc/AI-Surface/blob/main/docs/COMPLIANCE.md) |
+| Language support | [docs/LANGUAGE_SUPPORT.md](https://github.com/apisec-inc/AI-Surface/blob/main/docs/LANGUAGE_SUPPORT.md) |
+| Architecture | [docs/ARCHITECTURE.md](https://github.com/apisec-inc/AI-Surface/blob/main/docs/ARCHITECTURE.md) |
+| CI integration | [docs/CI_INTEGRATION.md](https://github.com/apisec-inc/AI-Surface/blob/main/docs/CI_INTEGRATION.md) |
+| Report schema | [docs/SCHEMA_v1.md](https://github.com/apisec-inc/AI-Surface/blob/main/docs/SCHEMA_v1.md) |
+| State of AI Surface | [docs/STATE_OF_AI_SURFACE.md](https://github.com/apisec-inc/AI-Surface/blob/main/docs/STATE_OF_AI_SURFACE.md) |
+| Privacy | [docs/PRIVACY.md](https://github.com/apisec-inc/AI-Surface/blob/main/docs/PRIVACY.md) |
+| Changelog | [CHANGELOG.md](https://github.com/apisec-inc/AI-Surface/blob/main/CHANGELOG.md) |
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. See [LICENSE](https://github.com/apisec-inc/AI-Surface/blob/main/LICENSE).
 
 ---
 

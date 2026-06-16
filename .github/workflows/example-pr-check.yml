@@ -20,7 +20,7 @@ jobs:
           fetch-depth: 0
 
       - name: Run ai-surface
-        uses: apisec-inc/ai-surface@v0
+        uses: apisec-inc/AI-Surface@v1
         with:
           path: '.'
           comment-on-pr: 'true'
