@@ -6,14 +6,19 @@ This document is the **detection contract**. If you're evaluating whether `ai-su
 
 ## Contents
 
-- [LLM SDK call sites](#llm-sdk-call-sites)
 - [Agent frameworks](#agent-frameworks)
 - [MCP servers](#mcp-servers)
+- [Vector stores and RAG](#vector-stores-and-rag)
+- [LLM SDK call sites](#llm-sdk-call-sites)
+- [API endpoints](#api-endpoints)
 - [AI provider env keys](#ai-provider-env-keys)
 - [Model gateways](#model-gateways)
 - [AI infrastructure](#ai-infrastructure)
 - [Risk indicator vocabulary](#risk-indicator-vocabulary)
+- [Governance mapping](#governance-mapping)
 - [Known limitations](#known-limitations)
+
+The eight detector categories: **agent frameworks**, **MCP servers**, **vector stores / RAG**, **LLM SDK call sites**, **API endpoints**, **AI provider env keys**, **model gateways**, and **AI infrastructure**. Configuration, keys, and specs are detected on any stack; deep code-level detection is strongest on Python and TypeScript/JavaScript (see [LANGUAGE_SUPPORT.md](LANGUAGE_SUPPORT.md)).
 
 ## LLM SDK call sites
 
@@ -57,15 +62,38 @@ Recognized model name patterns:
 
 ### Risk indicators
 
-- `non-literal data flows into LLM call`: variable references in `messages=` or `prompt=` kwargs (regex-based today; AST in v0.6 for higher precision)
+- `non-literal data flows into LLM call`: variable references in `messages=` or `prompt=` kwargs (regex-based today; AST for higher precision is a roadmap item)
+
+## API endpoints
+
+Detector: `src/ai_surface/detectors/api_endpoints.py`
+
+Scans OpenAPI / Swagger specs and framework route definitions for the HTTP surface that fronts the application (the API the AI layer, and everyone else, is reached through). Selectable with `--categories api`.
+
+### Sources detected
+
+| Source | What we read |
+|---|---|
+| **OpenAPI / Swagger** | every `path` + method pair in `openapi.yaml` / `swagger.json` (and JSON variants) |
+| **FastAPI / Starlette** | `@app.get/post/...`, `APIRouter` routes (with `prefix=` resolution) |
+| **Flask** | `@app.route(...)`, blueprint routes |
+| **Express** | `app.get/post/...`, `router.<verb>(...)` |
+| **Spring** | `@GetMapping` / `@PostMapping` / `@RequestMapping` (Java) |
+| **Django** | `urlpatterns` `path()` / `re_path()` |
+
+Captures method, path, framework, and detected auth style (bearer, basic, api-key, none).
+
+### Risk indicators
+
+- `object-id in path (BOLA candidate)`: the route carries an object-id segment (`{id}`, `:id`, `<int:id>`), the structural precondition for Broken Object-Level Authorization. This is the single most common finding on real apps.
 
 ## Agent frameworks
 
 Detector: `src/ai_surface/detectors/agent_frameworks.py`
 
-Scans Python source for agent framework imports, named agent definitions, and per-agent tool inventories.
+Scans Python and JS/TS source for agent framework imports, named agent definitions, and per-agent tool inventories. Agents defined only inside test/spec files are excluded (they are not part of an application's real AI surface).
 
-### Frameworks detected
+### Frameworks detected (Python)
 
 | Framework | Display name | Import roots | Specific pattern |
 |---|---|---|---|
@@ -79,22 +107,31 @@ Scans Python source for agent framework imports, named agent definitions, and pe
 | **Pydantic AI** | Pydantic AI | `pydantic_ai` | `agent = Agent(...)` |
 | **AWS Strands** | AWS Strands | `strands` | `agent = Agent(model=..., tools=...)`, `@tool` decorators |
 
+### Frameworks detected (JavaScript / TypeScript)
+
+| Framework | Import roots | Specific pattern |
+|---|---|---|
+| **LangChain.js** | `langchain`, `@langchain` | `AgentExecutor`, `createToolCallingAgent`, `initializeAgentExecutorWithOptions` |
+| **LangGraph.js** | `@langchain/langgraph` | `new StateGraph()`, `createReactAgent()` |
+| **Vercel AI SDK** | `ai`, `@ai-sdk` | `generateText({tools})`, `streamText({tools})` (only when tools are wired) |
+| **Mastra** | `@mastra/core`, `@mastra` | `new Agent({...})`, `createAgent()` |
+| **OpenAI Agents** | `@openai/agents` | `new Agent({...})` |
+| **LlamaIndex.ts** | `llamaindex` | `OpenAIAgent`, `ReActAgent` |
+
 ### Tool extraction methods
 
-For each named agent, `ai-surface` tries to extract tool inventories from (in priority order):
+For each named agent, `ai-surface` extracts tool inventories from (in priority order): the `tools=[...]` block inside the constructor; a `tools=<var>` kwarg resolved to an in-file list variable; the nearest `tools=[...]` block in the same file; `@tool`-decorated functions; Anthropic-shape `tools=[{"name": "x"}]` dict literals; and, for JS/TS, the Vercel-style `tools: { name: tool({...}) }` object keys. Tools built by a factory call (`tools=make_tools()`) need cross-file dataflow and are a roadmap item.
 
-1. `tools=[Tool(name="x", ...), ...]` block inside the agent constructor
-2. The nearest `tools=[...]` block in the same file (within 30 lines)
-3. `@tool` or `@strands_tool` decorated functions in the same file
-4. Anthropic-shape `tools=[{"name": "x"}, ...]` dict literals
+### Risk indicators and audit flags
 
-### Risk indicators
-
-- `financial action exposed`: tool name contains `refund`, `payment`, `charge`, `transfer`, `withdraw`, `payout`, `invoice`
+- `financial action exposed`: tool name contains `refund`, `payment(s)`, `charge(s)`, `transfer`, `withdraw`, `payout(s)`, `invoice(s)`
 - `destructive action exposed`: tool name contains `delete`, `drop`, `truncate`, `remove`, `purge`, `destroy`
-- `messaging action exposed`: tool name is `send_email`, `send_message`, `send_slack`, `send_sms`, or `post_to_*`
-- `database write exposed`: tool name is `write_db`, `update_record`, `insert`, `modify`, or starts with `set_` / `save_`
-- `high blast-radius combination`: agent has both a "read" tool (query, get, fetch, search, lookup, read, list, find) AND any write tool
+- `messaging action exposed`: `send_email`, `send_message`, `send_slack`, `send_sms`, `post_to_*`
+- `database write exposed`: `write_db`, `update_record`, `insert`, `modify`, `set_*`, `save_*`
+- `high blast-radius combination`: agent has both a read tool AND any write tool
+- `pii-to-llm` (audit): customer PII (email / address / SSN patterns) interpolated into a prompt the agent sends (maps to LLM02 / EU Art. 10)
+- `no-human-oversight` (audit): a financial / destructive / high-blast-radius agent with no approval gate on its path (EU Art. 14)
+- `no-observability` (audit): an agent surface in a repo that wires no AI tracing anywhere (EU Art. 12 / NIST MEASURE 3 / ISO A.6.2.6)
 
 ## MCP servers
 
@@ -127,6 +164,51 @@ Extracts: tool registrations (`@tool`, `server.tool(...)`, etc.).
 - `broad permissions`: MCP server has admin, write, or delete capabilities declared
 - `in-house MCP server (custom code, audit recommended)`: flagged on every source-resident server, signaling to reviewers that custom code needs deeper inspection
 - `financial action exposed`, `destructive action exposed`, `messaging action exposed`, `database write exposed`: applied to MCP server tool catalogs using the same vocabulary as agents
+- `secrets-in-env` / `secrets-detected` (audit): a live secret in the MCP env block or config (reported by NAME and TYPE only, values redacted; LLM02 / EU Art. 15)
+- `unverified-source` (audit): the server is not found in a known registry (LLM03 / ISO A.10)
+- `no-human-oversight`, `no-observability` (audit): same semantics as for agents
+
+## Vector stores and RAG
+
+Detector: `src/ai_surface/detectors/vector_rag.py`
+
+Scans Python, JS/TS, and `.sql` for vector databases and retrieval-augmented-generation pipelines. RAG is the dominant enterprise AI pattern, so the retrieval layer is a first-class surface.
+
+### Stores detected
+
+| Store | Type | Matched on |
+|---|---|---|
+| **Pinecone** | managed | `pinecone` import, `@pinecone-database/pinecone`, `PINECONE_API_KEY`, LangChain wrapper |
+| **Weaviate** | managed | `weaviate` import, `weaviate-client`, LangChain wrapper |
+| **Marqo** | managed | `marqo` import, LangChain wrapper |
+| **Chroma** | self-hosted | `chromadb` import, LangChain wrapper |
+| **Qdrant** | self-hosted | `qdrant_client`, `@qdrant/js-client-rest`, `QdrantClient(`, LangChain wrapper |
+| **Milvus** | self-hosted | `pymilvus`, `@zilliz/milvus2-sdk-node`, LangChain wrapper |
+| **pgvector** | self-hosted | `pgvector` import, SQL `CREATE EXTENSION vector` / `USING ivfflat\|hnsw`, `langchain_postgres`, `PGVector` |
+| **Elasticsearch (vector)** | self-hosted | `ElasticsearchStore`, `dense_vector`, `langchain_elasticsearch` |
+| **OpenSearch (vector)** | self-hosted | `OpenSearchVectorSearch`, `knn_vector`, LangChain wrapper |
+| **Vespa** | self-hosted | `vespa` / `pyvespa` import, `VespaStore` |
+| **Redis (vector)** | self-hosted | `RedisVectorStore`, `RediSearch`, LangChain wrapper |
+| **FAISS** | embedded | `faiss` import, `faiss-node`, LangChain wrapper |
+| **LanceDB** | embedded | `lancedb` import, `@lancedb/lancedb`, `vectordb`, LangChain wrapper |
+
+Search engines (Elasticsearch / OpenSearch / Redis) are matched only on vector-specific signals, so plain logging or search use is not mis-flagged.
+
+### RAG pipelines detected
+
+| Framework | Matched on |
+|---|---|
+| **LangChain** | `langchain...vectorstores`, `.as_retriever()` / `.asRetriever()`, `RetrievalQA`, `VectorStoreRetriever` |
+| **LlamaIndex** | `VectorStoreIndex`, `.as_query_engine()`, `VectorIndexRetriever` |
+
+### Risk indicators
+
+- `managed vector store (indexed data and embeddings leave your environment)`: a cloud/SaaS store
+- `retrieved content reaches the model (retrieval-augmented generation)`: a RAG retriever construct is present
+- `application data embedded for retrieval`: embeddings (`OpenAIEmbeddings`, `embed_query`, `text-embedding-*`, etc.) detected
+- `ingests external content (RAG poisoning surface)`: an external loader (`WebBaseLoader`, `RecursiveUrlLoader`, `SitemapLoader`, `FireCrawlLoader`, etc.) feeds the index
+
+All vector/RAG findings map to OWASP LLM08 and the EU Art. 10 / ISO A.7 data-governance clauses.
 
 ## AI provider env keys
 
@@ -209,41 +291,48 @@ Dockerfiles (`Dockerfile`, `*.Dockerfile`, `Containerfile`) match on the `FROM` 
 
 ## Risk indicator vocabulary
 
-The complete list of 13 risk indicators v0.5 can emit:
+Severity-free inventory indicators (for human review):
 
 | Indicator | Category | What it means |
 |---|---|---|
 | `broad permissions` | MCP | MCP server with admin/write/delete capabilities |
-| `in-house MCP server (custom code, audit recommended)` | MCP | Custom MCP server code; deeper review warranted |
-| `financial action exposed` | Agent / MCP | refund / payment / charge tool present |
+| `in-house MCP server` | MCP | Custom MCP server code; deeper review warranted |
+| `financial action exposed` | Agent / MCP | refund / payment / charge / payout tool present |
 | `destructive action exposed` | Agent / MCP | delete / drop / truncate tool present |
 | `messaging action exposed` | Agent / MCP | send_email / send_slack / send_sms tool present |
 | `database write exposed` | Agent / MCP | DB mutation tool present |
 | `high blast-radius combination` | Agent | Agent holds both read AND destructive/financial tools |
+| `object-id in path (BOLA candidate)` | API | Route with an object-id segment |
+| `managed vector store` | Vector/RAG | Indexed data and embeddings leave the environment |
+| `ingests external content` | Vector/RAG | RAG poisoning surface (external loader) |
 | `non-literal data flows into LLM call` | LLM SDK | Variable input to messages= or prompt= |
 | `multiple AI provider keys present` | Env keys | More than one provider configured |
-| `observability/tracing key present` | Env keys | LangSmith / Helicone / Arize key configured |
 | `multi-model routing layer` | Gateway | Production traffic flows through gateway |
 | `self-hosted LLM runtime` | Infra | Team operates the LLM server itself |
 | `high-cost AI infrastructure` | Infra | Bedrock provisioned throughput or large GPU instances |
 
+Structured **audit flags** (carry a severity, OWASP id, governance clauses, and remediation): `secrets-detected`, `secrets-in-env`, `financial-action`, `destructive-action`, `high-blast-radius`, `no-human-oversight`, `no-observability`, `pii-to-llm`, `unverified-source`, `remote-mcp`, plus capability flags (shell / filesystem / database / network). See [COMPLIANCE.md](COMPLIANCE.md) for the full flag-to-clause mapping.
+
+## Governance mapping
+
+Every audited finding maps to the OWASP LLM Top 10 and to the specific EU AI Act / NIST AI RMF / ISO 42001 clauses it evidences. The full mapping tables live in [**COMPLIANCE.md**](COMPLIANCE.md). The mappings appear as badges in the `--ui`, as a `standards` array on each risk flag in the JSON output, and as component properties in the CycloneDX AI-BOM.
+
 ## Known limitations
 
-`ai-surface` v0.5 is honest about what it does and doesn't see:
+`ai-surface` is honest about what it does and doesn't see:
 
 **Detection limitations:**
 
-- Regex-based tool resolution (AST in v0.6 for higher precision)
-- Single-document YAML parsing only (v0.6 adds multi-document)
-- Cross-file dataflow is approximate; we use file-local heuristics for now
-- We don't detect prompt templates, RAG pipelines, fine-tuning code, eval pipelines, or AI guardrails as separate categories (future specialist tools cover these)
+- Regex/AST-light tool resolution; tools built by factory functions across files are not yet resolved (AST/dataflow is the top roadmap item). Treat the map as a strong floor, not a proof of completeness.
+- Cross-file dataflow is approximate; we use file-local heuristics for now.
+- Code-level agent / LLM detection covers Python and TS/JS; other stacks get the config / spec / key baseline (see [LANGUAGE_SUPPORT.md](LANGUAGE_SUPPORT.md)).
 
 **By-design exclusions:**
 
 - Local developer AI tools (Cursor, Claude Code, Copilot) are NOT in scope. This tool is about AI in shipping application code.
 - Runtime behavior monitoring is NOT in scope. Use Helicone, LangSmith, Arize, or Phoenix for that.
-- Prompt-injection or LLM behavior testing is NOT in scope. See the APIsec platform for runtime exploit validation.
-- Live cluster scanning is NOT in scope today (planned for v0.7).
+- Prompt-injection, jailbreak, bias, or accuracy / model-behavior testing is NOT in scope, permanently and by design. See the APIsec platform for runtime exploit validation.
+- Live cluster scanning is NOT in scope today (on the roadmap).
 
 For coverage gaps not on this list, [file a false-negative issue](https://github.com/apisec-inc/AI-Surface/issues/new?template=false-negative.yml).
 

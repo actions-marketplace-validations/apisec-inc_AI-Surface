@@ -45,6 +45,16 @@ def test_resolve_categories_aliases() -> None:
     }
 
 
+def test_resolve_categories_api_and_vector_aliases() -> None:
+    from ai_surface.types import CATEGORY_API, CATEGORY_VECTOR_STORE
+
+    assert _resolve_categories("api") == {CATEGORY_API}
+    assert _resolve_categories("apis") == {CATEGORY_API}
+    assert _resolve_categories("vector") == {CATEGORY_VECTOR_STORE}
+    assert _resolve_categories("rag") == {CATEGORY_VECTOR_STORE}
+    assert _resolve_categories("vector-store") == {CATEGORY_VECTOR_STORE}
+
+
 def test_resolve_categories_case_insensitive() -> None:
     assert _resolve_categories("MCP") == {CATEGORY_MCP_SERVER}
     assert _resolve_categories("Agents") == {CATEGORY_AGENT_FRAMEWORK}

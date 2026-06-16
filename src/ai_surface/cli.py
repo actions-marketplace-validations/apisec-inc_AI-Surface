@@ -16,10 +16,12 @@ from .types import (
     ALL_CATEGORIES,
     CATEGORY_AGENT_FRAMEWORK,
     CATEGORY_AI_INFRA,
+    CATEGORY_API,
     CATEGORY_ENV_KEY,
     CATEGORY_LLM_SDK,
     CATEGORY_MCP_SERVER,
     CATEGORY_MODEL_GATEWAY,
+    CATEGORY_VECTOR_STORE,
 )
 
 app = typer.Typer(
@@ -66,6 +68,16 @@ CATEGORY_ALIASES: Dict[str, str] = {
     "env-key": CATEGORY_ENV_KEY,
     "env-keys": CATEGORY_ENV_KEY,
     "keys": CATEGORY_ENV_KEY,
+    # API endpoints
+    "api": CATEGORY_API,
+    "apis": CATEGORY_API,
+    "endpoint": CATEGORY_API,
+    "endpoints": CATEGORY_API,
+    # Vector stores / RAG
+    "vector": CATEGORY_VECTOR_STORE,
+    "vector-store": CATEGORY_VECTOR_STORE,
+    "vector-stores": CATEGORY_VECTOR_STORE,
+    "rag": CATEGORY_VECTOR_STORE,
 }
 
 
@@ -105,7 +117,7 @@ def _resolve_categories(requested: Optional[str]) -> Optional[Set[str]]:
         )
         err_console.print(f"[dim]valid categories: {', '.join(valid_names)}[/dim]")
         err_console.print(
-            "[dim]aliases accepted: mcp, agents, llm, gateway, infra, keys[/dim]"
+            "[dim]aliases accepted: mcp, agents, llm, gateway, infra, keys, api, vector[/dim]"
         )
         raise typer.Exit(code=2)
     return canonical

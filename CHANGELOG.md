@@ -4,6 +4,35 @@ All notable changes to `ai-surface` will be documented in this file. The format 
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-06-15
+
+The 1.0 release. The MCP deep-dive audit is merged in, two new detector categories ship, every audited finding now maps to AI-governance frameworks, and the whole tool has been validated against 19 popular public AI repositories.
+
+### Added
+
+- **Vector store / RAG detector (8th category).** Detects Pinecone, Weaviate, Chroma, Qdrant, Milvus, FAISS, LanceDB, pgvector, and Elasticsearch / OpenSearch / Vespa / Redis in vector mode, plus LangChain and LlamaIndex retrieval pipelines, across Python, JS/TS, and `.sql`. Flags managed-store egress, the RAG data flow, embeddings, and external ingestion (the poisoning surface). Maps to OWASP LLM08 and EU Art. 10 / ISO A.7.
+- **API endpoint detector.** OpenAPI / Swagger specs and framework routes (FastAPI / Starlette with `APIRouter` prefix resolution, Flask, Express, Spring, Django), with method / path / auth-style capture and BOLA-candidate flagging on object-id path segments.
+- **MCP deep-dive audit merged in** (the former `mcp-audit` tool): severity, risk flags with OWASP-LLM mappings and remediation, detected secrets by NAME and TYPE only (values redacted), and registry / trust signals.
+- **Agent and RAG audits** with `financial-action`, `destructive-action`, `high-blast-radius`, `no-human-oversight`, `pii-to-llm`, and `no-observability` flags.
+- **JS/TS agent detection**: LangChain.js, LangGraph.js, Vercel AI SDK, Mastra, OpenAI Agents, LlamaIndex.ts, with tool extraction.
+- **Governance mapping.** Every audited finding maps to OWASP LLM Top 10 and the specific EU AI Act / NIST AI RMF / ISO 42001 clauses it evidences. Rendered as badges in the UI, as a `standards` array per risk flag in JSON, and in the CycloneDX AI-BOM. New `docs/COMPLIANCE.md`.
+- **CycloneDX AI-BOM** (`--output cyclonedx`) and **SARIF 2.1.0** (`--output sarif`) reporters.
+- **Interactive `--ui` attack-surface map** served on loopback, with the governance-evidence bar and AI-BOM download.
+- **`--categories` aliases for `api` and `vector`/`rag`** so the new categories are selectable by short name.
+- **`docs/STATE_OF_AI_SURFACE.md`**: results of scanning 19 popular public AI repos (about 941k combined stars); 12/12 applications trip at least one risk and one governance rule.
+
+### Fixed
+
+- These three efficacy bugs were found and fixed by running against the 19 public repos:
+  - Agents defined only inside test/spec files were counted as real surfaces; test paths are now excluded.
+  - Observability was credited from dependency manifests and lockfiles, so a transitive `langsmith` dependency of `langchain` made every such repo look "observed." Observability now requires real wiring (a source import or an enabled tracing flag); manifests and lockfiles are excluded.
+  - The bare word `weave` matched inside minified Next.js `_next` build bundles; `_next` is now skipped and the signal requires real W&B Weave usage.
+
+### Changed
+
+- The category count is now **8** (added vector/RAG and API endpoints). README, DETECTORS, and LANGUAGE_SUPPORT updated accordingly.
+- Test suite expanded to **340 passing**.
+
 ## [0.5.3] - 2026-05-28
 
 ### Added
