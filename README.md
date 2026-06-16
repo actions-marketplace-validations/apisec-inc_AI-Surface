@@ -75,9 +75,6 @@ pip install ai-surface && ai-surface scan .
 
 # Explore the results visually
 ai-surface scan . --ui
-
-# Docker, if you would rather not touch host Python
-docker run --rm -v "$PWD":/src ghcr.io/apisec-inc/ai-surface scan /src
 ```
 
 Requires Python 3.9+. The CLI scan runs 100% locally; `--ui` serves on loopback only.
