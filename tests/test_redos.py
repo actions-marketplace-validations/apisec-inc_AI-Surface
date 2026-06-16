@@ -45,3 +45,26 @@ def test_agent_framework_detector_resists_redos(tmp_path: Path) -> None:
     # We don't care what the inventory looks like for hostile input — only
     # that the scan completes in bounded time.
     assert isinstance(findings, list)
+
+
+def test_yaml_top_value_no_redos_on_space_run() -> None:
+    """A key followed by a long space run + comment must not backtrack (ReDoS)."""
+    import time
+
+    from ai_surface.utils.specs import yaml_top_value
+
+    evil = "kind:" + " " * 20000 + "#"
+    start = time.time()
+    yaml_top_value(evil, "kind")
+    assert time.time() - start < 1.0
+
+
+def test_id_segment_no_redos_on_unbalanced_braces() -> None:
+    """Many unbalanced path-param braces must not backtrack (ReDoS)."""
+    import time
+
+    from ai_surface.detectors.api_endpoints import _has_id_segment
+
+    start = time.time()
+    _has_id_segment("/" + "{" * 30000)
+    assert time.time() - start < 1.0

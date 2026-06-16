@@ -65,7 +65,7 @@ def test_fail_on_high_trips_on_critical_mcp() -> None:
     result = runner.invoke(app, ["scan", E2E, "--fail-on", "high", "--quiet"])
     assert result.exit_code == 1
     assert "fail-on high" in result.output
-    assert "stripe-mcp" in result.output  # actionable: names the offender
+    assert "billing-mcp" in result.output  # actionable: names the offender
 
 
 def test_fail_on_high_passes_when_only_inventory() -> None:

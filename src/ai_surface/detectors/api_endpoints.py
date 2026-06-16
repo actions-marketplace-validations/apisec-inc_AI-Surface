@@ -50,13 +50,15 @@ _HTTP_METHODS = ("get", "post", "put", "delete", "patch", "head", "options", "tr
 #   {id}, {orderId}, {order_id}      -- OpenAPI / FastAPI / Express(:style aside)
 #   :id, :orderId                    -- Express / some routers
 #   <int:id>, <id>, <slug:name>      -- Flask / Django converters
-_ID_SEGMENT_RE = re.compile(
-    r"""
-    \{ [^}/]*? id [^}/]*? \}        # {id}, {orderId}, {order_id}
-  | : [A-Za-z_]*? id [A-Za-z0-9_]* # :id, :orderId
-  | < (?:[^>/]*:)? [^>/]*? id [^>/]*? > # <int:id>, <id>, <slug:user_id>
-    """,
-    re.VERBOSE | re.IGNORECASE,
+# Path parameter segments, matched with single bounded character classes so a
+# hostile path (e.g. thousands of unbalanced `{`) cannot drive backtracking.
+# Each segment's name is then checked for "id" membership in Python rather than
+# embedding a literal between two lazy quantifiers (the previous ReDoS shape):
+#   {id}, {orderId}, {order_id}   -- OpenAPI / FastAPI / Express
+#   :id, :orderId                 -- Express / some routers
+#   <int:id>, <id>, <slug:name>   -- Flask / Django converters
+_PARAM_SEGMENT_RE = re.compile(
+    r"\{[^{}/]*\}|:[A-Za-z0-9_]+|<[^<>/]*>",
 )
 
 _BOLA_INDICATOR = "object-id in path (BOLA candidate)"
@@ -64,7 +66,14 @@ _BOLA_INDICATOR = "object-id in path (BOLA candidate)"
 
 def _has_id_segment(path: str) -> bool:
     """True if the path contains an id-like (object reference) segment."""
-    return _ID_SEGMENT_RE.search(path) is not None
+    for seg in _PARAM_SEGMENT_RE.findall(path):
+        name = seg.strip("{}<>:")
+        # For typed converters like <int:user_id>, the name is after the colon.
+        if ":" in name:
+            name = name.rsplit(":", 1)[-1]
+        if "id" in name.lower():
+            return True
+    return False
 
 
 def _risk_indicators_for(path: str) -> list[str]:

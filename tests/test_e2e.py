@@ -17,9 +17,12 @@ from ai_surface.reporters.terminal_reporter import render_terminal
 
 FIXTURE = str(Path(__file__).parent / "fixtures" / "e2e_app")
 
-# Distinctive fragment of the fake secret planted in the fixture's .mcp.json.
-# It must never appear in any rendered output.
-PLANTED_SECRET_FRAGMENT = "sk_live_FAKE0123456789"
+# Distinctive fragment of the fake secret planted in the fixture's .mcp.json
+# (a DB connection string with embedded credentials). It must never appear in
+# any rendered output. A connection-string secret is used instead of a Stripe
+# key so the fixture file does not trip provider secret-scanning push protection
+# on the public repo; Stripe-key detection is covered by test_mcp_audit.py.
+PLANTED_SECRET_FRAGMENT = "FAKEpw_must_not_leak_8f3a2b1c"
 
 
 def _scan():
@@ -95,4 +98,4 @@ def test_e2e_secret_value_never_leaks_in_any_reporter() -> None:
     for name, out in [("json", json_out), ("markdown", md_out), ("terminal", term_out)]:
         assert PLANTED_SECRET_FRAGMENT not in out, f"secret value leaked into {name} output"
     # The secret NAME is still surfaced (so the finding is actionable).
-    assert "STRIPE_SECRET_KEY" in json_out
+    assert "DATABASE_URL" in json_out

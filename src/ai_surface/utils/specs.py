@@ -94,15 +94,31 @@ def split_yaml_documents(text: str) -> list[str]:
 
 
 def yaml_top_value(doc: str, key: str) -> str | None:
-    """Extract a top-level scalar value (no indentation) from a YAML doc."""
+    """Extract a top-level scalar value (no indentation) from a YAML doc.
+
+    The value is captured with a single greedy ``[^\\n]*`` to the end of the
+    line (linear, no backtracking) and then trimmed in Python. The previous
+    lazy-quantifier-plus-trailing-anchor form catastrophically backtracked on a
+    key line followed by a long run of spaces, so an ~8 KB crafted YAML file
+    could hang the whole scan (ReDoS).
+    """
     m = re.search(
-        rf"^{re.escape(key)}\s*:\s*['\"]?([^'\"\n#]+?)['\"]?\s*$",
+        rf"^{re.escape(key)}[ \t]*:[ \t]*([^\n]*)$",
         doc,
         re.MULTILINE,
     )
     if not m:
         return None
-    return m.group(1).strip() or None
+    value = m.group(1).strip()
+    # Strip an inline comment (` #...`) unless the value is quoted.
+    if value[:1] not in ("'", '"'):
+        hash_at = value.find(" #")
+        if hash_at != -1:
+            value = value[:hash_at].rstrip()
+    # Strip a single layer of surrounding matching quotes.
+    if len(value) >= 2 and value[0] in "'\"" and value[-1] == value[0]:
+        value = value[1:-1]
+    return value.strip() or None
 
 
 def yaml_nested_value(doc: str, path: list[str]) -> str | None:

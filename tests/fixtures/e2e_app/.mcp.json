@@ -1,10 +1,10 @@
 {
   "mcpServers": {
-    "stripe-mcp": {
+    "billing-mcp": {
       "command": "npx",
-      "args": ["stripe-mcp"],
+      "args": ["billing-mcp"],
       "env": {
-        "STRIPE_SECRET_KEY": "sk_live_REDACTED_FIXTUREßleak"
+        "DATABASE_URL": "postgresql://billing_admin:FAKEpw_must_not_leak_8f3a2b1c@db.example.com:5432/payments"
       }
     }
   }
