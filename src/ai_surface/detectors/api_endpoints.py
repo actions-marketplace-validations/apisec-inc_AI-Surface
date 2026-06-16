@@ -46,10 +46,6 @@ except ImportError:  # pragma: no cover - exercised only without PyYAML
 
 _HTTP_METHODS = ("get", "post", "put", "delete", "patch", "head", "options", "trace")
 
-# id-like path segments that flag a likely object reference (BOLA candidate):
-#   {id}, {orderId}, {order_id}      -- OpenAPI / FastAPI / Express(:style aside)
-#   :id, :orderId                    -- Express / some routers
-#   <int:id>, <id>, <slug:name>      -- Flask / Django converters
 # Path parameter segments, matched with single bounded character classes so a
 # hostile path (e.g. thousands of unbalanced `{`) cannot drive backtracking.
 # Each segment's name is then checked for "id" membership in Python rather than
@@ -521,7 +517,7 @@ class ApiEndpointDetector:
         # Deduplicate identical (method, path, framework/source, file) surfaces.
         seen: set[tuple[str, str, str]] = set()
 
-        for file_path in walk_files(root_path, extensions=list(_ALL_EXTS)):
+        for file_path in walk_files(root_path, extensions=list(_ALL_EXTS), skip_tests=True):
             text = read_text_safe(file_path)
             if not text:
                 continue

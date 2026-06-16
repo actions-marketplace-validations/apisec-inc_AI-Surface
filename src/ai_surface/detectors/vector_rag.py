@@ -151,7 +151,7 @@ class VectorRagDetector:
         repo_has_external_loader = False
         repo_has_rag = False  # any framework retriever construct present
 
-        for file_path in walk_files(root_path, extensions=list(_EXTENSIONS)):
+        for file_path in walk_files(root_path, extensions=list(_EXTENSIONS), skip_tests=True):
             text = read_text_safe(file_path)
             if not text:
                 continue

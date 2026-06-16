@@ -227,7 +227,7 @@ class LlmSdkDetector:
         call_count_by_sdk: dict[str, int] = {}
         flow_risk_by_sdk: dict[str, bool] = {}
 
-        for file_path in walk_files(root_path, extensions=list(self.EXTENSIONS)):
+        for file_path in walk_files(root_path, extensions=list(self.EXTENSIONS), skip_tests=True):
             text = read_text_safe(file_path)
             if not text:
                 continue

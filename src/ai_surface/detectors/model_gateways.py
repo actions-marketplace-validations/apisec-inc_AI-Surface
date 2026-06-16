@@ -115,7 +115,7 @@ class ModelGatewayDetector:
                 )
 
         # Pass 2: source files for gateway imports / URL refs and litellm proxy.
-        for path in walk_files(root_path, extensions=list(_SOURCE_EXTENSIONS)):
+        for path in walk_files(root_path, extensions=list(_SOURCE_EXTENSIONS), skip_tests=True):
             text = read_text_safe(path)
             if not text:
                 continue

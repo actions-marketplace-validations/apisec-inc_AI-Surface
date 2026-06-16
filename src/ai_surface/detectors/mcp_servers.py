@@ -127,7 +127,7 @@ class McpServerDetector:
     def _detect_source(self, root_path: str) -> list[Finding]:
         out: list[Finding] = []
         exts = [".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"]
-        for path in walk_files(root_path, extensions=exts):
+        for path in walk_files(root_path, extensions=exts, skip_tests=True):
             text = read_text_safe(path)
             if not text:
                 continue

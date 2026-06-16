@@ -128,6 +128,7 @@ def walk_files(
     root: str,
     extensions: list[str] | None = None,
     follow_symlinks: bool = False,
+    skip_tests: bool = False,
 ) -> Iterator[Path]:
     """Yield file paths under `root`, respecting .gitignore and ALWAYS_SKIP_DIRS.
 
@@ -136,6 +137,10 @@ def walk_files(
         extensions: optional list of file extensions to filter (with or without dot).
                     Example: [".py", "py", ".ts"]. None = all files.
         follow_symlinks: whether to follow symlinks. Default False for safety.
+        skip_tests: when True, skip files that look like test/spec scaffolding
+                    (see :func:`is_test_path`). Code-level detectors set this so
+                    an AI surface defined only in a test is not inventoried as
+                    production surface. Config/key/spec detectors leave it False.
 
     Yields:
         Path objects (absolute) for each matching file.
@@ -175,6 +180,8 @@ def walk_files(
                 continue
             full = Path(dirpath) / fname
             if ext_filter is not None and full.suffix.lower() not in ext_filter:
+                continue
+            if skip_tests and is_test_path(full.relative_to(root_path).as_posix()):
                 continue
             if gitignore is not None:
                 rel = full.relative_to(root_path).as_posix()

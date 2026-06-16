@@ -631,7 +631,7 @@ class AgentFrameworkDetector:
         anthropic_tool_blocks: list[_AgentDef] = []
 
         # --- Python pass ---
-        for path in walk_files(root_path, extensions=[".py"]):
+        for path in walk_files(root_path, extensions=[".py"], skip_tests=True):
             text = read_text_safe(path)
             if not text:
                 continue
@@ -673,7 +673,7 @@ class AgentFrameworkDetector:
                     )
 
         # --- JavaScript / TypeScript pass ---
-        for path in walk_files(root_path, extensions=_JS_EXTENSIONS):
+        for path in walk_files(root_path, extensions=_JS_EXTENSIONS, skip_tests=True):
             text = read_text_safe(path)
             if not text:
                 continue

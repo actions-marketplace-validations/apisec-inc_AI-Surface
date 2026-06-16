@@ -125,3 +125,18 @@ def test_walk_skips_next_build_output(tmp_path: Path) -> None:
     names = sorted(p.name for p in walk_files(str(tmp_path)))
     assert "app.py" in names
     assert "514-abc.js" not in names
+
+
+def test_walk_skip_tests_excludes_test_paths(tmp_path: Path) -> None:
+    _make(tmp_path, "app/main.py")
+    _make(tmp_path, "tests/test_main.py")
+    _make(tmp_path, "src/__tests__/x.ts")
+    _make(tmp_path, "lib/util.spec.ts")
+    got = {p.relative_to(tmp_path).as_posix() for p in walk_files(str(tmp_path), skip_tests=True)}
+    assert "app/main.py" in got
+    assert "tests/test_main.py" not in got
+    assert "src/__tests__/x.ts" not in got
+    assert "lib/util.spec.ts" not in got
+    # default (skip_tests=False) keeps everything
+    allf = {p.relative_to(tmp_path).as_posix() for p in walk_files(str(tmp_path))}
+    assert "tests/test_main.py" in allf
