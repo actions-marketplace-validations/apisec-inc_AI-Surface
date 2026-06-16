@@ -198,7 +198,7 @@ def _report_from_dict(data: Mapping[str, Any]) -> Report:
         scan_root=_sanitise_loaded_scan_root(str(data.get("scan_root", ""))),
         scan_timestamp=str(data.get("scan_timestamp", "")),
         detectors_run=list(data.get("detectors_run", []) or []),
-        schema_version=str(data.get("schema_version", "0.5")),
+        schema_version=str(data.get("schema_version", "1.0")),
         tool_version=str(data.get("tool_version", _TOOL_VERSION)),
         errors=list(data.get("errors", []) or []),
     )

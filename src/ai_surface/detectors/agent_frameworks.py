@@ -6,8 +6,9 @@ agent exposes. The tool list is the load-bearing differentiator vs. generic
 "AI inventory" tools: knowing an agent has authority over `refund_payment` is
 materially different from knowing the repo "uses LangChain".
 
-v0.5 scope: Python-only. AST-free regex/string matching. Good enough for the
-common patterns; v0.6 should move to AST + cross-file dataflow.
+Python and JS/TS, AST-free regex/string matching with bracket-balanced
+argument extraction. Good enough for common patterns; cross-file dataflow
+(factory-built tool lists) remains a roadmap item.
 """
 from __future__ import annotations
 

@@ -87,7 +87,7 @@ _SIGNAL_RE = re.compile(
 _RELEVANT_EXTS = frozenset(
     {
         ".py", ".js", ".ts", ".tsx", ".jsx", ".mjs", ".cjs",
-        ".json", ".yaml", ".yml", ".toml", ".cfg", ".ini", ".txt", ".sh",
+        ".json", ".yaml", ".yml", ".toml", ".cfg", ".ini", ".sh",
     }
 )
 

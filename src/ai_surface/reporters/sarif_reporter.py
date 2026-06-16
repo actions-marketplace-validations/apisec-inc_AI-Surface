@@ -30,6 +30,7 @@ _CATEGORY_LABEL = {
     "ai-infra": "AI infrastructure",
     "env-key": "AI provider key reference",
     "api": "HTTP/REST endpoint",
+    "vector-store": "Vector store / RAG pipeline",
 }
 
 # SARIF result levels: error blocks, warning surfaces, note is informational.

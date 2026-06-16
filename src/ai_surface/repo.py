@@ -10,6 +10,7 @@ any report.
 """
 from __future__ import annotations
 
+import ipaddress
 import re
 import shutil
 import subprocess
@@ -18,6 +19,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Callable
+from urllib.parse import urlsplit
 
 # Only https git URLs. No ssh, no file://, no shell metacharacters. We pass
 # args as a list (never shell=True), so this is defense-in-depth, not the only
@@ -36,6 +38,28 @@ def _validate_url(url: str) -> None:
         )
     if ".." in url:
         raise RepoError("invalid repository URL")
+    parts = urlsplit(url)
+    # Credentials belong in the token argument, never embedded in the URL.
+    if parts.username or parts.password or "@" in parts.netloc:
+        raise RepoError("credentials must not be embedded in the repository URL")
+    host = (parts.hostname or "").lower()
+    if not host:
+        raise RepoError("invalid repository URL")
+    # Refuse internal / loopback targets so --repo (and the UI's /api/scan)
+    # cannot be pointed at internal git servers or the cloud metadata endpoint
+    # (SSRF). git clone speaks the smart-HTTP handshake, not arbitrary HTTP, so
+    # this is defense in depth, but it closes internal-host probing.
+    if host == "localhost" or host.endswith((".localhost", ".internal", ".local")):
+        raise RepoError("refusing to clone from a private/internal host")
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        ip = None
+    if ip is not None and (
+        ip.is_private or ip.is_loopback or ip.is_link_local
+        or ip.is_reserved or ip.is_unspecified or ip.is_multicast
+    ):
+        raise RepoError("refusing to clone from a private/internal address")
 
 
 def _authed_url(url: str, token: str | None) -> str:

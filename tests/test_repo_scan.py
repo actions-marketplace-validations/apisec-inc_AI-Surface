@@ -29,6 +29,26 @@ def test_invalid_urls_are_rejected_without_network() -> None:
             clone_repo_to_tmp(bad)
 
 
+def test_internal_and_loopback_urls_are_rejected_ssrf() -> None:
+    for bad in [
+        "https://127.0.0.1/o/r.git",
+        "https://169.254.169.254/latest/meta-data",  # cloud metadata
+        "https://localhost:8080/o/r",
+        "https://10.0.0.5/o/r",
+        "https://192.168.1.1/o/r",
+        "https://git.internal/o/r",
+        "https://user:pass@github.com/o/r",  # embedded credentials
+    ]:
+        with pytest.raises(RepoError):
+            clone_repo_to_tmp(bad)
+
+
+def test_public_https_url_passes_validation() -> None:
+    # Validation must not reject legitimate public forge URLs.
+    repo_mod._validate_url("https://github.com/org/repo")
+    repo_mod._validate_url("https://gitlab.com/org/repo.git")
+
+
 def test_token_is_injected_into_clone_url() -> None:
     url = repo_mod._authed_url("https://github.com/org/repo", "ghp_secret")
     assert url == "https://x-access-token:ghp_secret@github.com/org/repo"
