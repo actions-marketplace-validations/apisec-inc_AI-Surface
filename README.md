@@ -12,7 +12,7 @@
 
 </div>
 
-`ai-surface` is a static analyzer that maps the AI in your codebase: LLM calls, agents, MCP servers, RAG and vector stores, model gateways, self-hosted runtimes, and the HTTP APIs that expose them. Run it on your laptop or in CI. It inventories every AI component a change introduces, flags the risky ones, and can **fail the build** when a PR ships a new risk.
+`ai-surface` is a static analyzer that maps the AI in your codebase: LLM calls, agents, MCP servers, RAG and vector stores, model gateways, self-hosted runtimes, and the HTTP APIs that expose them. Run it on your laptop or in CI. It inventories every AI component a change introduces, flags risk indicators (and assigns severity where the deep-dive audit has enough evidence), and can **fail the build** when a PR introduces a new risk.
 
 It runs entirely on your machine. No network calls, no telemetry, no credentials. Your source never leaves the host.
 
@@ -21,7 +21,7 @@ uvx ai-surface scan .          # one-off, no install
 ai-surface scan . --ui         # explore it as an interactive map
 ```
 
-It also generates an **AI-BOM** and maps findings to the OWASP LLM Top 10 and the EU AI Act, NIST AI RMF, and ISO 42001 (details in [Compliance](#compliance-and-governance)). It maps and audits the surface statically; proving which surfaces are actually **exploitable** against a running app is the [APIsec platform](https://apisec.ai/ai-validation).
+It also generates an **AI-BOM** and maps findings to the OWASP LLM Top 10 and the EU AI Act, NIST AI RMF, and ISO 42001 (see [Compliance](#compliance-and-governance)). Runtime exploit validation is out of scope for this OSS scanner; it maps and audits the surface statically.
 
 <div align="center">
 
@@ -31,8 +31,20 @@ It also generates an **AI-BOM** and maps findings to the OWASP LLM Top 10 and th
 
 </div>
 
+## Who is this for?
+
+Use `ai-surface` if you are:
+
+- adding agents, MCP servers, RAG, or LLM calls to an application
+- reviewing AI-related pull requests
+- building an AI-BOM or an AI-governance inventory
+- trying to understand where AI risk enters your codebase
+
+Built for DevSecOps, AppSec, and platform teams.
+
 ## Table of Contents
 
+- [Who is this for?](#who-is-this-for)
 - [Quick start](#quick-start)
 - [What it detects](#what-it-detects)
 - [Proven on real code](#proven-on-real-code)
@@ -295,7 +307,7 @@ The only network call in the whole project is the GitHub Action posting a PR com
 | **ai-surface** | **What AI attack surface is about to ship, mapped to governance** | **At PR time, before merge, offline** |
 | APIsec platform | Which AI surfaces are actually exploitable | PR time + runtime; replayable evidence |
 
-`ai-surface` does not replace any of these. It fills the PR-time AI-attack-surface gap none of them covers.
+`ai-surface` does not replace any of these. It focuses on the PR-time AI-attack-surface gap that most adjacent tools do not cover directly.
 
 ## What it does not do
 
