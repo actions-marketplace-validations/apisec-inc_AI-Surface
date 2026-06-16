@@ -120,3 +120,20 @@ def test_gateway_aggregates_across_files(tmp_path: Path) -> None:
     findings = ModelGatewayDetector().detect(str(tmp_path))
     assert len(findings) == 1
     assert sorted(findings[0].evidence.files) == ["a.py", "b.py"]
+
+
+def test_portkey_config_does_not_leak_hardcoded_value(tmp_path: Path) -> None:
+    """A Portkey config that hardcodes an apiKey must not echo the value.
+
+    The detector identifies the gateway by filename; it must never dump the file
+    head (which commonly holds the key), preserving the name/type-only guarantee.
+    """
+    secret = "pk_FAKE_value_must_not_leak_9z8y7x"
+    (tmp_path / "portkey-config.json").write_text(
+        '{\n  "apiKey": "' + secret + '",\n  "provider": "openai"\n}\n',
+        encoding="utf-8",
+    )
+    findings = ModelGatewayDetector().detect(str(tmp_path))
+    portkey = [f for f in findings if "Portkey" in f.surface]
+    assert portkey, "expected a Portkey gateway finding"
+    assert secret not in (portkey[0].evidence.snippet or "")

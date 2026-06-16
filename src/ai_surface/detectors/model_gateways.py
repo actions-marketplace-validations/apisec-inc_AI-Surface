@@ -25,7 +25,6 @@ from ..utils.specs import (
     SNIPPET_MAX,
     first_line_containing,
     first_match_line,
-    head_snippet,
     parse_yaml_lenient,
 )
 from ..utils.walk import read_text_safe, relative_to_root, walk_files
@@ -107,11 +106,15 @@ class ModelGatewayDetector:
                 )
 
             if path.name in {"portkey-config.json", "portkey.json"}:
+                # Identify by filename only. Do NOT echo the file head: a
+                # Portkey config commonly hardcodes an "apiKey"/"virtual_key" in
+                # the first lines, and dumping it would leak a secret value into
+                # the report, breaking the name/type-only privacy guarantee.
                 _accumulate_gateway(
                     gateway_acc,
                     key="Portkey",
                     rel=rel,
-                    snippet=head_snippet(text),
+                    snippet=f"Portkey gateway config ({path.name})",
                 )
 
         # Pass 2: source files for gateway imports / URL refs and litellm proxy.
