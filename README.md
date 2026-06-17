@@ -17,8 +17,8 @@
 It runs entirely on your machine. No network calls, no telemetry, no credentials. Your source never leaves the host.
 
 ```bash
-uvx ai-surface scan .          # one-off, no install
-ai-surface scan . --ui         # explore it as an interactive map
+pip install apisec-ai-surface   # install once
+ai-surface scan . --ui          # then run `ai-surface` (interactive map)
 ```
 
 It also generates an **AI-BOM** and maps findings to the OWASP LLM Top 10 and the EU AI Act, NIST AI RMF, and ISO 42001 (see [Compliance](#compliance-and-governance)). Runtime exploit validation is out of scope for this OSS scanner; it maps and audits the surface statically.
@@ -63,15 +63,15 @@ Built for DevSecOps, AppSec, and platform teams.
 ## Quick start
 
 ```bash
-# One-off, no install (recommended first run)
-uvx ai-surface scan .
-
-# Install globally for a long-lived CLI
-pipx install ai-surface
+# Install once, then run `ai-surface` anywhere (recommended)
+pipx install apisec-ai-surface
 ai-surface scan .
 
+# Or a one-off run with no install
+uvx --from apisec-ai-surface ai-surface scan .
+
 # Or in a project venv
-pip install ai-surface && ai-surface scan .
+pip install apisec-ai-surface && ai-surface scan .
 
 # Explore the results visually
 ai-surface scan . --ui

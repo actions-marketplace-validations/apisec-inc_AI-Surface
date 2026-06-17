@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "ai-surface"
+name = "apisec-ai-surface"
 version = "1.0.0"
 description = "Map your application's AI attack surface from source: MCP servers (with security audit), agent frameworks, LLM call sites, model gateways, AI infrastructure, provider keys, and HTTP/OpenAPI endpoints. Local, static, CI-friendly, with a visual UI."
 readme = "README.md"

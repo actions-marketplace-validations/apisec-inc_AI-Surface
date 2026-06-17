@@ -47,7 +47,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/ai-surface
+      url: https://pypi.org/p/apisec-ai-surface
     permissions:
       id-token: write
     steps:
