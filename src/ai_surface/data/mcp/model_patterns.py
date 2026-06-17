@@ -181,7 +181,7 @@ CLOUD_PROVIDERS = {
     "api.perplexity.ai": {"provider": "Perplexity", "hosting": "cloud"},
     "localhost": {"provider": "Local", "hosting": "local"},
     "127.0.0.1": {"provider": "Local", "hosting": "local"},
-    "0.0.0.0": {"provider": "Local", "hosting": "local"},
+    "0.0.0.0": {"provider": "Local", "hosting": "local"},  # nosec B104 - lookup-table data (a host string this tool detects), not a socket bind
 }
 
 
