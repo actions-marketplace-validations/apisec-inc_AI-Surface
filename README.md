@@ -88,7 +88,7 @@ Requires Python 3.9+. The CLI runs locally; `--ui` serves on loopback only.
 
 ### What the output looks like
 
-Reproduce a full multi-category report yourself on the bundled demo app: `ai-surface scan examples/demo-app` (add `--ui` for the interactive map). The report below is from a representative AI app.
+Reproduce a full multi-category report yourself on the bundled demo app: `ai-surface scan examples/demo-app --governance` (add `--ui` for the interactive map). The report below is from a representative AI app, shown with `--governance` so the per-finding EU AI Act / NIST / ISO clauses are visible. By default those clauses collapse to a single summary line (`Governance: evidence for EU AI Act, NIST AI RMF, ISO/IEC 42001, OWASP LLM Top 10`) to keep the output focused; pass `--governance` for the per-clause detail shown below. Add `--ai-only` to drop the plain API-endpoint section and focus on AI-specific surface.
 
 ```text
 AI Attack Surface Report
@@ -305,6 +305,13 @@ ai-surface scan . --output sarif
 ai-surface scan . --categories mcp,agents
 ai-surface scan . --categories vector
 
+# Focus on AI-specific surface (drop plain, non-AI API endpoints)
+ai-surface scan . --ai-only
+
+# Show per-finding governance clauses (EU AI Act / NIST / ISO)
+# Off by default; a one-line governance summary always shows.
+ai-surface scan . --governance
+
 # Gate CI by assessed severity
 ai-surface scan . --fail-on high       # fail on high or critical findings
 ai-surface scan . --fail-on critical   # fail only on critical findings
@@ -325,7 +332,7 @@ ai-surface compare base.json head.json
 
 `ai-surface` maps audited findings to the OWASP LLM Top 10 and to evidence-relevant clauses in the EU AI Act, NIST AI RMF, and ISO/IEC 42001.
 
-The UI shows these mappings as badges. JSON output carries them as structured `standards` fields. CycloneDX output carries them as component properties, making it your AI-BOM artifact.
+In terminal and markdown output, the per-finding clauses are off by default and a single governance summary line is shown instead; pass `--governance` to print the clause under each risk flag. The UI shows these mappings as badges. JSON output always carries them as structured `standards` fields. CycloneDX output carries them as component properties, making it your AI-BOM artifact.
 
 `ai-surface` produces evidence; it does not certify, attest, or assert compliance. A framework requirement is reported only when the analysis produced that kind of evidence.
 

@@ -424,6 +424,24 @@ def scan(
         "-v",
         help="Verbose: show all files (no truncation), full detector errors.",
     ),
+    governance: bool = typer.Option(
+        False,
+        "--governance",
+        help=(
+            "Show per-finding governance clauses (EU AI Act / NIST / ISO) under "
+            "each risk flag in terminal and markdown output. Off by default; a "
+            "one-line governance summary is always shown. JSON, AI-BOM, and --ui "
+            "always carry full governance detail."
+        ),
+    ),
+    ai_only: bool = typer.Option(
+        False,
+        "--ai-only",
+        help=(
+            "Focus on AI-specific surface: exclude plain (non-AI) API endpoints "
+            "from results. Keeps agents, MCP, LLM calls, RAG, gateways, and keys."
+        ),
+    ),
     ui: bool = typer.Option(
         False,
         "--ui",
@@ -498,6 +516,23 @@ def scan(
         raise typer.Exit(code=2)
 
     allowed_categories = _resolve_categories(categories)
+
+    # --ai-only: drop the plain (non-AI) API category so output focuses on the
+    # AI-specific surface. Applied to both the live scan and the baseline diff
+    # below, since both read allowed_categories.
+    if ai_only:
+        base = (
+            allowed_categories
+            if allowed_categories is not None
+            else set(ALL_CATEGORIES)
+        )
+        allowed_categories = base - {CATEGORY_API}
+        if not allowed_categories:
+            err_console.print(
+                "[red]error[/red]: --ai-only excluded every selected category "
+                "(only 'api' was requested)"
+            )
+            raise typer.Exit(code=2)
 
     detectors = default_detectors()
     detectors = _filter_detectors_by_category(detectors, allowed_categories)
@@ -591,7 +626,7 @@ def scan(
         # the GitHub Action (PR comment) and redirected to files. The rich
         # console would hard-wrap long URLs and eat single-token [labels] as
         # markup, corrupting the document.
-        print(render_markdown(report))
+        print(render_markdown(report, governance=governance))
     elif output in ("cyclonedx", "ai-bom"):
         from .reporters.cyclonedx_reporter import render_cyclonedx  # noqa: PLC0415
 
@@ -607,7 +642,7 @@ def scan(
         try:
             from .reporters.terminal_reporter import render_terminal  # noqa: PLC0415
 
-            render_terminal(report, console, verbose=verbose)
+            render_terminal(report, console, verbose=verbose, governance=governance)
         except ImportError:
             # Fallback: dump findings as JSON if terminal reporter not yet built
             data = {
@@ -636,7 +671,9 @@ def scan(
             from .reporters.markdown_reporter import render_markdown  # noqa: PLC0415
 
             inv_path = root / ".ai-inventory.md"
-            inv_path.write_text(render_markdown(report), encoding="utf-8")
+            inv_path.write_text(
+                render_markdown(report, governance=governance), encoding="utf-8"
+            )
             err_console.print(f"[green]wrote[/green] {inv_path}")
         except ImportError:
             err_console.print(

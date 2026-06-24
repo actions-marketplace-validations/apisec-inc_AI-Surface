@@ -4,6 +4,20 @@ All notable changes to `ai-surface` will be documented in this file. The format 
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-06-24
+
+Feedback-driven release from the first beta cohort: keep the default output focused for practitioners while preserving the full governance depth on demand.
+
+### Added
+
+- **`--governance` flag.** Per-finding governance clauses (EU AI Act / NIST / ISO) under each risk flag are now off by default in terminal and markdown output, and a single one-line governance summary is always shown instead. Pass `--governance` to print the clause under each flag. JSON, CycloneDX (AI-BOM), and the `--ui` always carry the full per-finding governance detail, so the data contract is unchanged. Beta testers found the per-finding clauses noisy for day-to-day security work while valuable for compliance; this makes both audiences happy.
+- **`--ai-only` flag.** Excludes the plain (non-AI) API-endpoint category from results, so output focuses on the AI-specific surface (agents, MCP, LLM calls, RAG, gateways, keys). Errors clearly if it would exclude every selected category.
+
+### Changed
+
+- The committed `.ai-inventory.md` (via `--write-inventory`) follows the same governance default: a one-line summary unless `--governance` is passed.
+- README: documented both flags, and clarified that the sample report is shown with `--governance`.
+
 ## [1.0.2] - 2026-06-17
 
 ### Changed

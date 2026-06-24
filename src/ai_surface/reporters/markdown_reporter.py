@@ -20,7 +20,7 @@ document that will be posted as a PR comment on GitHub):
 from __future__ import annotations
 
 from ..cross_promo import build_upgrade_url, headline_finding, specialists_for_report
-from ..frameworks import standards_for_flag
+from ..frameworks import framework_names, standards_for_flag
 from ..types import (
     CATEGORY_AGENT_FRAMEWORK,
     CATEGORY_AI_INFRA,
@@ -79,8 +79,13 @@ _SEVERITY_DISPLAY_ORDER = (
 )
 
 
-def render_markdown(report: Report) -> str:
-    """Render `report` as a markdown document suitable for committing."""
+def render_markdown(report: Report, governance: bool = False) -> str:
+    """Render `report` as a markdown document suitable for committing.
+
+    governance: when True, include per-finding governance clauses (EU AI Act /
+    NIST / ISO) under each audit risk flag. Off by default; a one-line
+    governance summary is always included.
+    """
     out: list[str] = []
     out.append("# AI Inventory")
     out.append("")
@@ -111,6 +116,16 @@ def render_markdown(report: Report) -> str:
             out.append("**Severity:** " + "  ·  ".join(sev_bits))
             out.append("")
 
+    # One-line governance summary (always). Per-finding clauses are gated on the
+    # governance flag to keep the default committed inventory focused.
+    gov_names = framework_names(report)
+    if gov_names:
+        line = "**Governance:** evidence for " + ", ".join(gov_names)
+        if not governance:
+            line += " · run with `--governance` for per-finding clauses"
+        out.append(line)
+        out.append("")
+
     if not report.findings:
         out.append("No production AI surfaces detected at scan time.")
         out.append("")
@@ -120,28 +135,30 @@ def render_markdown(report: Report) -> str:
     by_cat = report.by_category()
     for cat in CATEGORY_ORDER:
         if cat in by_cat and by_cat[cat]:
-            _append_category(out, cat, by_cat[cat])
+            _append_category(out, cat, by_cat[cat], governance=governance)
 
     # Forward compatibility for unknown categories
     for cat, findings in by_cat.items():
         if cat not in CATEGORY_ORDER:
-            _append_category(out, cat, findings)
+            _append_category(out, cat, findings, governance=governance)
 
     _append_risk_summary(out, report)
     _append_footer(out, report)
     return "\n".join(out)
 
 
-def _append_category(out: list[str], category: str, findings: list[Finding]) -> None:
+def _append_category(
+    out: list[str], category: str, findings: list[Finding], governance: bool = False
+) -> None:
     heading = CATEGORY_HEADING.get(category, category.replace("-", " ").title())
     out.append(f"## {heading}")
     out.append("")
     for finding in findings:
-        _append_finding(out, finding)
+        _append_finding(out, finding, governance=governance)
     out.append("")
 
 
-def _append_finding(out: list[str], finding: Finding) -> None:
+def _append_finding(out: list[str], finding: Finding, governance: bool = False) -> None:
     # Audited findings carry a severity badge in the heading; discovery-only
     # findings (severity None) render exactly as before.
     heading = _sanitise_inline(finding.surface)
@@ -191,7 +208,7 @@ def _append_finding(out: list[str], finding: Finding) -> None:
 
     # Deep-dive audit block (risk flags, secrets, trust) when present.
     if finding.audit is not None:
-        _append_audit(out, finding)
+        _append_audit(out, finding, governance=governance)
 
     if finding.evidence and finding.evidence.snippet:
         snippet = finding.evidence.snippet.strip()
@@ -234,7 +251,7 @@ def _append_api_metadata(out: list[str], finding: Finding) -> None:
         out.append("")
 
 
-def _append_audit(out: list[str], finding: Finding) -> None:
+def _append_audit(out: list[str], finding: Finding, governance: bool = False) -> None:
     """Render the deep-dive audit block: risk flags, secrets, trust.
 
     Secrets render NAME/TYPE/location only. Per the privacy guarantee there is
@@ -256,7 +273,7 @@ def _append_audit(out: list[str], finding: Finding) -> None:
             if rf.owasp:
                 owasp = ", ".join(f"`{_sanitise_inline(o, max_len=20)}`" for o in rf.owasp)
                 out.append(f"  - OWASP: {owasp}")
-            standards = standards_for_flag(rf.flag)
+            standards = standards_for_flag(rf.flag) if governance else []
             if standards:
                 gov = ", ".join(
                     f"{_sanitise_inline(s['framework'], max_len=30)} "

@@ -13,7 +13,7 @@ from rich.rule import Rule
 from rich.text import Text
 
 from ..cross_promo import build_upgrade_url, headline_finding, specialists_for_report
-from ..frameworks import standards_for_flag
+from ..frameworks import framework_names, standards_for_flag
 from ..types import (
     CATEGORY_AGENT_FRAMEWORK,
     CATEGORY_AI_INFRA,
@@ -75,6 +75,7 @@ def render_terminal(
     report: Report,
     console: Console | None = None,
     verbose: bool = False,
+    governance: bool = False,
 ) -> None:
     """Render `report` as a rich-styled CLI output.
 
@@ -82,6 +83,9 @@ def render_terminal(
         report: the scan report to render.
         console: optional rich Console (defaults to stdout).
         verbose: when True, shows all files for each finding without truncation.
+        governance: when True, show per-finding governance clauses (EU AI Act /
+            NIST / ISO) under each risk flag. Off by default to keep practitioner
+            output focused; a one-line governance summary is always shown.
     """
     if console is None:
         console = Console()
@@ -97,14 +101,15 @@ def render_terminal(
     by_cat = report.by_category()
     for cat in CATEGORY_ORDER:
         if cat in by_cat and by_cat[cat]:
-            _render_category(cat, by_cat[cat], console, verbose=verbose)
+            _render_category(cat, by_cat[cat], console, verbose=verbose, governance=governance)
 
     # Catch any categories not in CATEGORY_ORDER (forward compatibility)
     for cat, findings in by_cat.items():
         if cat not in CATEGORY_ORDER:
-            _render_category(cat, findings, console, verbose=verbose)
+            _render_category(cat, findings, console, verbose=verbose, governance=governance)
 
     _render_risk_summary(report, console)
+    _render_governance_summary(report, console, governance=governance)
     _render_footer(report, console, verbose=verbose)
 
 
@@ -181,15 +186,21 @@ def _render_category(
     findings: list[Finding],
     console: Console,
     verbose: bool = False,
+    governance: bool = False,
 ) -> None:
     title = CATEGORY_DISPLAY.get(category, category.upper())
     console.print(f"[bold]{title}[/bold]")
     for finding in findings:
-        _render_finding(finding, console, verbose=verbose)
+        _render_finding(finding, console, verbose=verbose, governance=governance)
     console.print()
 
 
-def _render_finding(finding: Finding, console: Console, verbose: bool = False) -> None:
+def _render_finding(
+    finding: Finding,
+    console: Console,
+    verbose: bool = False,
+    governance: bool = False,
+) -> None:
     # Surface name on its own line, indented. Audited findings carry a colored
     # severity badge; discovery-only findings render exactly as before.
     surface_text = Text("  • ", style="dim") + Text(finding.surface, style="bold white")
@@ -230,7 +241,7 @@ def _render_finding(finding: Finding, console: Console, verbose: bool = False) -
 
     # Deep-dive audit block (risk flags, secrets, trust) when present.
     if finding.audit is not None:
-        _render_audit(finding, console)
+        _render_audit(finding, console, governance=governance)
 
     # Inline per-finding deep link to APIsec when this finding has risk
     # indicators. Conversion bridge points reviewers at the specific surface.
@@ -271,7 +282,7 @@ def _render_api_metadata(finding: Finding, console: Console) -> None:
         console.print(Padding(Text("  " + " · ".join(extras), style="dim"), (0, 0, 0, 4)))
 
 
-def _render_audit(finding: Finding, console: Console) -> None:
+def _render_audit(finding: Finding, console: Console, governance: bool = False) -> None:
     """Render the deep-dive audit block: risk flags, secrets, and trust.
 
     Secrets render NAME/TYPE/location only. Per the privacy guarantee there is
@@ -293,7 +304,7 @@ def _render_audit(finding: Finding, console: Console) -> None:
             console.print(
                 Padding(Text("OWASP: " + ", ".join(rf.owasp), style="dim"), (0, 0, 0, 8))
             )
-        standards = standards_for_flag(rf.flag)
+        standards = standards_for_flag(rf.flag) if governance else []
         if standards:
             gov = ", ".join(f"{s['framework']} {s['clause']}" for s in standards)
             console.print(
@@ -337,6 +348,24 @@ def _render_bridges(finding: Finding, console: Console) -> None:
                 (0, 0, 0, 4),
             )
         )
+
+
+def _render_governance_summary(
+    report: Report, console: Console, governance: bool = False
+) -> None:
+    """Always show a single line naming the frameworks this scan evidences.
+
+    Keeps the "Govern it" pillar visible without putting a clause on every
+    finding. Per-finding clauses render only under --governance.
+    """
+    names = framework_names(report)
+    if not names:
+        return
+    line = "Governance: evidence for " + ", ".join(names)
+    if not governance:
+        line += " · run with --governance for per-finding clauses"
+    console.print(Text(line, style="dim"))
+    console.print()
 
 
 def _render_risk_summary(report: Report, console: Console) -> None:
