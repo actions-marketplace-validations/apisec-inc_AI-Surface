@@ -316,6 +316,10 @@ ai-surface scan . --governance
 ai-surface scan . --fail-on high       # fail on high or critical findings
 ai-surface scan . --fail-on critical   # fail only on critical findings
 
+# Severity floor the baseline cannot suppress (closes baseline-acceptance gap)
+# New high+ blocks the PR; any critical always blocks, even if pre-existing.
+ai-surface scan . --baseline --fail-on high --always-fail-on critical
+
 # Aggressive gate: fail on any risk indicator
 ai-surface scan . --fail-on-risk
 

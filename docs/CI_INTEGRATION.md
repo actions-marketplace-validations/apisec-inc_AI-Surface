@@ -208,6 +208,17 @@ Cons:
 
 - Teams must update the baseline intentionally, and it can drift if they do not.
 
+> **Treat the baseline as a trusted control.** By design, `--baseline` accepts everything in the snapshot as already-known and gates only on what is new. That means a high-severity finding captured into the baseline is then accepted on every later run, and the gate can pass even though risky surface is present. Two consequences to plan for:
+>
+> - **The baseline is a security-relevant file.** Anyone who can commit a regenerated `.ai-surface-baseline.json` can absorb risky findings into "accepted" and quiet the gate. Protect it: require review on changes to it (CODEOWNERS), and treat baseline updates as you would a change to your CI policy.
+> - **Pair the baseline with a floor it cannot suppress.** Use `--always-fail-on` so a chosen severity always fails the build, even for pre-existing findings the baseline accepts:
+>
+>   ```bash
+>   ai-surface scan . --baseline --fail-on high --always-fail-on critical
+>   ```
+>
+>   Here new high+ findings block the PR (low noise), and any critical finding blocks regardless of the baseline. When `--baseline` passes, ai-surface also prints a one-line notice of how many high+ findings it is accepting as pre-existing, so a passing gate never reads as "nothing risky here."
+
 `.ai-surface-baseline.json` is the machine-readable baseline. `.ai-inventory.md` (written by `--write-inventory`) is a human-readable inventory artifact for review and documentation; it is not the machine baseline.
 
 ## Blocking merges on risk

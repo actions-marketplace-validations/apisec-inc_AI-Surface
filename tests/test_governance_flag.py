@@ -107,3 +107,41 @@ def test_ai_only_excludes_api_category() -> None:
 def test_ai_only_with_only_api_category_errors() -> None:
     result = runner.invoke(app, ["scan", "tests/fixtures/e2e_app", "--ai-only", "-c", "api"])
     assert result.exit_code == 2
+
+
+# --------------------------------------------------------------------------- #
+# Baseline trust: visible suppression + the --always-fail-on floor (1.0.4)
+# --------------------------------------------------------------------------- #
+def _baselined_demo(tmp_path):
+    """Copy the e2e fixture, snapshot it as the baseline, return the dir."""
+    import shutil
+
+    dst = tmp_path / "app"
+    shutil.copytree("tests/fixtures/e2e_app", dst)
+    r = runner.invoke(app, ["scan", str(dst), "--update-baseline"])
+    assert r.exit_code == 0
+    return dst
+
+
+def test_baseline_passes_but_warns_about_suppressed_high(tmp_path) -> None:
+    app_dir = _baselined_demo(tmp_path)
+    # A baseline generated from already-risky code: --fail-on high passes (0 new)...
+    r = runner.invoke(app, ["scan", str(app_dir), "--baseline", "--fail-on", "high", "-q"])
+    assert r.exit_code == 0
+    # ...but the suppression is now visible, not silent.
+    assert "accepting" in r.output and "pre-existing" in r.output
+
+
+def test_always_fail_on_blocks_baselined_high(tmp_path) -> None:
+    app_dir = _baselined_demo(tmp_path)
+    # The floor ignores the baseline: a pre-existing HIGH still fails the gate.
+    r = runner.invoke(
+        app, ["scan", str(app_dir), "--baseline", "--always-fail-on", "high", "-q"]
+    )
+    assert r.exit_code == 1
+    assert "always-fail-on high" in r.output
+
+
+def test_always_fail_on_validates_severity() -> None:
+    r = runner.invoke(app, ["scan", "tests/fixtures/e2e_app", "--always-fail-on", "bogus"])
+    assert r.exit_code == 2

@@ -341,6 +341,51 @@ def _maybe_fail_on_diff_risk(diff, enabled: bool) -> None:
         raise typer.Exit(code=1)
 
 
+def _maybe_fail_on_floor(report, floor: str | None) -> None:
+    """Severity floor that ignores the baseline.
+
+    Exit non-zero if ANY finding in the current scan is at or above `floor`,
+    including pre-existing ones a baseline would otherwise accept. Closes the
+    baseline-acceptance gap: a high finding cannot be silently snapshotted into
+    the baseline and then slip a --baseline gate forever.
+    """
+    if not floor:
+        return
+    offending = _findings_at_or_above(report.findings, floor)
+    if offending:
+        err_console.print(
+            f"[red]always-fail-on {floor}[/red]: {len(offending)} finding(s) at or "
+            f"above {floor} in the current scan; the baseline does not suppress "
+            f"this floor:"
+        )
+        _print_gate_offenders(offending)
+        raise typer.Exit(code=1)
+
+
+def _warn_baseline_suppression(report, diff) -> None:
+    """Make baseline acceptance visible (a notice, not a failure).
+
+    When --baseline passes, report how many high/critical findings in the
+    current scan are being accepted as pre-existing, so a passing gate does not
+    read as "nothing risky here". Printed to stderr so it shows in CI logs even
+    when stdout is captured as the PR comment.
+    """
+    added_keys = {(f.surface, f.category) for f in diff.added}
+    suppressed = [
+        f
+        for f in _findings_at_or_above(report.findings, "high")
+        if (f.surface, f.category) not in added_keys
+    ]
+    if not suppressed:
+        return
+    err_console.print(
+        f"[yellow]baseline[/yellow]: accepting {len(suppressed)} pre-existing "
+        f"finding(s) at or above high as already-known. They are not new, so the "
+        f"gate does not fail on them. Run without --baseline to see them, or add "
+        f"--always-fail-on high to gate on the full surface."
+    )
+
+
 @app.command()
 def scan(
     path: str = typer.Argument(".", help="Directory to scan."),
@@ -383,6 +428,17 @@ def scan(
             "or above this severity (critical|high|medium|low). Gates on assessed "
             "severity only, so inventory does not trip it. With --baseline, fires "
             "only on NEW findings. Recommended PR gate: --baseline --fail-on high."
+        ),
+    ),
+    always_fail_on: Optional[str] = typer.Option(
+        None,
+        "--always-fail-on",
+        help=(
+            "Severity floor the baseline cannot suppress: exit non-zero (code 1) "
+            "if ANY finding in the current scan is at or above this severity, "
+            "including pre-existing ones accepted by --baseline. Use this so a "
+            "high finding can never be silently baselined away "
+            "(critical|high|medium|low)."
         ),
     ),
     baseline: bool = typer.Option(
@@ -487,6 +543,15 @@ def scan(
         raise typer.Exit(code=2)
     if fail_on is not None:
         fail_on = fail_on.lower()
+
+    if always_fail_on is not None and always_fail_on.lower() not in FAIL_ON_CHOICES:
+        err_console.print(
+            f"[red]error[/red]: --always-fail-on must be one of "
+            f"{', '.join(FAIL_ON_CHOICES)} (got {always_fail_on!r})"
+        )
+        raise typer.Exit(code=2)
+    if always_fail_on is not None:
+        always_fail_on = always_fail_on.lower()
 
     # --repo: clone the remote repo locally and scan that instead of PATH.
     # Baseline modes operate on a committed snapshot file, which a throwaway
@@ -603,8 +668,10 @@ def scan(
     if baseline:
         diff = _load_and_diff_baseline(report, bp, allowed_categories)
         _render_diff(diff, output, quiet)
+        _warn_baseline_suppression(report, diff)
         _maybe_fail_on_diff_severity(diff, fail_on)
         _maybe_fail_on_diff_risk(diff, fail_on_risk)
+        _maybe_fail_on_floor(report, always_fail_on)
         return
 
     # Quiet mode short-circuits all reporters and prints a single line.
@@ -612,6 +679,7 @@ def scan(
         _print_quiet_summary(report)
         _maybe_fail_on_severity(report, fail_on)
         _maybe_fail_on_risk(report, fail_on_risk)
+        _maybe_fail_on_floor(report, always_fail_on)
         return
 
     # Render based on requested output
@@ -683,6 +751,7 @@ def scan(
 
     _maybe_fail_on_severity(report, fail_on)
     _maybe_fail_on_risk(report, fail_on_risk)
+    _maybe_fail_on_floor(report, always_fail_on)
 
 
 @app.command()

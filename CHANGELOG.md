@@ -4,6 +4,19 @@ All notable changes to `ai-surface` will be documented in this file. The format 
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-06-24
+
+Hardens the `--baseline` workflow against silent suppression, reported by Simon Essien during the beta. A baseline accepts pre-existing findings by design; the gap was that this acceptance was invisible and had no floor, so a high-severity finding captured into a committed baseline could pass the gate silently on every later run.
+
+### Added
+
+- **`--always-fail-on <severity>` floor.** Exits non-zero if any finding in the current scan is at or above the given severity, including pre-existing ones a baseline would otherwise accept. Lets you keep the low-noise `--baseline --fail-on high` PR gate while guaranteeing, say, that no critical finding can ever be baselined away: `ai-surface scan . --baseline --fail-on high --always-fail-on critical`.
+
+### Changed
+
+- **Baseline acceptance is now visible.** When `--baseline` passes, ai-surface prints a one-line notice of how many high+ findings it is accepting as pre-existing, so a passing gate is never mistaken for "nothing risky here."
+- **`docs/CI_INTEGRATION.md`** Option B now documents the baseline as a security-relevant control: protect `.ai-surface-baseline.json` with review/CODEOWNERS and pair it with `--always-fail-on`.
+
 ## [1.0.3] - 2026-06-24
 
 Feedback-driven release from the first beta cohort: keep the default output focused for practitioners while preserving the full governance depth on demand.
