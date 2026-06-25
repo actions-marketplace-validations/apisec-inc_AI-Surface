@@ -4,6 +4,18 @@ All notable changes to `ai-surface` will be documented in this file. The format 
 
 ## [Unreleased]
 
+## [1.0.5] - 2026-06-25
+
+Adds detection for the two provider agent SDKs teams are migrating to as they move off the heavier first-generation frameworks.
+
+### Added
+
+- **OpenAI Agents SDK detection (Python).** Recognizes the SDK from its distinctive symbols (a `from agents import Agent/Runner/function_tool/...` line, a `Runner.run` call, or the `@function_tool` decorator), never a bare `import agents`, so a repo's own local `agents` module is not misdetected. Agent definitions (`agent = Agent(name=..., tools=[...])`), their tools, and the risk classification all fire. The TypeScript side (`@openai/agents`) was already covered.
+- **Claude Agent SDK detection (Python and TypeScript).** Python via the `claude_agent_sdk` import plus `ClaudeSDKClient(...)` / `ClaudeAgentOptions(...)`, with `@tool`-decorated tools; TypeScript via `@anthropic-ai/claude-agent-sdk` and `new ClaudeSDKClient(...)`.
+- `@function_tool` is now recognized as a tool decorator alongside `@tool`.
+
+This closes the agent-layer gap for the OpenAI Agents SDK and Claude Agent SDK. Detection of agent tools built dynamically through factory functions remains a roadmap item (AST/dataflow).
+
 ## [1.0.4] - 2026-06-24
 
 Hardens the `--baseline` workflow against silent suppression, reported by Simon Essien during the beta. A baseline accepts pre-existing findings by design; the gap was that this acceptance was invisible and had no floor, so a high-severity finding captured into a committed baseline could pass the gate silently on every later run.
