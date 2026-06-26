@@ -224,7 +224,7 @@ To stop the local UI server, press `Ctrl-C` in the terminal.
 
 | Category | Coverage | What it finds |
 |---|---|---|
-| Agent frameworks | 10 Python + 6 JS/TS frameworks | LangChain, LangGraph, CrewAI, LlamaIndex, AutoGen, Haystack, Semantic Kernel, Pydantic AI, AWS Strands, LangChain.js, LangGraph.js, Vercel AI SDK, Mastra, OpenAI Agents, and LlamaIndex.ts. Extracts agent tool inventories and flags financial, destructive, and high-blast-radius authority. |
+| Agent frameworks | 11 Python + 7 JS/TS frameworks | LangChain, LangGraph, CrewAI, LlamaIndex, AutoGen, Haystack, Semantic Kernel, Pydantic AI, AWS Strands, the OpenAI Agents SDK and the Claude Agent SDK (Python); LangChain.js, LangGraph.js, Vercel AI SDK, Mastra, OpenAI Agents SDK, LlamaIndex.ts, and the Claude Agent SDK (TS/JS). Extracts agent tool inventories and flags financial, destructive, and high-blast-radius authority. |
 | MCP servers | Discovery + deep-dive audit | Configured MCP servers such as `.mcp.json` entries and in-house source servers. Audited findings include risk flags, remediation, detected secrets by name/type only, and registry/trust signals. |
 | Vector stores / RAG | 13 stores + 2 frameworks | Pinecone, Weaviate, Chroma, Qdrant, Milvus, FAISS, LanceDB, pgvector, Elasticsearch/OpenSearch/Vespa/Redis in vector mode, plus LangChain and LlamaIndex retrieval pipelines. Flags managed-store egress, RAG data flow, embeddings, and external ingestion. |
 | LLM SDK call sites | 13 providers | Anthropic, OpenAI, Azure OpenAI, AWS Bedrock, Google Generative AI, Vertex AI, Together, Mistral, Cohere, Replicate, Groq, LiteLLM, and Vercel AI SDK. Extracts models where visible and flags non-literal prompt/message flow. |
