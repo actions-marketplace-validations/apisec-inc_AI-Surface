@@ -180,6 +180,17 @@ def _setup_base_checkout(workspace: str) -> Optional[str]:
         # Some non-checkout workflows set GITHUB_WORKSPACE without a clone.
         return None
 
+    # The action runs as root in its container, while the checkout is owned by the
+    # runner uid. Git's dubious-ownership guard would otherwise reject every command
+    # on the workspace, so the fetch below fails and the base scan silently falls back
+    # to full-inventory mode (net-new diffing never runs on PRs). Mark the workspace
+    # trusted before touching it.
+    subprocess.run(
+        ["git", "config", "--global", "--add", "safe.directory", workspace],
+        capture_output=True,
+        check=False,
+    )
+
     # Defensive fetch (fetch-depth: 0 in the consumer workflow makes this a no-op).
     fetch = subprocess.run(
         ["git", "-C", workspace, "fetch", "--quiet", "origin", base_ref],
