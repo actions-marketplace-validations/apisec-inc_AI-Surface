@@ -157,6 +157,7 @@ def test_render_diff_markdown_empty() -> None:
     md = render_diff_markdown(Diff())
     assert "AI Surface Changes" in md
     assert "No AI surface changes" in md
+    assert "Star the repo](https://github.com/apisec-inc/AI-Surface)" in md
 
 
 def test_render_diff_markdown_added() -> None:

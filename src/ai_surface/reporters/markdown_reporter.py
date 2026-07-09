@@ -351,6 +351,11 @@ def _append_footer(out: list[str], report: Report) -> None:
         f"[apisec.ai/products]({upgrade_url})"
     )
     out.append("")
+    out.append(
+        "Useful? [Star the repo](https://github.com/apisec-inc/AI-Surface) "
+        "so more engineers find it."
+    )
+    out.append("")
 
     # Runtime validation routes available from this scan (report.summary).
     summary = report.summary or report.build_summary()

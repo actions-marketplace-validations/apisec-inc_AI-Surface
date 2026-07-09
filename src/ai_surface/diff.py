@@ -359,6 +359,8 @@ def _render_footer() -> str:
     return (
         "<sub>"
         "Powered by [ai-surface](https://github.com/apisec-inc/AI-Surface). "
+        "Useful? [Star the repo](https://github.com/apisec-inc/AI-Surface) "
+        "so more engineers find it. "
         f"Validate which of these surfaces are exploitable: "
         f"[apisec.ai/products]({upgrade_url})."
         "</sub>"

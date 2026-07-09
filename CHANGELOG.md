@@ -4,6 +4,18 @@ All notable changes to `ai-surface` will be documented in this file. The format 
 
 ## [Unreleased]
 
+## [1.0.6] - 2026-07-09
+
+Fixes the GitHub Action's net-new PR diff, which silently degraded to a full-inventory comparison in the published Docker action.
+
+### Fixed
+
+- **Action: PR base-branch diff works again.** The Docker action runs as root while the checked-out workspace is owned by the runner user, so `git fetch origin <base_ref>` hit git's dubious-ownership guard and the action silently fell back to comparing against the full inventory instead of net-new findings. The workspace is now marked as a git `safe.directory` before the base fetch, and an already-fetched `origin/<base_ref>` (from `actions/checkout` with `fetch-depth: 0`) is used as a fallback if the fetch fails. `fail-on` now gates on net-new findings in PRs, as documented.
+
+### Added
+
+- A one-line star ask in the CLI footer, the markdown report footer, the Action's PR comment, and the README, so users who find the tool useful know the one thing that helps other engineers discover it.
+
 ## [1.0.5] - 2026-06-25
 
 Adds detection for the two provider agent SDKs teams are migrating to as they move off the heavier first-generation frameworks.
