@@ -75,6 +75,8 @@ Install once, then run `ai-surface` anywhere:
 ```bash
 pipx install apisec-ai-surface
 ai-surface scan .
+# if the ai-surface command is not found after install, run: pipx ensurepath
+# then open a new shell
 
 # or run once with no install
 uvx --from apisec-ai-surface ai-surface scan .
