@@ -421,4 +421,9 @@ def _render_footer(report: Report, console: Console, verbose: bool = False) -> N
     if summary.bridges_available:
         skus = ", ".join(summary.bridges_available)
         console.print(f"[dim]Validate at runtime in APIsec: {skus}[/dim]")
+    console.print(
+        "[dim]Useful? Star the repo so more engineers find it: "
+        "[link=https://github.com/apisec-inc/AI-Surface]"
+        "github.com/apisec-inc/AI-Surface[/link][/dim]"
+    )
     console.print()
