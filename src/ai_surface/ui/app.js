@@ -1225,6 +1225,16 @@ python3 -m http.server 8000
       <tbody>${rows}</tbody></table></div>`;
   }
 
+  function verdictTag(f) {
+    if (f.verdict === "confirmed") {
+      return `<span class="sev-tag" style="--accent:#c0272d">confirmed risk</span>`;
+    }
+    if (f.verdict === "likely") {
+      return `<span class="sev-tag" style="--accent:#c78a00">likely risk</span>`;
+    }
+    return "";
+  }
+
   function cardHTML(f) {
     const sev = f.severity;
     const accent = sevColor(sev);
@@ -1254,6 +1264,7 @@ python3 -m http.server 8000
       <article class="card" data-id="${f._id}" style="--accent:${accent}" tabindex="0">
         <div class="card-head">
           <span class="title">${esc(f.surface)}</span>
+          ${verdictTag(f)}
           ${sevTag}
         </div>
         ${chips ? `<div class="chips">${chips}</div>` : ""}

@@ -4,6 +4,19 @@ All notable changes to `ai-surface` will be documented in this file. The format 
 
 ## [Unreleased]
 
+## [1.0.7] - 2026-07-17
+
+Findings now carry a verdict, every scan ends on a scorecard, and CI setup is one command.
+
+### Added
+- **Verdicts on every risky finding.** Each finding with risk signal is tagged `confirmed` (the risk is an unambiguous fact of the code or config as written: a declared capability, a present secret name, a declared remote endpoint) or `likely` (inferred from a pattern, a reputation signal, or an absence of signal; wants a human look). Verdicts render in the terminal, JSON, SARIF, the PR comment, and the offline UI. A verdict never claims runtime exploitability; proving that against the running application is what the APIsec platform validates.
+- **AI Surface Scorecard.** Every terminal scan now ends with a compact scorecard: a posture grade (A through D), surface / confirmed / likely counts, and the single worst finding. Built for the screenshot.
+- **`ai-surface init`.** Writes the recommended GitHub Action workflow (`.github/workflows/ai-surface.yml`) into your repo so every PR is gated on net-new AI attack surface. Prints the pre-commit snippet for local scans.
+- **pre-commit support.** The repo now ships `.pre-commit-hooks.yaml`; add `apisec-inc/AI-Surface` to your `.pre-commit-config.yaml` to scan before every commit.
+
+### Fixed
+- The runtime version string now matches the release. 1.0.6 shipped with an un-bumped `__version__`, so `ai-surface version` and the `tool_version` field in reports said 1.0.5 from the 1.0.6 package.
+
 ## [1.0.6] - 2026-07-09
 
 Fixes the GitHub Action's net-new PR diff, which silently degraded to a full-inventory comparison in the published Docker action.

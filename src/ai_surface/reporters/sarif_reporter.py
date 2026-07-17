@@ -65,6 +65,8 @@ def _rules() -> list[dict[str, Any]]:
 
 def _message(finding: Finding) -> str:
     parts = [finding.surface]
+    if finding.verdict:
+        parts.append(f"verdict: {finding.verdict} risk")
     if finding.severity:
         parts.append(f"severity: {finding.severity}")
     if finding.audit and finding.audit.risk_flags:
@@ -77,6 +79,8 @@ def _message(finding: Finding) -> str:
 
 def _result(finding: Finding) -> dict[str, Any]:
     props: dict[str, Any] = {"category": finding.category}
+    if finding.verdict:
+        props["verdict"] = finding.verdict
     if finding.severity:
         props["severity"] = finding.severity
     if finding.audit:

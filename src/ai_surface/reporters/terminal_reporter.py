@@ -27,6 +27,8 @@ from ..types import (
     SEVERITY_INFO,
     SEVERITY_LOW,
     SEVERITY_MEDIUM,
+    VERDICT_CONFIRMED,
+    VERDICT_LIKELY,
     Finding,
     Report,
 )
@@ -71,6 +73,26 @@ def _severity_badge(severity: str | None) -> Text | None:
     return Text(f" [{severity.upper()}] ", style=style)
 
 
+VERDICT_STYLE: dict[str, str] = {
+    VERDICT_CONFIRMED: "bold white on dark_red",
+    VERDICT_LIKELY: "bold black on yellow",
+}
+
+VERDICT_LABEL: dict[str, str] = {
+    VERDICT_CONFIRMED: "CONFIRMED RISK",
+    VERDICT_LIKELY: "LIKELY RISK",
+}
+
+
+def _verdict_badge(verdict: str | None) -> Text | None:
+    """Return a verdict badge, or None for inventory-only findings."""
+    if not verdict:
+        return None
+    style = VERDICT_STYLE.get(verdict, "bold")
+    label = VERDICT_LABEL.get(verdict, verdict.upper())
+    return Text(f" {label} ", style=style)
+
+
 def render_terminal(
     report: Report,
     console: Console | None = None,
@@ -110,6 +132,7 @@ def render_terminal(
 
     _render_risk_summary(report, console)
     _render_governance_summary(report, console, governance=governance)
+    _render_scorecard(report, console)
     _render_footer(report, console, verbose=verbose)
 
 
@@ -204,6 +227,9 @@ def _render_finding(
     # Surface name on its own line, indented. Audited findings carry a colored
     # severity badge; discovery-only findings render exactly as before.
     surface_text = Text("  • ", style="dim") + Text(finding.surface, style="bold white")
+    verdict = _verdict_badge(finding.verdict)
+    if verdict is not None:
+        surface_text = surface_text + Text(" ") + verdict
     badge = _severity_badge(finding.severity)
     if badge is not None:
         surface_text = surface_text + badge
@@ -377,6 +403,85 @@ def _render_risk_summary(report: Report, console: Console) -> None:
     console.print(f"[bold yellow]Risk {word} ({len(risks)}):[/bold yellow]")
     for r in risks:
         console.print(Text(f"  ⚠ {r}", style="yellow"))
+    console.print()
+
+
+def _grade_for(summary_confirmed: int, summary_likely: int, high_or_crit: int) -> tuple[str, str]:
+    """Return (grade letter, rich style) from verdict and severity counts.
+
+    The grade reflects what the scan can actually stand behind: confirmed
+    high-severity facts weigh hardest, inferred risks weigh lighter. It is a
+    posture summary, not a security certification.
+    """
+    if summary_confirmed and high_or_crit:
+        return "D", "bold white on dark_red"
+    if summary_confirmed:
+        return "C", "bold white on red"
+    if summary_likely:
+        return "B", "bold black on yellow"
+    return "A", "bold white on green"
+
+
+def _render_scorecard(report: Report, console: Console) -> None:
+    """The end-of-scan scorecard: one glance, one screenshot.
+
+    Grade, the three counts that matter, and the single worst finding. This is
+    deliberately the last content block before the footer links so a terminal
+    screenshot naturally ends on it.
+    """
+    summary = report.summary or report.build_summary()
+    high_or_crit = summary.by_severity.get(SEVERITY_CRITICAL, 0) + summary.by_severity.get(
+        SEVERITY_HIGH, 0
+    )
+    grade, grade_style = _grade_for(
+        summary.confirmed_count, summary.likely_count, high_or_crit
+    )
+
+    console.print(Rule(style="cyan"))
+    line = Text("AI Surface Scorecard  ", style="bold cyan")
+    line += Text(f" {grade} ", style=grade_style)
+    console.print(line)
+
+    counts = Text("  ")
+    counts += Text(f"{summary.total_findings}", style="bold white")
+    counts += Text(" surfaces · ", style="dim")
+    if summary.confirmed_count:
+        counts += Text(f"{summary.confirmed_count} confirmed risk", style="bold red")
+    else:
+        counts += Text("0 confirmed risk", style="green")
+    counts += Text(" · ", style="dim")
+    if summary.likely_count:
+        counts += Text(f"{summary.likely_count} likely risk", style="bold yellow")
+    else:
+        counts += Text("0 likely risk", style="green")
+    console.print(counts)
+
+    # The one-line worst finding: first confirmed with a high/critical flag,
+    # else first confirmed, else the top risk phrase. Quote the flag that made
+    # the finding confirmed, not whatever flag happens to be listed first.
+    from ..verdicts import CONFIRMED_FLAGS  # noqa: PLC0415 - avoid module cycle
+
+    worst: str | None = None
+    for f in report.findings:
+        if f.verdict == VERDICT_CONFIRMED and f.severity in (SEVERITY_CRITICAL, SEVERITY_HIGH):
+            desc = ""
+            if f.audit and f.audit.risk_flags:
+                confirmed_flags = [
+                    rf for rf in f.audit.risk_flags if rf.flag in CONFIRMED_FLAGS
+                ]
+                rf = confirmed_flags[0] if confirmed_flags else f.audit.risk_flags[0]
+                desc = rf.description or rf.flag
+            worst = f"{f.surface}: {desc}" if desc else f.surface
+            break
+    if worst is None:
+        for f in report.findings:
+            if f.verdict == VERDICT_CONFIRMED:
+                worst = f.surface
+                break
+    if worst is None and summary.top_risks:
+        worst = summary.top_risks[0]
+    if worst:
+        console.print(Text(f"  Worst finding: {worst}", style="red"))
     console.print()
 
 

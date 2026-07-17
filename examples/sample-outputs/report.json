@@ -1,9 +1,9 @@
 {
   "schema_version": "1.0",
-  "tool_version": "1.0.0",
+  "tool_version": "1.0.7",
   "scan_root": "demo-app",
   "repository": "",
-  "scan_timestamp": "2026-06-17T20:28:34.085074+00:00",
+  "scan_timestamp": "2026-07-17T19:21:34.839241+00:00",
   "detectors_run": [
     "mcp_audit",
     "llm_sdks",
@@ -49,7 +49,9 @@
       "api-runtime"
     ],
     "resolve_here_count": 9,
-    "validate_runtime_count": 10
+    "validate_runtime_count": 10,
+    "confirmed_count": 4,
+    "likely_count": 11
   },
   "frameworks": [
     {
@@ -182,7 +184,8 @@
       ],
       "disposition": "validate-runtime",
       "runtime_status": "coming",
-      "runtime_question": "Can this MCP server's tools be abused at runtime (tool abuse, agent-to-tool BOLA/BFLA, over-provisioned permissions)?"
+      "runtime_question": "Can this MCP server's tools be abused at runtime (tool abuse, agent-to-tool BOLA/BFLA, over-provisioned permissions)?",
+      "verdict": "confirmed"
     },
     {
       "surface": "MCP Server: stripe-mcp",
@@ -293,7 +296,8 @@
       ],
       "disposition": "validate-runtime",
       "runtime_status": "coming",
-      "runtime_question": "Can this MCP server's tools be abused at runtime (tool abuse, agent-to-tool BOLA/BFLA, over-provisioned permissions)?"
+      "runtime_question": "Can this MCP server's tools be abused at runtime (tool abuse, agent-to-tool BOLA/BFLA, over-provisioned permissions)?",
+      "verdict": "confirmed"
     },
     {
       "surface": "MCP Server (in-house): src/orders_mcp_server.py",
@@ -403,7 +407,8 @@
       ],
       "disposition": "validate-runtime",
       "runtime_status": "coming",
-      "runtime_question": "Can this MCP server's tools be abused at runtime (tool abuse, agent-to-tool BOLA/BFLA, over-provisioned permissions)?"
+      "runtime_question": "Can this MCP server's tools be abused at runtime (tool abuse, agent-to-tool BOLA/BFLA, over-provisioned permissions)?",
+      "verdict": "confirmed"
     },
     {
       "surface": "Anthropic SDK",
@@ -431,7 +436,8 @@
       "bridges": [],
       "disposition": "resolve-here",
       "runtime_status": "n/a",
-      "runtime_question": null
+      "runtime_question": null,
+      "verdict": "likely"
     },
     {
       "surface": "OpenAI SDK",
@@ -459,7 +465,8 @@
       "bridges": [],
       "disposition": "resolve-here",
       "runtime_status": "n/a",
-      "runtime_question": null
+      "runtime_question": null,
+      "verdict": "likely"
     },
     {
       "surface": "AWS Bedrock",
@@ -485,7 +492,8 @@
       "bridges": [],
       "disposition": "resolve-here",
       "runtime_status": "n/a",
-      "runtime_question": null
+      "runtime_question": null,
+      "verdict": null
     },
     {
       "surface": "AWS Strands Agent: triage_agent (in src/support_workflow.py)",
@@ -524,7 +532,8 @@
       ],
       "disposition": "validate-runtime",
       "runtime_status": "coming",
-      "runtime_question": "Can this agent be driven to an unauthorized action (agent-to-tool authorization abuse, agent-exposed API)?"
+      "runtime_question": "Can this agent be driven to an unauthorized action (agent-to-tool authorization abuse, agent-exposed API)?",
+      "verdict": null
     },
     {
       "surface": "LangChain Agent: support_agent (in src/chat_agent.py)",
@@ -626,7 +635,8 @@
       ],
       "disposition": "validate-runtime",
       "runtime_status": "coming",
-      "runtime_question": "Can this agent be driven to an unauthorized action (agent-to-tool authorization abuse, agent-exposed API)?"
+      "runtime_question": "Can this agent be driven to an unauthorized action (agent-to-tool authorization abuse, agent-exposed API)?",
+      "verdict": "confirmed"
     },
     {
       "surface": "LangChain (used in 1 file)",
@@ -657,7 +667,8 @@
       ],
       "disposition": "validate-runtime",
       "runtime_status": "coming",
-      "runtime_question": "Can this agent be driven to an unauthorized action (agent-to-tool authorization abuse, agent-exposed API)?"
+      "runtime_question": "Can this agent be driven to an unauthorized action (agent-to-tool authorization abuse, agent-exposed API)?",
+      "verdict": null
     },
     {
       "surface": "AI Provider API Keys",
@@ -694,7 +705,8 @@
       "bridges": [],
       "disposition": "resolve-here",
       "runtime_status": "n/a",
-      "runtime_question": null
+      "runtime_question": null,
+      "verdict": "likely"
     },
     {
       "surface": "Model Gateway: LiteLLM",
@@ -728,7 +740,8 @@
       "bridges": [],
       "disposition": "resolve-here",
       "runtime_status": "n/a",
-      "runtime_question": null
+      "runtime_question": null,
+      "verdict": "likely"
     },
     {
       "surface": "K8s AI Workload: vllm (in deploy/vllm-embeddings.yaml)",
@@ -758,7 +771,8 @@
       "bridges": [],
       "disposition": "resolve-here",
       "runtime_status": "n/a",
-      "runtime_question": null
+      "runtime_question": null,
+      "verdict": "likely"
     },
     {
       "surface": "Bedrock provisioned throughput: anthropic.claude-sonnet-4-20250514-v1:0",
@@ -785,7 +799,8 @@
       "bridges": [],
       "disposition": "resolve-here",
       "runtime_status": "n/a",
-      "runtime_question": null
+      "runtime_question": null,
+      "verdict": "likely"
     },
     {
       "surface": "REST API: GET /health",
@@ -821,7 +836,8 @@
       ],
       "disposition": "validate-runtime",
       "runtime_status": "live",
-      "runtime_question": "Is this endpoint actually exploitable (BOLA, broken auth, business-logic abuse) against the running application?"
+      "runtime_question": "Is this endpoint actually exploitable (BOLA, broken auth, business-logic abuse) against the running application?",
+      "verdict": null
     },
     {
       "surface": "REST API: GET /orders/{order_id}",
@@ -859,7 +875,8 @@
       ],
       "disposition": "validate-runtime",
       "runtime_status": "live",
-      "runtime_question": "Is this endpoint actually exploitable (BOLA, broken auth, business-logic abuse) against the running application?"
+      "runtime_question": "Is this endpoint actually exploitable (BOLA, broken auth, business-logic abuse) against the running application?",
+      "verdict": "likely"
     },
     {
       "surface": "REST API: GET /customers/{customer_id}",
@@ -897,7 +914,8 @@
       ],
       "disposition": "validate-runtime",
       "runtime_status": "live",
-      "runtime_question": "Is this endpoint actually exploitable (BOLA, broken auth, business-logic abuse) against the running application?"
+      "runtime_question": "Is this endpoint actually exploitable (BOLA, broken auth, business-logic abuse) against the running application?",
+      "verdict": "likely"
     },
     {
       "surface": "REST API: PATCH /customers/{customer_id}",
@@ -935,7 +953,8 @@
       ],
       "disposition": "validate-runtime",
       "runtime_status": "live",
-      "runtime_question": "Is this endpoint actually exploitable (BOLA, broken auth, business-logic abuse) against the running application?"
+      "runtime_question": "Is this endpoint actually exploitable (BOLA, broken auth, business-logic abuse) against the running application?",
+      "verdict": "likely"
     },
     {
       "surface": "Vector store: pgvector",
@@ -968,7 +987,8 @@
       "bridges": [],
       "disposition": "resolve-here",
       "runtime_status": "n/a",
-      "runtime_question": null
+      "runtime_question": null,
+      "verdict": "likely"
     },
     {
       "surface": "RAG pipeline: LangChain",
@@ -1001,7 +1021,8 @@
       "bridges": [],
       "disposition": "resolve-here",
       "runtime_status": "n/a",
-      "runtime_question": null
+      "runtime_question": null,
+      "verdict": "likely"
     }
   ],
   "errors": []
