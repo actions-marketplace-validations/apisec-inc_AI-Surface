@@ -6,13 +6,15 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
-[![Version](https://img.shields.io/badge/version-1.0.6-blue.svg)](https://github.com/apisec-inc/AI-Surface/blob/main/CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.0.7-blue.svg)](https://github.com/apisec-inc/AI-Surface/blob/main/CHANGELOG.md)
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](https://github.com/apisec-inc/AI-Surface/tree/main/tests)
 [![Runs offline](https://img.shields.io/badge/no_telemetry-runs_offline-brightgreen.svg)](https://github.com/apisec-inc/AI-Surface/blob/main/docs/PRIVACY.md)
 
 </div>
 
 `ai-surface` maps the AI attack surface in your codebase: LLM calls, agents, MCP servers, RAG/vector stores, model gateways, self-hosted runtimes, provider keys, and the HTTP APIs that expose them. Run it locally or in CI to see what AI surfaces a PR introduces, generate an AI-BOM, and gate new high-risk findings before merge.
+
+Every risky finding carries a verdict: **confirmed risk** (an unambiguous fact of the code as written, like a financial-action tool with no approval step) or **likely risk** (inferred, wants a human look). Every scan ends on a scorecard with a posture grade. CI setup is one command: `ai-surface init`.
 
 It runs as a local static analysis pass that executes no code, makes no network calls, sends no telemetry, and requires no credentials, so your source never leaves the host.
 
@@ -170,7 +172,15 @@ ai-surface scan . --baseline --fail-on high   # 3. in CI, fail only on NEW high+
 
 ## GitHub Action and CI gating
 
-Drop this into `.github/workflows/ai-surface.yml`:
+The fastest path is one command from your repo root:
+
+```bash
+ai-surface init
+```
+
+It writes the recommended workflow below into `.github/workflows/ai-surface.yml` and prints a [pre-commit](https://pre-commit.com) snippet for local scans (the repo ships `.pre-commit-hooks.yaml`).
+
+Or drop this into `.github/workflows/ai-surface.yml` yourself:
 
 ```yaml
 name: AI Surface Check

@@ -67,6 +67,15 @@ SKU_API_RUNTIME = "api-runtime"  # discovered APIs -> API outside-in runtime tes
 DISPOSITION_RESOLVE = "resolve-here"
 DISPOSITION_VALIDATE = "validate-runtime"
 
+# Verdict: how sure the scan is about a finding's risk. "confirmed" means the
+# risk is an unambiguous fact of the code/config as written (a declared
+# capability, a present secret name, a declared remote endpoint). "likely"
+# means the risk is inferred (a pattern match, a reputation signal, or an
+# absence-of-signal) and wants a human look. Confirmed never claims runtime
+# exploitability; that is the platform's job. None = inventory, no risk signal.
+VERDICT_CONFIRMED = "confirmed"
+VERDICT_LIKELY = "likely"
+
 # Runtime-validation availability for a validate-runtime finding. Honest about
 # what the platform can do today: API is live, others are on the way. "n/a" is
 # used for resolve-here findings (no runtime journey).
@@ -248,6 +257,11 @@ class Finding:
     """For validate-runtime findings: the exact exploitability question only
     runtime can answer (e.g. 'Can user A read user B's object?')."""
 
+    verdict: str | None = None
+    """confirmed (unambiguous code/config fact) or likely (inferred, needs
+    review). Filled in by the verdicts layer. None = inventory, no risk signal.
+    Never a claim of runtime exploitability."""
+
 
 @dataclass
 class Summary:
@@ -269,6 +283,11 @@ class Summary:
     """Findings you can act on now without the platform (independent value)."""
     validate_runtime_count: int = 0
     """Candidates whose exploitability only runtime can prove (the journey)."""
+
+    confirmed_count: int = 0
+    """Findings whose risk is an unambiguous code/config fact."""
+    likely_count: int = 0
+    """Findings whose risk is inferred and wants a human look."""
 
 
 @dataclass
@@ -344,6 +363,8 @@ class Report:
 
         resolve_here = sum(1 for f in self.findings if f.disposition == DISPOSITION_RESOLVE)
         validate_rt = sum(1 for f in self.findings if f.disposition == DISPOSITION_VALIDATE)
+        confirmed = sum(1 for f in self.findings if f.verdict == VERDICT_CONFIRMED)
+        likely = sum(1 for f in self.findings if f.verdict == VERDICT_LIKELY)
 
         return Summary(
             total_findings=len(self.findings),
@@ -353,6 +374,8 @@ class Report:
             bridges_available=bridges,
             resolve_here_count=resolve_here,
             validate_runtime_count=validate_rt,
+            confirmed_count=confirmed,
+            likely_count=likely,
         )
 
 

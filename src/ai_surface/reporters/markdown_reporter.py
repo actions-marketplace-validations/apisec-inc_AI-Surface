@@ -104,6 +104,15 @@ def render_markdown(report: Report, governance: bool = False) -> str:
     )
     out.append("")
 
+    # Verdict counts: what the scan can stand behind vs what wants review.
+    vsummary = report.summary or report.build_summary()
+    if vsummary.confirmed_count or vsummary.likely_count:
+        out.append(
+            f"**Verdicts:** 🔴 {vsummary.confirmed_count} confirmed risk  "
+            f"·  🟡 {vsummary.likely_count} likely risk (needs review)"
+        )
+        out.append("")
+
     # Severity breakdown from the report summary (audited findings only).
     summary = report.summary or report.build_summary()
     if summary.by_severity:
@@ -165,6 +174,10 @@ def _append_finding(out: list[str], finding: Finding, governance: bool = False) 
     if finding.severity:
         badge = SEVERITY_BADGE.get(finding.severity, finding.severity.upper())
         heading = f"{badge} {heading}"
+    if finding.verdict == "confirmed":
+        heading = f"{heading} · `CONFIRMED RISK`"
+    elif finding.verdict == "likely":
+        heading = f"{heading} · `LIKELY RISK`"
     out.append(f"### {heading}")
     out.append("")
 
