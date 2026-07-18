@@ -14,6 +14,8 @@
 
 `ai-surface` maps the AI attack surface in your codebase: LLM calls, agents, MCP servers, RAG/vector stores, model gateways, self-hosted runtimes, provider keys, and the HTTP APIs that expose them. Run it locally or in CI to see what AI surfaces a PR introduces, generate an AI-BOM, and gate new high-risk findings before merge.
 
+Most layers of a codebase already have a check that runs before merge: Trivy for container images, Gitleaks for committed secrets, an SCA for dependencies. The AI layer, the agents, MCP servers, RAG, and LLM calls, has not had one. `ai-surface` is that check.
+
 Every risky finding carries a verdict: **confirmed risk** (an unambiguous fact of the code as written, like a financial-action tool with no approval step) or **likely risk** (inferred, wants a human look). Every scan ends on a scorecard with a posture grade. CI setup is one command: `ai-surface init`.
 
 It runs as a local static analysis pass that executes no code, makes no network calls, sends no telemetry, and requires no credentials, so your source never leaves the host.
@@ -407,6 +409,8 @@ When PR comments are enabled, the GitHub Action uses the repository's `GITHUB_TO
 Deep dive: [`docs/ARCHITECTURE.md`](https://github.com/apisec-inc/AI-Surface/blob/main/docs/ARCHITECTURE.md).
 
 ## Comparison with adjacent tools
+
+Trivy checks container images, Gitleaks checks git history, an SCA checks dependencies. `ai-surface` is the equivalent pre-merge check for the AI layer. It sits alongside the tools below rather than replacing any of them.
 
 | Tool | What it tells you | When it sees AI |
 |---|---|---|
