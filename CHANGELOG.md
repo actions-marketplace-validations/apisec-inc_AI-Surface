@@ -4,6 +4,11 @@ All notable changes to `ai-surface` will be documented in this file. The format 
 
 ## [Unreleased]
 
+## [1.0.8] - 2026-08-26
+
+### Added
+- **Unsafe command-allowlist detection (MCP).** Flags MCP servers whose command allowlist (e.g. `ALLOW_COMMANDS`) names a binary with its own argument-level execution primitive, where checking `argv[0]` alone does not restrict execution: `git -c alias`, `find -exec`, `python -c`, `tar --checkpoint-action`, and shells / `env` / `xargs` / `ssh`. Raised as a `confirmed` risk under the MCP audit and mapped to OWASP LLM06 (Excessive Agency). Token-based key matching excludes denylists (`DISALLOW_COMMANDS`), unrelated toggles (`ALLOW_COMMAND_LOGGING`), and full-argument-vector allowlists (`ALLOW_COMMANDS="git status"`). Original detection contributed in `apisec-inc/mcp-audit`.
+
 ## [1.0.7] - 2026-07-17
 
 Findings now carry a verdict, every scan ends on a scorecard, and CI setup is one command.
