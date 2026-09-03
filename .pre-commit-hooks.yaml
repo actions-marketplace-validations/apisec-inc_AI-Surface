@@ -1,0 +1,19 @@
+# pre-commit hook definitions for ai-surface.
+# Usage in a consuming repo's .pre-commit-config.yaml:
+#
+#   repos:
+#     - repo: https://github.com/apisec-inc/AI-Surface
+#       rev: v1.0.7
+#       hooks:
+#         - id: ai-surface
+#
+# The hook scans the whole repo (not just staged files) because AI surface is
+# a repo-level property: a new agent tool interacts with config that may not
+# be in this commit. Fails only on assessed high-or-critical findings, so
+# inventory-only results never block a commit.
+- id: ai-surface
+  name: ai-surface (AI attack surface check)
+  entry: ai-surface scan . --fail-on high
+  language: python
+  pass_filenames: false
+  always_run: true

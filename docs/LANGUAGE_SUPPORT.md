@@ -48,8 +48,9 @@ wherever the component is detected:
 
 - **LLM SDKs:** OpenAI, Anthropic, AWS Bedrock, and others (Python + TS/JS).
 - **Agents:** LangChain, LangGraph, CrewAI, AutoGen, LlamaIndex, Haystack,
-  Semantic Kernel, Pydantic AI, AWS Strands (Python); LangChain.js, LangGraph.js,
-  Vercel AI SDK, Mastra, OpenAI Agents, LlamaIndex.ts (TS/JS).
+  Semantic Kernel, Pydantic AI, AWS Strands, the OpenAI Agents SDK, and the
+  Claude Agent SDK (Python); LangChain.js, LangGraph.js, Vercel AI SDK, Mastra,
+  OpenAI Agents SDK, LlamaIndex.ts, and the Claude Agent SDK (TS/JS).
 - **Vector stores / RAG:** Pinecone, Weaviate, Chroma, Qdrant, Milvus, FAISS,
   LanceDB, pgvector, and LangChain / LlamaIndex retrieval pipelines (native SDKs
   and LangChain wrapper imports). Maps to OWASP LLM08 + EU AI Act Art. 10 / ISO A.7.

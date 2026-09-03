@@ -440,3 +440,40 @@ def test_js_spec_files_are_skipped(tmp_path: Path) -> None:
     named = [f for f in findings if "Mastra Agent: bot" in f.surface]
     assert len(named) == 1
     assert named[0].evidence.files == ["agent.ts"]
+
+
+# ---------------------------------------------------------------------------
+# Provider Agent SDKs (1.0.5): OpenAI Agents SDK + Claude Agent SDK
+# ---------------------------------------------------------------------------
+
+
+def test_openai_agents_python(tmp_path: Path) -> None:
+    findings = _findings_for("openai_agents_refund.py", tmp_path=tmp_path)
+    agents = [f for f in findings if "support_agent" in f.surface]
+    assert len(agents) == 1, _by_surface(findings)
+    f = agents[0]
+    assert "OpenAI Agents SDK Agent" in f.surface
+    assert set(f.permissions) >= {"refund_payment", "lookup_order"}
+    assert "financial action exposed" in f.risk_indicators
+
+
+def test_claude_agent_sdk_python(tmp_path: Path) -> None:
+    findings = _findings_for("claude_agent_sdk_app.py", tmp_path=tmp_path)
+    assert any("Claude Agent SDK" in f.surface for f in findings), _by_surface(findings)
+    assert any("destructive action exposed" in f.risk_indicators for f in findings)
+
+
+def test_claude_agent_sdk_typescript(tmp_path: Path) -> None:
+    findings = _findings_for("claude_agent_sdk_app.ts", tmp_path=tmp_path)
+    assert any("Claude Agent SDK" in f.surface for f in findings), _by_surface(findings)
+    assert any("financial action exposed" in f.risk_indicators for f in findings)
+
+
+def test_local_agents_module_is_not_openai_agents(tmp_path: Path) -> None:
+    # A repo with its own `agents` package must NOT be flagged as the OpenAI
+    # Agents SDK off a bare `import agents` alone (the generic-import false positive).
+    (tmp_path / "local.py").write_text(
+        "import agents\n\nx = agents.something()\n", encoding="utf-8"
+    )
+    findings = AgentFrameworkDetector().detect(str(tmp_path))
+    assert not any("OpenAI Agents SDK" in f.surface for f in findings), findings

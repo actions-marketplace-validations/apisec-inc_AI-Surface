@@ -107,6 +107,18 @@ class Orchestrator:
             errors.append(msg)
             log.warning(msg)
 
+        # Classify verdicts (confirmed vs likely risk). Runs after every layer
+        # that can add risk signal (audits, oversight, observability, pii) so
+        # the verdict sees the full picture. Defensive: must not abort a scan.
+        try:
+            from .verdicts import attach_verdicts  # noqa: PLC0415
+
+            attach_verdicts(all_findings)
+        except Exception as exc:  # noqa: BLE001
+            msg = f"verdict classification failed: {exc.__class__.__name__}: {exc}"
+            errors.append(msg)
+            log.warning(msg)
+
         # Classify dispositions (resolve-here vs validate-runtime), then attach
         # paid-platform bridges. Defensive: neither must abort a scan.
         try:

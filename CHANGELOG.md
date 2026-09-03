@@ -4,6 +4,75 @@ All notable changes to `ai-surface` will be documented in this file. The format 
 
 ## [Unreleased]
 
+## [1.0.8] - 2026-08-26
+
+### Added
+- **Unsafe command-allowlist detection (MCP).** Flags MCP servers whose command allowlist (e.g. `ALLOW_COMMANDS`) names a binary with its own argument-level execution primitive, where checking `argv[0]` alone does not restrict execution: `git -c alias`, `find -exec`, `python -c`, `tar --checkpoint-action`, and shells / `env` / `xargs` / `ssh`. Raised as a `confirmed` risk under the MCP audit and mapped to OWASP LLM06 (Excessive Agency). Token-based key matching excludes denylists (`DISALLOW_COMMANDS`), unrelated toggles (`ALLOW_COMMAND_LOGGING`), and full-argument-vector allowlists (`ALLOW_COMMANDS="git status"`). Original detection contributed in `apisec-inc/mcp-audit`.
+
+## [1.0.7] - 2026-07-17
+
+Findings now carry a verdict, every scan ends on a scorecard, and CI setup is one command.
+
+### Added
+- **Verdicts on every risky finding.** Each finding with risk signal is tagged `confirmed` (the risk is an unambiguous fact of the code or config as written: a declared capability, a present secret name, a declared remote endpoint) or `likely` (inferred from a pattern, a reputation signal, or an absence of signal; wants a human look). Verdicts render in the terminal, JSON, SARIF, the PR comment, and the offline UI. A verdict never claims runtime exploitability; proving that against the running application is what the APIsec platform validates.
+- **AI Surface Scorecard.** Every terminal scan now ends with a compact scorecard: a posture grade (A through D), surface / confirmed / likely counts, and the single worst finding. Built for the screenshot.
+- **`ai-surface init`.** Writes the recommended GitHub Action workflow (`.github/workflows/ai-surface.yml`) into your repo so every PR is gated on net-new AI attack surface. Prints the pre-commit snippet for local scans.
+- **pre-commit support.** The repo now ships `.pre-commit-hooks.yaml`; add `apisec-inc/AI-Surface` to your `.pre-commit-config.yaml` to scan before every commit.
+
+### Fixed
+- The runtime version string now matches the release. 1.0.6 shipped with an un-bumped `__version__`, so `ai-surface version` and the `tool_version` field in reports said 1.0.5 from the 1.0.6 package.
+
+## [1.0.6] - 2026-07-09
+
+Fixes the GitHub Action's net-new PR diff, which silently degraded to a full-inventory comparison in the published Docker action.
+
+### Fixed
+
+- **Action: PR base-branch diff works again.** The Docker action runs as root while the checked-out workspace is owned by the runner user, so `git fetch origin <base_ref>` hit git's dubious-ownership guard and the action silently fell back to comparing against the full inventory instead of net-new findings. The workspace is now marked as a git `safe.directory` before the base fetch, and an already-fetched `origin/<base_ref>` (from `actions/checkout` with `fetch-depth: 0`) is used as a fallback if the fetch fails. `fail-on` now gates on net-new findings in PRs, as documented.
+
+### Added
+
+- A one-line star ask in the CLI footer, the markdown report footer, the Action's PR comment, and the README, so users who find the tool useful know the one thing that helps other engineers discover it.
+
+## [1.0.5] - 2026-06-25
+
+Adds detection for the two provider agent SDKs teams are migrating to as they move off the heavier first-generation frameworks.
+
+### Added
+
+- **OpenAI Agents SDK detection (Python).** Recognizes the SDK from its distinctive symbols (a `from agents import Agent/Runner/function_tool/...` line, a `Runner.run` call, or the `@function_tool` decorator), never a bare `import agents`, so a repo's own local `agents` module is not misdetected. Agent definitions (`agent = Agent(name=..., tools=[...])`), their tools, and the risk classification all fire. The TypeScript side (`@openai/agents`) was already covered.
+- **Claude Agent SDK detection (Python and TypeScript).** Python via the `claude_agent_sdk` import plus `ClaudeSDKClient(...)` / `ClaudeAgentOptions(...)`, with `@tool`-decorated tools; TypeScript via `@anthropic-ai/claude-agent-sdk` and `new ClaudeSDKClient(...)`.
+- `@function_tool` is now recognized as a tool decorator alongside `@tool`.
+
+This closes the agent-layer gap for the OpenAI Agents SDK and Claude Agent SDK. Detection of agent tools built dynamically through factory functions remains a roadmap item (AST/dataflow).
+
+## [1.0.4] - 2026-06-24
+
+Hardens the `--baseline` workflow against silent suppression, reported by Simon Essien during the beta. A baseline accepts pre-existing findings by design; the gap was that this acceptance was invisible and had no floor, so a high-severity finding captured into a committed baseline could pass the gate silently on every later run.
+
+### Added
+
+- **`--always-fail-on <severity>` floor.** Exits non-zero if any finding in the current scan is at or above the given severity, including pre-existing ones a baseline would otherwise accept. Lets you keep the low-noise `--baseline --fail-on high` PR gate while guaranteeing, say, that no critical finding can ever be baselined away: `ai-surface scan . --baseline --fail-on high --always-fail-on critical`.
+
+### Changed
+
+- **Baseline acceptance is now visible.** When `--baseline` passes, ai-surface prints a one-line notice of how many high+ findings it is accepting as pre-existing, so a passing gate is never mistaken for "nothing risky here."
+- **`docs/CI_INTEGRATION.md`** Option B now documents the baseline as a security-relevant control: protect `.ai-surface-baseline.json` with review/CODEOWNERS and pair it with `--always-fail-on`.
+
+## [1.0.3] - 2026-06-24
+
+Feedback-driven release from the first beta cohort: keep the default output focused for practitioners while preserving the full governance depth on demand.
+
+### Added
+
+- **`--governance` flag.** Per-finding governance clauses (EU AI Act / NIST / ISO) under each risk flag are now off by default in terminal and markdown output, and a single one-line governance summary is always shown instead. Pass `--governance` to print the clause under each flag. JSON, CycloneDX (AI-BOM), and the `--ui` always carry the full per-finding governance detail, so the data contract is unchanged. Beta testers found the per-finding clauses noisy for day-to-day security work while valuable for compliance; this makes both audiences happy.
+- **`--ai-only` flag.** Excludes the plain (non-AI) API-endpoint category from results, so output focuses on the AI-specific surface (agents, MCP, LLM calls, RAG, gateways, keys). Errors clearly if it would exclude every selected category.
+
+### Changed
+
+- The committed `.ai-inventory.md` (via `--write-inventory`) follows the same governance default: a one-line summary unless `--governance` is passed.
+- README: documented both flags, and clarified that the sample report is shown with `--governance`.
+
 ## [1.0.2] - 2026-06-17
 
 ### Changed

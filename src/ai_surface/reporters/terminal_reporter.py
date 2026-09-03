@@ -13,7 +13,7 @@ from rich.rule import Rule
 from rich.text import Text
 
 from ..cross_promo import build_upgrade_url, headline_finding, specialists_for_report
-from ..frameworks import standards_for_flag
+from ..frameworks import framework_names, standards_for_flag
 from ..types import (
     CATEGORY_AGENT_FRAMEWORK,
     CATEGORY_AI_INFRA,
@@ -27,6 +27,8 @@ from ..types import (
     SEVERITY_INFO,
     SEVERITY_LOW,
     SEVERITY_MEDIUM,
+    VERDICT_CONFIRMED,
+    VERDICT_LIKELY,
     Finding,
     Report,
 )
@@ -71,10 +73,31 @@ def _severity_badge(severity: str | None) -> Text | None:
     return Text(f" [{severity.upper()}] ", style=style)
 
 
+VERDICT_STYLE: dict[str, str] = {
+    VERDICT_CONFIRMED: "bold white on dark_red",
+    VERDICT_LIKELY: "bold black on yellow",
+}
+
+VERDICT_LABEL: dict[str, str] = {
+    VERDICT_CONFIRMED: "CONFIRMED RISK",
+    VERDICT_LIKELY: "LIKELY RISK",
+}
+
+
+def _verdict_badge(verdict: str | None) -> Text | None:
+    """Return a verdict badge, or None for inventory-only findings."""
+    if not verdict:
+        return None
+    style = VERDICT_STYLE.get(verdict, "bold")
+    label = VERDICT_LABEL.get(verdict, verdict.upper())
+    return Text(f" {label} ", style=style)
+
+
 def render_terminal(
     report: Report,
     console: Console | None = None,
     verbose: bool = False,
+    governance: bool = False,
 ) -> None:
     """Render `report` as a rich-styled CLI output.
 
@@ -82,6 +105,9 @@ def render_terminal(
         report: the scan report to render.
         console: optional rich Console (defaults to stdout).
         verbose: when True, shows all files for each finding without truncation.
+        governance: when True, show per-finding governance clauses (EU AI Act /
+            NIST / ISO) under each risk flag. Off by default to keep practitioner
+            output focused; a one-line governance summary is always shown.
     """
     if console is None:
         console = Console()
@@ -97,14 +123,16 @@ def render_terminal(
     by_cat = report.by_category()
     for cat in CATEGORY_ORDER:
         if cat in by_cat and by_cat[cat]:
-            _render_category(cat, by_cat[cat], console, verbose=verbose)
+            _render_category(cat, by_cat[cat], console, verbose=verbose, governance=governance)
 
     # Catch any categories not in CATEGORY_ORDER (forward compatibility)
     for cat, findings in by_cat.items():
         if cat not in CATEGORY_ORDER:
-            _render_category(cat, findings, console, verbose=verbose)
+            _render_category(cat, findings, console, verbose=verbose, governance=governance)
 
     _render_risk_summary(report, console)
+    _render_governance_summary(report, console, governance=governance)
+    _render_scorecard(report, console)
     _render_footer(report, console, verbose=verbose)
 
 
@@ -181,18 +209,27 @@ def _render_category(
     findings: list[Finding],
     console: Console,
     verbose: bool = False,
+    governance: bool = False,
 ) -> None:
     title = CATEGORY_DISPLAY.get(category, category.upper())
     console.print(f"[bold]{title}[/bold]")
     for finding in findings:
-        _render_finding(finding, console, verbose=verbose)
+        _render_finding(finding, console, verbose=verbose, governance=governance)
     console.print()
 
 
-def _render_finding(finding: Finding, console: Console, verbose: bool = False) -> None:
+def _render_finding(
+    finding: Finding,
+    console: Console,
+    verbose: bool = False,
+    governance: bool = False,
+) -> None:
     # Surface name on its own line, indented. Audited findings carry a colored
     # severity badge; discovery-only findings render exactly as before.
     surface_text = Text("  • ", style="dim") + Text(finding.surface, style="bold white")
+    verdict = _verdict_badge(finding.verdict)
+    if verdict is not None:
+        surface_text = surface_text + Text(" ") + verdict
     badge = _severity_badge(finding.severity)
     if badge is not None:
         surface_text = surface_text + badge
@@ -230,7 +267,7 @@ def _render_finding(finding: Finding, console: Console, verbose: bool = False) -
 
     # Deep-dive audit block (risk flags, secrets, trust) when present.
     if finding.audit is not None:
-        _render_audit(finding, console)
+        _render_audit(finding, console, governance=governance)
 
     # Inline per-finding deep link to APIsec when this finding has risk
     # indicators. Conversion bridge points reviewers at the specific surface.
@@ -271,7 +308,7 @@ def _render_api_metadata(finding: Finding, console: Console) -> None:
         console.print(Padding(Text("  " + " · ".join(extras), style="dim"), (0, 0, 0, 4)))
 
 
-def _render_audit(finding: Finding, console: Console) -> None:
+def _render_audit(finding: Finding, console: Console, governance: bool = False) -> None:
     """Render the deep-dive audit block: risk flags, secrets, and trust.
 
     Secrets render NAME/TYPE/location only. Per the privacy guarantee there is
@@ -293,7 +330,7 @@ def _render_audit(finding: Finding, console: Console) -> None:
             console.print(
                 Padding(Text("OWASP: " + ", ".join(rf.owasp), style="dim"), (0, 0, 0, 8))
             )
-        standards = standards_for_flag(rf.flag)
+        standards = standards_for_flag(rf.flag) if governance else []
         if standards:
             gov = ", ".join(f"{s['framework']} {s['clause']}" for s in standards)
             console.print(
@@ -339,6 +376,24 @@ def _render_bridges(finding: Finding, console: Console) -> None:
         )
 
 
+def _render_governance_summary(
+    report: Report, console: Console, governance: bool = False
+) -> None:
+    """Always show a single line naming the frameworks this scan evidences.
+
+    Keeps the "Govern it" pillar visible without putting a clause on every
+    finding. Per-finding clauses render only under --governance.
+    """
+    names = framework_names(report)
+    if not names:
+        return
+    line = "Governance: evidence for " + ", ".join(names)
+    if not governance:
+        line += " · run with --governance for per-finding clauses"
+    console.print(Text(line, style="dim"))
+    console.print()
+
+
 def _render_risk_summary(report: Report, console: Console) -> None:
     risks = report.all_risk_indicators()
     if not risks:
@@ -348,6 +403,85 @@ def _render_risk_summary(report: Report, console: Console) -> None:
     console.print(f"[bold yellow]Risk {word} ({len(risks)}):[/bold yellow]")
     for r in risks:
         console.print(Text(f"  ⚠ {r}", style="yellow"))
+    console.print()
+
+
+def _grade_for(summary_confirmed: int, summary_likely: int, high_or_crit: int) -> tuple[str, str]:
+    """Return (grade letter, rich style) from verdict and severity counts.
+
+    The grade reflects what the scan can actually stand behind: confirmed
+    high-severity facts weigh hardest, inferred risks weigh lighter. It is a
+    posture summary, not a security certification.
+    """
+    if summary_confirmed and high_or_crit:
+        return "D", "bold white on dark_red"
+    if summary_confirmed:
+        return "C", "bold white on red"
+    if summary_likely:
+        return "B", "bold black on yellow"
+    return "A", "bold white on green"
+
+
+def _render_scorecard(report: Report, console: Console) -> None:
+    """The end-of-scan scorecard: one glance, one screenshot.
+
+    Grade, the three counts that matter, and the single worst finding. This is
+    deliberately the last content block before the footer links so a terminal
+    screenshot naturally ends on it.
+    """
+    summary = report.summary or report.build_summary()
+    high_or_crit = summary.by_severity.get(SEVERITY_CRITICAL, 0) + summary.by_severity.get(
+        SEVERITY_HIGH, 0
+    )
+    grade, grade_style = _grade_for(
+        summary.confirmed_count, summary.likely_count, high_or_crit
+    )
+
+    console.print(Rule(style="cyan"))
+    line = Text("AI Surface Scorecard  ", style="bold cyan")
+    line += Text(f" {grade} ", style=grade_style)
+    console.print(line)
+
+    counts = Text("  ")
+    counts += Text(f"{summary.total_findings}", style="bold white")
+    counts += Text(" surfaces · ", style="dim")
+    if summary.confirmed_count:
+        counts += Text(f"{summary.confirmed_count} confirmed risk", style="bold red")
+    else:
+        counts += Text("0 confirmed risk", style="green")
+    counts += Text(" · ", style="dim")
+    if summary.likely_count:
+        counts += Text(f"{summary.likely_count} likely risk", style="bold yellow")
+    else:
+        counts += Text("0 likely risk", style="green")
+    console.print(counts)
+
+    # The one-line worst finding: first confirmed with a high/critical flag,
+    # else first confirmed, else the top risk phrase. Quote the flag that made
+    # the finding confirmed, not whatever flag happens to be listed first.
+    from ..verdicts import CONFIRMED_FLAGS  # noqa: PLC0415 - avoid module cycle
+
+    worst: str | None = None
+    for f in report.findings:
+        if f.verdict == VERDICT_CONFIRMED and f.severity in (SEVERITY_CRITICAL, SEVERITY_HIGH):
+            desc = ""
+            if f.audit and f.audit.risk_flags:
+                confirmed_flags = [
+                    rf for rf in f.audit.risk_flags if rf.flag in CONFIRMED_FLAGS
+                ]
+                rf = confirmed_flags[0] if confirmed_flags else f.audit.risk_flags[0]
+                desc = rf.description or rf.flag
+            worst = f"{f.surface}: {desc}" if desc else f.surface
+            break
+    if worst is None:
+        for f in report.findings:
+            if f.verdict == VERDICT_CONFIRMED:
+                worst = f.surface
+                break
+    if worst is None and summary.top_risks:
+        worst = summary.top_risks[0]
+    if worst:
+        console.print(Text(f"  Worst finding: {worst}", style="red"))
     console.print()
 
 
@@ -392,4 +526,9 @@ def _render_footer(report: Report, console: Console, verbose: bool = False) -> N
     if summary.bridges_available:
         skus = ", ".join(summary.bridges_available)
         console.print(f"[dim]Validate at runtime in APIsec: {skus}[/dim]")
+    console.print(
+        "[dim]Useful? Star the repo so more engineers find it: "
+        "[link=https://github.com/apisec-inc/AI-Surface]"
+        "github.com/apisec-inc/AI-Surface[/link][/dim]"
+    )
     console.print()

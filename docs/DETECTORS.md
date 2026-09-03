@@ -106,6 +106,8 @@ Scans Python and JS/TS source for agent framework imports, named agent definitio
 | **Semantic Kernel** | Semantic Kernel | `semantic_kernel` | _none_ |
 | **Pydantic AI** | Pydantic AI | `pydantic_ai` | `agent = Agent(...)` |
 | **AWS Strands** | AWS Strands | `strands` | `agent = Agent(model=..., tools=...)`, `@tool` decorators |
+| **OpenAI Agents SDK** | OpenAI Agents SDK | _(none, too generic)_ | `from agents import Agent/Runner/function_tool/...`, `Runner.run(...)`, `@function_tool`; `agent = Agent(name=..., tools=[...])`. Bare `import agents` is intentionally ignored so a local `agents` module is not misdetected. |
+| **Claude Agent SDK** | Claude Agent SDK | `claude_agent_sdk` | `ClaudeSDKClient(...)`, `ClaudeAgentOptions(...)`, `@tool` decorators |
 
 ### Frameworks detected (JavaScript / TypeScript)
 
@@ -115,8 +117,9 @@ Scans Python and JS/TS source for agent framework imports, named agent definitio
 | **LangGraph.js** | `@langchain/langgraph` | `new StateGraph()`, `createReactAgent()` |
 | **Vercel AI SDK** | `ai`, `@ai-sdk` | `generateText({tools})`, `streamText({tools})` (only when tools are wired) |
 | **Mastra** | `@mastra/core`, `@mastra` | `new Agent({...})`, `createAgent()` |
-| **OpenAI Agents** | `@openai/agents` | `new Agent({...})` |
+| **OpenAI Agents SDK** | `@openai/agents` | `new Agent({...})` |
 | **LlamaIndex.ts** | `llamaindex` | `OpenAIAgent`, `ReActAgent` |
+| **Claude Agent SDK** | `@anthropic-ai/claude-agent-sdk` | `new ClaudeSDKClient({...})`, `createSdkMcpServer(...)` |
 
 ### Tool extraction methods
 

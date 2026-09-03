@@ -6,13 +6,17 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
-[![Version](https://img.shields.io/badge/version-1.0.2-blue.svg)](https://github.com/apisec-inc/AI-Surface/blob/main/CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.0.7-blue.svg)](https://github.com/apisec-inc/AI-Surface/blob/main/CHANGELOG.md)
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](https://github.com/apisec-inc/AI-Surface/tree/main/tests)
 [![Runs offline](https://img.shields.io/badge/no_telemetry-runs_offline-brightgreen.svg)](https://github.com/apisec-inc/AI-Surface/blob/main/docs/PRIVACY.md)
 
 </div>
 
 `ai-surface` maps the AI attack surface in your codebase: LLM calls, agents, MCP servers, RAG/vector stores, model gateways, self-hosted runtimes, provider keys, and the HTTP APIs that expose them. Run it locally or in CI to see what AI surfaces a PR introduces, generate an AI-BOM, and gate new high-risk findings before merge.
+
+Most layers of a codebase already have a check that runs before merge: Trivy for container images, Gitleaks for committed secrets, an SCA for dependencies. The AI layer, the agents, MCP servers, RAG, and LLM calls, has not had one. `ai-surface` is that check.
+
+Every risky finding carries a verdict: **confirmed risk** (an unambiguous fact of the code as written, like a financial-action tool with no approval step) or **likely risk** (inferred, wants a human look). Every scan ends on a scorecard with a posture grade. CI setup is one command: `ai-surface init`.
 
 It runs as a local static analysis pass that executes no code, makes no network calls, sends no telemetry, and requires no credentials, so your source never leaves the host.
 
@@ -21,6 +25,8 @@ Try it without installing:
 ```bash
 uvx --from apisec-ai-surface ai-surface scan .
 ```
+
+If ai-surface is useful to you, [star the repo](https://github.com/apisec-inc/AI-Surface) so more engineers find it.
 
 Findings map to the OWASP LLM Top 10 and the EU AI Act, NIST AI RMF, and ISO 42001, so the AI-BOM doubles as governance evidence (see [Compliance](#compliance-and-governance)). Runtime exploit validation is out of scope for this OSS scanner.
 
@@ -73,6 +79,8 @@ Install once, then run `ai-surface` anywhere:
 ```bash
 pipx install apisec-ai-surface
 ai-surface scan .
+# if the ai-surface command is not found after install, run: pipx ensurepath
+# then open a new shell
 
 # or run once with no install
 uvx --from apisec-ai-surface ai-surface scan .
@@ -88,68 +96,60 @@ Requires Python 3.9+. The CLI runs locally; `--ui` serves on loopback only.
 
 ### What the output looks like
 
-Reproduce a full multi-category report yourself on the bundled demo app: `ai-surface scan examples/demo-app` (add `--ui` for the interactive map). The report below is from a representative AI app.
+Reproduce this yourself on the bundled demo app: `ai-surface scan examples/demo-app --governance` (add `--ui` for the interactive map). Each risky finding carries a verdict: `CONFIRMED RISK` when the risk is a fact of the code as written (a declared capability, a present secret, a financial tool with no approval step) or `LIKELY RISK` when it is inferred and wants a human look. The run ends on a scorecard. The block is shown with `--governance` so the per-finding EU AI Act / NIST / ISO clauses are visible; by default those collapse to a single summary line (`Governance: evidence for EU AI Act, NIST AI RMF, ISO/IEC 42001, OWASP LLM Top 10`). Add `--ai-only` to drop the plain API-endpoint section. Output below is trimmed for length.
 
 ```text
 AI Attack Surface Report
 ────────────────────────────────────────────────────────────────
-Project:    lumora
-Repository: apisec-inc/lumora
+Project:    demo-app
 19 production AI surfaces · 25 risk indicators · across 8 detector(s)
-Severity: 6 high · 2 medium
+Severity: 3 high · 1 medium
 
 AGENT FRAMEWORKS
-  • LangChain Agent: agent (in backend/app/ai/support_agent.py) [HIGH]
-      Tools/perms: process_refund, lookup_order, send_email, update_address, search_knowledge
-      ⚠ financial action exposed   ⚠ messaging action exposed   ⚠ high blast-radius combination
+  • AWS Strands Agent: triage_agent (in src/support_workflow.py)
+      Tools/perms: fetch_customer_profile, search_knowledge_base, escalate_to_human
+  • LangChain Agent: support_agent (in src/chat_agent.py)  CONFIRMED RISK  [HIGH]
+      Tools/perms: lookup_order, refund_payment, cancel_subscription
+      ⚠ financial action exposed   ⚠ high blast-radius combination
       ⚑ [HIGH] financial-action
-        Agent can invoke financial tools (process_refund)
-        OWASP: LLM06
-        Governance: EU AI Act Art. 9
+        Agent can invoke financial tools (refund_payment)
+        OWASP: LLM06    Governance: EU AI Act Art. 9
         Fix: Gate financial tools behind human approval; least-privilege the agent.
       ⚑ [HIGH] no-human-oversight
         High-risk action runs with no human approval / in-the-loop gate detected
-        OWASP: LLM06, LLM09
-        Governance: EU AI Act Art. 14
-      ⚑ [MEDIUM] pii-to-llm
-        Personal data (PII) is interpolated into a prompt template sent to the model
-        OWASP: LLM02
-        Governance: EU AI Act Art. 10, ISO 42001 A.7
-      → validate at runtime: agent validation in APIsec
-  • Mastra Agent: inventory (in assistant/src/inventory-agent.ts) [HIGH]
-      Tools/perms: checkStock, reorder, deleteSku
-      ⚑ [HIGH] destructive-action
-        Agent can invoke destructive tools (deleteSku)
-        OWASP: LLM06    Governance: EU AI Act Art. 9
+        OWASP: LLM06, LLM09    Governance: EU AI Act Art. 14
 
 MCP SERVERS
-  • MCP Server: payments-mcp [HIGH]   Trust: verified (90/100)
-      ⚑ [HIGH] secrets-in-env
-        Environment variables in the config appear to hold sensitive credentials
-        OWASP: LLM02, LLM07    Governance: EU AI Act Art. 15
+  • MCP Server: stripe-mcp  CONFIRMED RISK  [HIGH]   Trust: verified (90/100)
+      Tools/perms: read_charges, refund, customer:read
       ⚑ [HIGH] financial-action
-        MCP exposes financial tools (refund, charge, payout) to the model
+        MCP exposes financial tools (refund, charge, payout) to the model.
         OWASP: LLM06    Governance: EU AI Act Art. 9
       ⚑ [MEDIUM] unverified-source
-        MCP is not from a known/verified publisher
+        MCP is not from a known/verified publisher; its posture is unknown.
         OWASP: LLM03    Governance: ISO 42001 A.10
-  • MCP Server: db-mcp [HIGH]
-      ⚑ [HIGH] database-access      MCP can query or modify database contents      OWASP: LLM06
-  • MCP Server: filesystem-mcp [HIGH]
-      ⚑ [HIGH] filesystem-access    MCP can read/write files on the host           OWASP: LLM06
-
-VECTOR-STORE
-  • Vector store: pgvector  ·  RAG pipeline: LangChain   (backend/app/ai/knowledge.py)
-      ⚠ retrieved content reaches the model (retrieval-augmented generation)
-      ⚠ ingests external content (RAG poisoning surface)
+  • MCP Server: github-mcp  CONFIRMED RISK  [MEDIUM]
+      ⚑ [MEDIUM] remote-mcp        MCP connects to a remote server via URL
+      ⚑ [MEDIUM] broad-permissions MCP is granted broad (admin/write) scopes
 
 LLM SDK CALL SITES
-  • OpenAI SDK · gpt-4o · backend/app/ai/llm.py        ⚠ non-literal data flows into LLM call
-  • AWS Bedrock · us.anthropic.claude-sonnet-4 · backend/app/ai/llm.py
+  • Anthropic SDK  LIKELY RISK · claude-3-5-sonnet · src/llm_service.py
+      ⚠ non-literal data flows into LLM call
+  • AWS Bedrock · us.anthropic.claude-sonnet-4 · src/support_workflow.py
+
+VECTOR-STORE
+  • Vector store: pgvector  LIKELY RISK        ⚠ retrieved content reaches the model (RAG)
+  • RAG pipeline: LangChain  LIKELY RISK       ⚠ ingests external content (RAG poisoning surface)
 
 API ENDPOINTS
-  • GET   /customers/{customer_id}     ⚠ object-id in path (BOLA candidate)
-  • PATCH /customers/{customer_id}     ⚠ object-id in path (BOLA candidate)
+  • REST API: GET   /orders/{order_id}         LIKELY RISK   ⚠ object-id in path (BOLA candidate)
+  • REST API: PATCH /customers/{customer_id}   LIKELY RISK   ⚠ object-id in path (BOLA candidate)
+
+Governance: evidence for EU AI Act, NIST AI RMF, ISO/IEC 42001, OWASP LLM Top 10
+────────────────────────────────────────────────────────────────
+AI Surface Scorecard   D
+  19 surfaces · 4 confirmed risk · 11 likely risk
+  Worst finding: MCP Server: stripe-mcp: MCP exposes financial tools (refund, charge, payout) to the model.
 ```
 
 ### First run on a mature repo
@@ -166,7 +166,15 @@ ai-surface scan . --baseline --fail-on high   # 3. in CI, fail only on NEW high+
 
 ## GitHub Action and CI gating
 
-Drop this into `.github/workflows/ai-surface.yml`:
+The fastest path is one command from your repo root:
+
+```bash
+ai-surface init
+```
+
+It writes the recommended workflow below into `.github/workflows/ai-surface.yml` and prints a [pre-commit](https://pre-commit.com) snippet for local scans (the repo ships `.pre-commit-hooks.yaml`).
+
+Or drop this into `.github/workflows/ai-surface.yml` yourself:
 
 ```yaml
 name: AI Surface Check
@@ -224,7 +232,7 @@ To stop the local UI server, press `Ctrl-C` in the terminal.
 
 | Category | Coverage | What it finds |
 |---|---|---|
-| Agent frameworks | 10 Python + 6 JS/TS frameworks | LangChain, LangGraph, CrewAI, LlamaIndex, AutoGen, Haystack, Semantic Kernel, Pydantic AI, AWS Strands, LangChain.js, LangGraph.js, Vercel AI SDK, Mastra, OpenAI Agents, and LlamaIndex.ts. Extracts agent tool inventories and flags financial, destructive, and high-blast-radius authority. |
+| Agent frameworks | 11 Python + 7 JS/TS frameworks | LangChain, LangGraph, CrewAI, LlamaIndex, AutoGen, Haystack, Semantic Kernel, Pydantic AI, AWS Strands, the OpenAI Agents SDK and the Claude Agent SDK (Python); LangChain.js, LangGraph.js, Vercel AI SDK, Mastra, OpenAI Agents SDK, LlamaIndex.ts, and the Claude Agent SDK (TS/JS). Extracts agent tool inventories and flags financial, destructive, and high-blast-radius authority. |
 | MCP servers | Discovery + deep-dive audit | Configured MCP servers such as `.mcp.json` entries and in-house source servers. Audited findings include risk flags, remediation, detected secrets by name/type only, and registry/trust signals. |
 | Vector stores / RAG | 13 stores + 2 frameworks | Pinecone, Weaviate, Chroma, Qdrant, Milvus, FAISS, LanceDB, pgvector, Elasticsearch/OpenSearch/Vespa/Redis in vector mode, plus LangChain and LlamaIndex retrieval pipelines. Flags managed-store egress, RAG data flow, embeddings, and external ingestion. |
 | LLM SDK call sites | 13 providers | Anthropic, OpenAI, Azure OpenAI, AWS Bedrock, Google Generative AI, Vertex AI, Together, Mistral, Cohere, Replicate, Groq, LiteLLM, and Vercel AI SDK. Extracts models where visible and flags non-literal prompt/message flow. |
@@ -305,9 +313,20 @@ ai-surface scan . --output sarif
 ai-surface scan . --categories mcp,agents
 ai-surface scan . --categories vector
 
+# Focus on AI-specific surface (drop plain, non-AI API endpoints)
+ai-surface scan . --ai-only
+
+# Show per-finding governance clauses (EU AI Act / NIST / ISO)
+# Off by default; a one-line governance summary always shows.
+ai-surface scan . --governance
+
 # Gate CI by assessed severity
 ai-surface scan . --fail-on high       # fail on high or critical findings
 ai-surface scan . --fail-on critical   # fail only on critical findings
+
+# Severity floor the baseline cannot suppress (closes baseline-acceptance gap)
+# New high+ blocks the PR; any critical always blocks, even if pre-existing.
+ai-surface scan . --baseline --fail-on high --always-fail-on critical
 
 # Aggressive gate: fail on any risk indicator
 ai-surface scan . --fail-on-risk
@@ -325,7 +344,7 @@ ai-surface compare base.json head.json
 
 `ai-surface` maps audited findings to the OWASP LLM Top 10 and to evidence-relevant clauses in the EU AI Act, NIST AI RMF, and ISO/IEC 42001.
 
-The UI shows these mappings as badges. JSON output carries them as structured `standards` fields. CycloneDX output carries them as component properties, making it your AI-BOM artifact.
+In terminal and markdown output, the per-finding clauses are off by default and a single governance summary line is shown instead; pass `--governance` to print the clause under each risk flag. The UI shows these mappings as badges. JSON output always carries them as structured `standards` fields. CycloneDX output carries them as component properties, making it your AI-BOM artifact.
 
 `ai-surface` produces evidence; it does not certify, attest, or assert compliance. A framework requirement is reported only when the analysis produced that kind of evidence.
 
@@ -390,6 +409,8 @@ When PR comments are enabled, the GitHub Action uses the repository's `GITHUB_TO
 Deep dive: [`docs/ARCHITECTURE.md`](https://github.com/apisec-inc/AI-Surface/blob/main/docs/ARCHITECTURE.md).
 
 ## Comparison with adjacent tools
+
+Trivy checks container images, Gitleaks checks git history, an SCA checks dependencies. `ai-surface` is the equivalent pre-merge check for the AI layer. It sits alongside the tools below rather than replacing any of them.
 
 | Tool | What it tells you | When it sees AI |
 |---|---|---|

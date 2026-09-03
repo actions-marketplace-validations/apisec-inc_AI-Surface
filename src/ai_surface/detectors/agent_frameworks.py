@@ -44,6 +44,23 @@ _FRAMEWORK_SPECS: list[tuple[str, str, list[str], list[str]]] = [
     ("semantic_kernel", "Semantic Kernel", ["semantic_kernel"], []),
     ("pydantic_ai", "Pydantic AI", ["pydantic_ai"], []),
     ("strands", "AWS Strands", ["strands"], []),
+    # OpenAI Agents SDK (pip: openai-agents, import root `agents`). The import
+    # root `agents` is too generic to match on its own, repos commonly have a
+    # local `agents` module, so detection keys off distinctive symbols only
+    # (a `from agents import Agent/Runner/...` line, a Runner.run call, or the
+    # @function_tool decorator), never a bare `import agents`.
+    ("openai_agents", "OpenAI Agents SDK", [], [
+        r"(?m)^\s*from\s+agents\s+import\s+[^\n]*\b"
+        r"(?:Agent|Runner|function_tool|handoff|ModelSettings|RunConfig)\b",
+        r"\bRunner\s*\.\s*run(?:_sync|_streamed)?\s*\(",
+        r"@function_tool\b",
+    ]),
+    # Claude Agent SDK (pip: claude-agent-sdk, import `claude_agent_sdk`). The
+    # import root is specific, so a normal import match is safe.
+    ("claude_agent_sdk", "Claude Agent SDK", ["claude_agent_sdk"], [
+        r"\bClaudeSDKClient\s*\(",
+        r"\bClaudeAgentOptions\s*\(",
+    ]),
 ]
 
 
@@ -61,7 +78,7 @@ FRAMEWORK_PATTERNS: OrderedDict[str, _FrameworkInfo] = OrderedDict(
         key,
         {
             "display": display,
-            "imports": [_build_import_regex(roots)],
+            "imports": [_build_import_regex(roots)] if roots else [],
             "usage": [re.compile(p) for p in usage],
         },
     )
@@ -134,9 +151,10 @@ TOOLS_BLOCK_RE = re.compile(r"tools\s*=\s*\[", re.IGNORECASE)
 TOOL_NAME_KW_RE = re.compile(r"\bTool\s*\(\s*name\s*=\s*['\"]([A-Za-z0-9_\-\.]+)['\"]")
 # {"name": "x"} dict literal (Anthropic-shape).
 DICT_NAME_RE = re.compile(r"['\"]name['\"]\s*:\s*['\"]([A-Za-z0-9_\-\.]+)['\"]")
-# @tool decorator on def.
+# @tool / @function_tool decorator on def. @tool covers LangChain and the
+# Claude Agent SDK; @function_tool covers the OpenAI Agents SDK.
 TOOL_DECORATOR_RE = re.compile(
-    r"@tool(?:\s*\([^)]*\))?\s*\n\s*(?:async\s+)?def\s+([A-Za-z_][A-Za-z0-9_]*)"
+    r"@(?:tool|function_tool)(?:\s*\([^)]*\))?\s*\n\s*(?:async\s+)?def\s+([A-Za-z_][A-Za-z0-9_]*)"
 )
 # Bare-identifier list inside tools=[...] (search_tool, refund_tool, ...).
 IDENTIFIER_RE = re.compile(r"\b([a-z_][a-zA-Z0-9_]*)\b")
@@ -178,6 +196,11 @@ AGENT_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ("autogen", re.compile(r"\bAssistantAgent\s*(\()")),
     ("pydantic_ai", re.compile(r"^\s*([A-Za-z_]\w*)\s*=\s*Agent\s*\(", re.MULTILINE)),
     ("strands", re.compile(r"^\s*([A-Za-z_]\w*)\s*=\s*Agent\s*\(", re.MULTILINE)),
+    # OpenAI Agents SDK: `agent = Agent(name=..., tools=[...])`. Same `Agent(`
+    # shape as pydantic_ai/strands; the loop resolves which by imported framework.
+    ("openai_agents", re.compile(r"^\s*([A-Za-z_]\w*)\s*=\s*Agent\s*\(", re.MULTILINE)),
+    # Claude Agent SDK: `client = ClaudeSDKClient(options=...)`.
+    ("claude_agent_sdk", re.compile(r"^\s*([A-Za-z_]\w*)\s*=\s*ClaudeSDKClient\s*\(", re.MULTILINE)),
 ]
 
 # Within a (bracket-bounded) ctor body, pull a ``role=`` or ``name=`` kwarg.
@@ -394,10 +417,12 @@ _JS_FRAMEWORK_SPECS: list[tuple[str, str, list[str], list[str]]] = [
      [r"\bgenerateText\s*\(", r"\bstreamText\s*\("]),
     ("mastra", "Mastra", ["@mastra/core", "@mastra"],
      [r"\bnew\s+Agent\s*\(", r"\bcreateAgent\s*\("]),
-    ("openai_agents", "OpenAI Agents", ["@openai/agents"],
+    ("openai_agents", "OpenAI Agents SDK", ["@openai/agents"],
      [r"\bnew\s+Agent\s*\("]),
     ("llama_index", "LlamaIndex", ["llamaindex"],
      [r"\bOpenAIAgent\b", r"\bReActAgent\b"]),
+    ("claude_agent_sdk", "Claude Agent SDK", ["@anthropic-ai/claude-agent-sdk"],
+     [r"\bClaudeSDKClient\b", r"\bcreateSdkMcpServer\s*\("]),
 ]
 
 
@@ -449,9 +474,11 @@ _JS_CTOR_FRAMEWORK = {
     "createAgent": "mastra",
     "OpenAIAgent": "llama_index",
     "ReActAgent": "llama_index",
+    "ClaudeSDKClient": "claude_agent_sdk",
 }
 _JS_CTOR_ALT = ("AgentExecutor|createToolCallingAgent|initializeAgentExecutorWithOptions|"
-                "StateGraph|createReactAgent|createAgent|OpenAIAgent|ReActAgent|Agent")
+                "StateGraph|createReactAgent|createAgent|OpenAIAgent|ReActAgent|"
+                "ClaudeSDKClient|Agent")
 _JS_AGENT_RE = re.compile(
     rf"(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:await\s+)?(?:new\s+)?({_JS_CTOR_ALT})\s*\(",
 )

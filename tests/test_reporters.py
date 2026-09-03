@@ -247,6 +247,11 @@ def test_markdown_reporter_includes_cross_sell() -> None:
     assert "apisec.ai/products" in md
 
 
+def test_markdown_reporter_includes_star_cta() -> None:
+    md = render_markdown(_sample_report())
+    assert "Star the repo](https://github.com/apisec-inc/AI-Surface)" in md
+
+
 # ---- Terminal reporter ----
 
 
@@ -258,6 +263,7 @@ def test_terminal_reporter_runs_without_error(capsys: pytest.CaptureFixture[str]
     assert "AI Attack Surface Report" in text
     assert "Anthropic SDK" in text
     assert "refund_agent" in text
+    assert "github.com/apisec-inc/AI-Surface" in text
 
 
 def test_terminal_reporter_handles_empty_report() -> None:
