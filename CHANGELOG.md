@@ -4,6 +4,35 @@ All notable changes to `ai-surface` will be documented in this file. The format 
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-10-08
+
+**Fix confirmation.** The in-the-loop integrations now close the loop: when a developer resolves a risk that ai-surface flagged, ai-surface confirms it, by name, in the same session.
+
+### Added
+- **Fix confirmation: the hook and MCP diff report cleared risks.** When an edit puts a human approval gate in front of a flagged financial or destructive action, the Claude Code hook posts "a flagged risk was cleared by this edit" and the `check_new_ai_surface` diff reports `risks_removed` and a `risks_cleared` count, instead of staying silent. Previously the rolling baseline only ever reported additions, so a fix produced no feedback.
+
+### Changed
+- The `no-human-oversight` audit flag is mirrored as a severity-free risk indicator (`no human approval gate on a high-risk action`) so the gate's absence and its later presence both survive the baseline diff.
+- Once an approval gate is detected on the path, the `financial-action` and `destructive-action` remediation reads "Approval gate detected on this path. Keep it in front of the action and least-privilege the agent." rather than telling the user to add a gate that is already there. Severity is unchanged.
+
+### Fixed
+- Upgrading from 1.1.0 no longer produces a one-time "risk added: no human approval gate" message for agents that were already ungated: a baseline written by an older version is reconciled on its first diff, so only changes the developer makes are reported.
+
+## [1.1.0] - 2026-09-21
+
+ai-surface now runs inside the AI coding tools that write the code: as an MCP server, and as an automatic post-edit hook for Claude Code. The finding arrives at the moment the surface is created, not at PR time.
+
+### Added
+- **MCP server: `ai-surface mcp`.** A stdio Model Context Protocol server any MCP client can launch (Claude Code, Cursor, Windsurf, Cline). Two tools: `scan_ai_surface(path, max_surfaces)` inventories a path with counts, top risks, governance frameworks, and the highest-severity surfaces; `check_new_ai_surface(path, baseline_file)` reports only what is NEW, MODIFIED, or REMOVED since the previous call, or since a given committed baseline. Every entry carries the compliance block (OWASP LLM Top 10 ids, EU AI Act / NIST AI RMF / ISO 42001 clauses, remediation). Read-only, offline, no network listener. Installed with the optional extra `pip install "apisec-ai-surface[mcp]"` (Python 3.10+; works with mcp 1.x and 2.x).
+- **Claude Code hook: `ai-surface hook claude-code`.** A `PostToolUse` hook that diffs the AI surface after every `Edit` / `Write` / `MultiEdit` / `NotebookEdit` / `Bash` call and injects the finding into the session when a change introduces or expands AI surface, plus a `SessionStart` mode that seeds the baseline so the very first surface-adding edit is caught. Silent on ordinary edits, exits 0 on every internal error so it never breaks the editor, refuses to scan a home directory or filesystem root, and scans once per edit (in-process). `--reset` forgets the rolling baseline.
+- **`ai-surface init --claude-code`.** Writes the hook into `.claude/settings.json` and the MCP server into `.mcp.json` for the current repo, merging with existing entries and idempotent on re-run.
+- **`docs/INTEGRATIONS.md`** covering both integrations, the hook contract, state location, and troubleshooting.
+
+### Changed
+- **Integration state lives outside the repository.** The rolling baselines used by the MCP tool and the hook are stored under a per-user state directory (`$XDG_CACHE_HOME/ai-surface`, `~/.cache/ai-surface`, or `%LOCALAPPDATA%\ai-surface`; override with `AI_SURFACE_STATE_DIR`), keyed by repo path. They never touch a committed `.ai-surface-baseline.json`, which stays a reviewable CI control, and never appear as untracked files.
+- **Diff JSON carries governance standards.** `scan --baseline -o json` (and the Action's diff) now serializes added and removed findings through the JSON reporter, so their risk flags include the `standards` join exactly as in a full report. Additive; schema version unchanged.
+- The self-test matrix and the security scan install the `[mcp]` extra so the MCP protocol round-trip runs in CI on Python 3.10+.
+
 ## [1.0.8] - 2026-08-26
 
 ### Added
